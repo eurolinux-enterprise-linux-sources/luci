@@ -1,0 +1,278 @@
+From c47ced9645668a26e4a8a277b54a479adf626008 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 2 Nov 2016 10:42:21 -0400
+Subject: [PATCH] luci: Suport fence_ilo_moonshot
+
+Add support for the fence_ilo_moonshot fence device
+
+Resolves: rhbz#1337718
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/FenceDeviceAttr.py |   2 +
+ luci/templates/fence_devices.html       | 136 ++++++++++++++++++++++++++++++++
+ luci/templates/fence_instances.html     |  11 +++
+ luci/validation/validate_fence.py       |  24 ++++++
+ 4 files changed, 173 insertions(+)
+
+diff --git a/luci/lib/ClusterConf/FenceDeviceAttr.py b/luci/lib/ClusterConf/FenceDeviceAttr.py
+index 6de49b8..570589d 100644
+--- a/luci/lib/ClusterConf/FenceDeviceAttr.py
++++ b/luci/lib/ClusterConf/FenceDeviceAttr.py
+@@ -32,6 +32,7 @@ FENCE_OPTS = {
+ 	'fence_ilo2':			'HP iLO2 Device',
+ 	'fence_ilo3':			'HP iLO3 Device',
+ 	'fence_ilo4':			'HP iLO4 Device',
++	'fence_ilo_moonshot':		'HP Moonshot iLO Device',
+ 	'fence_ipmilan':		'IPMI Lan',
+ 	'fence_idrac':			'Dell iDRAC',
+ 	'fence_imm':			'IBM Integrated Management Module',
+@@ -99,6 +100,7 @@ FENCE_SHARED = {
+ 	'fence_ilo2':			False,
+ 	'fence_ilo3':			False,
+ 	'fence_ilo4':			False,
++	'fence_ilo_moonshot':		False,
+ 	'fence_ilo_mp':			False,
+ 	'fence_ipmilan':		False,
+ 	'fence_idrac':			False,
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index ffbe295..8b2969a 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -5079,6 +5079,140 @@
+   <input type="hidden" name="fence_type" value="fence_hpblade" />
+ </div>
+ 
++<div py:def="fence_ilo_moonshot(cur_fencedev, ni)" id="fence_ilo_moonshot" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>HP Moonshot iLO</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Address or Hostname</td>
++      <td>
++        <input name="ipaddr" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login</td>
++      <td>
++        <input name="login" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Password</td>
++      <td>
++        <input name="passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
++      </td>
++      <td>
++        <input type="text" class="text" name="passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>SSH</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="secure"
++          py:attrs="cur_fencedev and cur_fencedev.getAttribute('secure') and {'checked': 'checked'}"/>
++        <label class="choice">Use SSH</label>
++      </td>
++    </tr>
++    <tr py:if="0">
++      <td>SSH Options</td>
++      <td>
++        <input type="text" class="text" name="ssh_options"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ssh_options')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Path to SSH Identity File</td>
++      <td>
++        <input type="text" class="text" name="identity_file"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('identity_file')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>TCP Port</td>
++      <td>
++        <input type="text" class="text" name="ipport"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Force Command Prompt</td>
++      <td>
++        <input type="text" class="text" name="cmd_prompt"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="fence_type" value="fence_ilo_moonshot" />
++</div>
++
+ <div py:def="fence_device_container" id="fence_device_container" class="hidden">
+ ${fence_apc(None,0)}
+ ${fence_apc_snmp(None,0)}
+@@ -5104,6 +5238,7 @@ ${fence_ilo(None,0)}
+ ${fence_ilo2(None,0)}
+ ${fence_ilo3(None,0)}
+ ${fence_ilo4(None,0)}
++${fence_ilo_moonshot(None,0)}
+ ${fence_drac(None,0)}
+ ${fence_rsa(None,0)}
+ ${fence_rsb(None,0)}
+@@ -5190,6 +5325,7 @@ ${fence_unknown(None,0)}
+       <option name="fence_ilo2" value="fence_ilo2">HP iLO2 Device</option>
+       <option name="fence_ilo3" value="fence_ilo3">HP iLO3 Device</option>
+       <option name="fence_ilo4" value="fence_ilo4">HP iLO4 Device</option>
++      <option name="fence_ilo_moonshot" value="fence_ilo_moonshot">HP Moonshot iLO Device</option>
+       <option name="fence_ilo_mp" value="fence_ilo_mp">HP iLO MP</option> <!-- needs work -->
+       <option name="fence_bladecenter" value="fence_bladecenter">IBM BladeCenter</option>
+       <option py:if="cluster_version == 3" name="fence_ibmblade" value="fence_ibmblade">IBM BladeCenter SNMP</option>
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index 12315c1..efef7cd 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -990,6 +990,16 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
++<div py:def="fence_ilo_moonshot_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ilo_moonshot_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++
++  <div class="emptyfenceinst">No additional parameters</div>
++  <input type="hidden" name="fence_type" value="fence_ilo_moonshot" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
+ <div py:def="fence_ilo3_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ilo3_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+ 
+@@ -1334,6 +1344,7 @@ ${fence_ilo_instance(None, None, None)}
+ ${fence_ilo2_instance(None, None, None)}
+ ${fence_ilo3_instance(None, None, None)}
+ ${fence_ilo4_instance(None, None, None)}
++${fence_ilo_moonshot_instance(None, None, None)}
+ ${fence_ilo_mp_instance(None, None, None)}
+ ${fence_rsa_instance(None, None, None)}
+ ${fence_ipmilan_instance(None, None, None)}
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index 462d5bc..ad08e0a 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -822,6 +822,28 @@ def val_ilo_fd(fencedev, fence_name, **kw):
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+ 	return errors
+ 
++def val_ilo_moonshot_fd(fencedev, fence_name, **kw):
++	params = (
++		('ipaddr', True),
++		('login', True),
++		('ipport', False),
++		('passwd', False),
++		('passwd_script', False),
++		('cmd_prompt', False),
++		('power_wait', False),
++		('delay', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
++		('secure', False),
++#		('ssh_options', False),
++		('identity_file', False),
++	)
++
++	errors = config_fence_attr(params, fencedev, fence_name, **kw)
++	return errors
++
+ def val_ipdu_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+@@ -912,6 +934,7 @@ FD_VALIDATE = {
+ 	'fence_ilo2':			val_ilo_fd,
+ 	'fence_ilo3':			val_ipmilan_fd,
+ 	'fence_ilo4':			val_ipmilan_fd,
++	'fence_ilo_moonshot':		val_ilo_moonshot_fd,
+ 	'fence_intelmodular':	val_intelmodular_fd,
+ 	'fence_ipdu':			val_ipdu_fd,
+ 	'fence_ipmilan':		val_ipmilan_fd,
+@@ -1345,6 +1368,7 @@ FI_VALIDATE = {
+ 	'fence_ilo2':			val_noop_fi,
+ 	'fence_ilo3':			val_noop_fi,
+ 	'fence_ilo4':			val_noop_fi,
++	'fence_ilo_moonshot':		val_noop_fi,
+ 	'fence_intelmodular':	val_intelmodular_fi,
+ 	'fence_ipmilan':		val_noop_fi,
+ 	'fence_kdump':			val_kdump_fi,
+-- 
+2.5.5
+

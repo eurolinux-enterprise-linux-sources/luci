@@ -1,0 +1,93 @@
+diff -ur a/luci/controllers/root.py b/luci/controllers/root.py
+--- a/luci/controllers/root.py	2016-12-16 10:44:28.996264612 +0100
++++ b/luci/controllers/root.py	2016-12-16 11:22:12.718653231 +0100
+@@ -1,4 +1,4 @@
+-# Copyright 2014 Red Hat, Inc.
++# Copyright 2016 Red Hat, Inc.
+ 
+ """Main Controller"""
+ from tg import expose, flash, require, url, request, redirect, tmpl_context
+@@ -59,6 +59,7 @@
+         tmpl_context.title_list = []
+         tmpl_context.already_used = dict()
+         tmpl_context.already_used.setdefault(False)
++        tmpl_context.show_sidebar = True
+         return BaseController.__call__(self, environ, start_response)
+ 
+     # SUBCONTROLLERS
+@@ -72,9 +73,7 @@
+     @expose('luci.templates.index')
+     def index(self):
+         """Handle the front-page."""
+-        tmpl_context.show_sidebar = True
+         redirect('/homebase/')
+-        return dict(page='index')
+ 
+     @expose('luci.templates.about')
+     def about(self):
+@@ -145,7 +144,6 @@
+     @expose('luci.templates.homebase')
+     @require(not_anonymous())
+     def homebase(self, homebasepage='homebasepage', **args):
+-        tmpl_context.show_sidebar = True
+         tmpl_context.homebase = True
+         tmpl_context.cluster = []
+ 
+@@ -225,6 +223,7 @@
+     @expose('luci.templates.login')
+     def login(self, came_from=url('/')):
+         """Start the user login."""
++        tmpl_context.show_sidebar = False
+         login_counter = request.environ['repoze.who.logins']
+         if login_counter > 0:
+             flash(_('Wrong credentials'), 'warning')
+diff -ur a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+--- a/luci/controllers/cluster.py	2016-12-16 10:44:29.088264790 +0100
++++ b/luci/controllers/cluster.py	2016-12-16 11:21:26.261562566 +0100
+@@ -1,4 +1,4 @@
+-# Copyright 2014 Red Hat, Inc.
++# Copyright 2016 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -36,12 +36,10 @@
+ 
+ class ClusterController(BaseController):
+     allow_only = not_anonymous()
+-    tmpl_context.show_sidebar = True
+ 
+     @expose('luci.templates.cluster_list')
+     def index(self):
+         tmpl_context.manage_clusters = True
+-        tmpl_context.show_sidebar = True
+         return dict(page='cluster', clusterpage='clusterpage')
+ 
+     @expose('luci.templates.cluster_list')
+@@ -105,7 +103,6 @@
+         identity = request.environ.get('repoze.who.identity')
+         self.username = identity['repoze.who.userid']
+ 
+-        tmpl_context.show_sidebar = True
+         tmpl_context.cluster_name = self.name
+         tmpl_context.cluster_url = '/cluster/%s/' % self.name
+         tmpl_context.cluster = self
+@@ -1158,7 +1155,6 @@
+       self.name = name
+       self.data = iccdata
+       self.nodename = nodename
+-      tmpl_context.show_sidebar = True
+ 
+     @expose("luci.templates.node")
+     def index(self):
+diff -ur a/luci/templates/master.html b/luci/templates/master.html
+--- a/luci/templates/master.html	2016-12-16 10:58:44.504920930 +0100
++++ b/luci/templates/master.html	2016-12-16 10:59:16.438982757 +0100
+@@ -88,7 +88,7 @@
+       <div py:if="not message.html" class="${message.css}" py:content="message.message"/>
+     </div>
+     </py:if>
+-    <py:if test="'show_sidebar' in dir(tmpl_context) and tmpl_context.show_sidebar">
++    <py:if test="getattr(tmpl_context, 'show_sidebar', False)">
+      <xi:include href="mainmenu.html" />
+     </py:if>
+     <py:if test="defined('page')">

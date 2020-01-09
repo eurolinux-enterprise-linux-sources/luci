@@ -1,0 +1,196 @@
+From dd9ec976e0faf2c46ff864c571dca32df1ddb14b Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 2 Nov 2016 15:38:34 -0400
+Subject: [PATCH] luci: Add support for Oracle Data Guard resources
+
+Add support for Oracle Data Guard resources.
+
+Resolves: rhbz#1316952
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/ModelBuilder.py |  3 +-
+ luci/lib/ClusterConf/OraDG.py        | 18 ++++++++++
+ luci/templates/resource_list.html    | 67 ++++++++++++++++++++++++++++++++++++
+ luci/validation/validate_resource.py | 14 ++++++++
+ 4 files changed, 101 insertions(+), 1 deletion(-)
+ create mode 100644 luci/lib/ClusterConf/OraDG.py
+
+diff --git a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+index a73dfd0..e53d3c5 100644
+--- a/luci/lib/ClusterConf/ModelBuilder.py
++++ b/luci/lib/ClusterConf/ModelBuilder.py
+@@ -65,7 +65,7 @@ import Event
+ import Ip, Script, NFSClient, NFSExport, NFSServer, Fs, Samba, Smb, Apache, \
+        Named, Condor, DRBD, LVM, MySQL, OpenLDAP, Postgres8, Tomcat5, \
+        Tomcat6, SAPDatabase, SAPInstance, SybaseASE, Netfs, Clusterfs, \
+-       OracleDB, OracleListener, OracleInstance, BindMount
++       OracleDB, OracleListener, OracleInstance, BindMount, OraDG
+ 
+ # Children of resource types
+ import Action
+@@ -133,6 +133,7 @@ TAGNAMES = {
+     OracleDB.TAG_NAME:              OracleDB.OracleDB,
+     OracleListener.TAG_NAME:        OracleListener.OracleListener,
+     OracleInstance.TAG_NAME:        OracleInstance.OracleInstance,
++    OraDG.TAG_NAME:                 OraDG.OraDG,
+     BindMount.TAG_NAME:             BindMount.BindMount,
+     Action.TAG_NAME:                Action.Action,
+ }
+diff --git a/luci/lib/ClusterConf/OraDG.py b/luci/lib/ClusterConf/OraDG.py
+new file mode 100644
+index 0000000..c39b704
+--- /dev/null
++++ b/luci/lib/ClusterConf/OraDG.py
+@@ -0,0 +1,18 @@
++# Copyright (C) 2016 Red Hat, Inc.
++#
++# This program is free software; you can redistribute
++# it and/or modify it under the terms of version 2 of the
++# GNU General Public License as published by the
++# Free Software Foundation.
++
++from BaseResource import BaseResource
++from gettext import gettext as _
++
++TAG_NAME = 'oradg'
++RESOURCE_TYPE = _('Oracle Data Guard Failover Instance')
++
++class OraDG(BaseResource):
++  def __init__(self):
++    BaseResource.__init__(self)
++    self.TAG_NAME = TAG_NAME
++    self.resource_type = RESOURCE_TYPE
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index ae489e8..bc11496 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1911,6 +1911,71 @@
+   </table>
+ </div>
+ 
++<div py:def="oradg_resource(res, form_id, parent_id, isref)" name="oradg" id="oradg_resource" class="row rescfg"
++  py:with="global_resource = res and isref != 0"
++  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
++  <input name="global" type="hidden" value="1" py:if="global_resource"/>
++  <input name="parent_id" type="hidden" value="${parent_id}"/>
++  <input name="form_id" type="hidden" value="${form_id}"/>
++  <input name="oldname" type="hidden"
++    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
++  <input name="type" type="hidden" value="oradg" />
++
++  <h3>Oracle Data Guard Failover Instance</h3>
++  <table class="formtable">
++    <tr>
++      <td>Instance Name (SID) of Oracle Instance</td>
++      <td>
++        <input type="text" class="text" name="resourcename"
++          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    <tr>
++      <td>Oracle User Name</td>
++      <td>
++        <input type="text" class="text" name="user"
++          py:attrs="res and {'value':res.getAttribute('user'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    <tr>
++      <td>Oracle Application Home Directory</td>
++      <td>
++        <input type="text" class="text" name="home"
++          py:attrs="res and {'value':res.getAttribute('home'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    <tr>
++      <td>List of Oracle Listeners (optional, separated by spaces)</td>
++      <td>
++        <input type="text" class="text" name="listeners"
++          py:attrs="res and {'value':res.getAttribute('listeners'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    <tr>
++      <td>Virtual Hostname (optional)</td>
++      <td>
++        <input type="text" class="text" name="vhost"
++          py:attrs="res and {'value':res.getAttribute('vhost'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    <tr>
++      <td>Path to Lock File (optional)</td>
++      <td>
++        <input type="text" class="text" name="lockfile"
++          py:attrs="res and {'value':res.getAttribute('lockfile'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    <tr>
++      <td>TNS_ADMIN (path to tnsnames.ora) (optional)</td>
++      <td>
++        <input type="text" class="text" name="tns_admin"
++          py:attrs="res and {'value':res.getAttribute('tns_admin'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    ${res_footer(res)}
++  </table>
++</div>
++
+ <div py:def="resource_container(model)" id="resource_container" class="hidden">
+ ${ip_resource(None,None,None,0)}
+ ${fs_resource(None,None,None,0)}
+@@ -1940,6 +2005,7 @@ ${drbd_resource(None,None,None,0)}
+ ${vm_resource(None,None,None,0)}
+ ${condor_resource(None,None,None,0)}
+ ${bindmount_resource(None,None,None,0)}
++${oradg_resource(None,None,None,0)}
+ 
+ <py:if test="model">
+   <py:for each="res in model.getResources()">
+@@ -2003,6 +2069,7 @@ ${bindmount_resource(None,None,None,0)}
+     <option name="oracledb_resource" value="oracledb_resource">Oracle 10g/11g Failover Instance</option>
+     <option name="orainstance_resource" value="orainstance_resource">Oracle 10g/11g Instance</option>
+     <option name="oralistener_resource" value="oralistener_resource">Oracle 10g/11g Listener</option>
++    <option name="oradg_resource" value="oradg_resource">Oracle Data Guard Instance</option>
+     <option name="openldap_resource" value="openldap_resource">Open LDAP</option>
+     <option name="postgres8_resource" value="postgres8_resource">PostgreSQL 8</option>
+     <option name="SAPDatabase_resource" value="SAPDatabase_resource">SAP Database</option>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 9611180..b2519ca 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -36,6 +36,7 @@ from luci.lib.ClusterConf.RefObject import RefObject
+ from luci.lib.ClusterConf.OracleInstance import OracleInstance
+ from luci.lib.ClusterConf.OracleListener import OracleListener
+ from luci.lib.ClusterConf.BindMount import BindMount
++from luci.lib.ClusterConf.OraDG import OraDG
+ 
+ from luci.lib.helpers import ugettext as _
+ from xml.dom import minidom
+@@ -533,6 +534,18 @@ def addOracleListener(res, rname, model, **kw):
+ 	errors = config_resource(params, res, rname, **kw)
+ 	return errors
+ 
++def addOraDG(res, rname, model, **kw):
++	params = (
++		('user', _('Oracle User Name'), True, None),
++		('home', _('Oracle Home Directory'), True, None),
++		('listeners', _('Oracle listeners'), False, None),
++		('vhost', _('Virtual Hostname'), False, None),
++		('lockfile', _('Path to lock file'), False, None),
++		('tns_admin', _('Value for TNS_ADMIN'), False, None),
++	)
++	errors = config_resource(params, res, rname, **kw)
++	return errors
++
+ def addNamed(res, rname, model, **kw):
+ 	params = (
+ 		('config_file', _('named config file'), False, None),
+@@ -594,6 +607,7 @@ resource_table = {
+ 	'oracledb':			( addOracleDB,			OracleDB		),
+ 	'orainstance':		( addOracleInstance,	OracleInstance	),
+ 	'oralistener':		( addOracleListener,	OracleListener	),
++	'oradg':			( addOraDG,				OraDG			),
+ 	'ASEHAagent':		( addSybaseASE,			SybaseASE		),
+ 	'named':			( addNamed,				Named			),
+ 	'drbd':				( addDRBD,				DRBD			),
+-- 
+2.5.5
+

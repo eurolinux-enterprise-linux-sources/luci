@@ -1,0 +1,202 @@
+diff -urN a/input_files/sysconfig/sysconfig.in b/input_files/sysconfig/sysconfig.in
+--- a/input_files/sysconfig/sysconfig.in	2016-12-16 20:39:33.775584396 +0100
++++ b/input_files/sysconfig/sysconfig.in	2016-12-16 20:55:48.194646913 +0100
+@@ -29,6 +29,18 @@
+ # the @SERVICENAME@ service is stopped (and also on service start)
+ #KEEP_RUNTIME_DATA=1
+ 
++# Change this to set a positive integer specifying a period of both how long
++# to wait in the initscript before PID file is created (if it lasts) and
++# before claiming the start as unsuccessful despite @PKGNAME@ just may be still
++# being initialized (due to the arrangement of the startup sequence, incl.
++# possibility of configuration error being discovered after both initial
++# fork and PID file creation occurred in the deployed server).
++# You are strongly advised to change this value if you observe
++# "Start not finished yet" message upon starting @PKGNAME@ with initscript,
++# which arises from self-check related to the former period (which then
++# serves as a good heuristic also for the latter and more subtle one).
++#PID_FILE_WAIT=2
++
+ 
+ INIT_CONFIG=`cat -E <<"#END#"
+ 
+@@ -49,7 +61,7 @@
+ #   value, in which case this new value will be effectively used in that
+ #   context instead, or
+ # - such an option is commented out, in which case the respective default
+-#   as intended by luci authors will be used
++#   as intended by @PKGNAME@ authors will be used
+ # ===========================================================================
+ [DEFAULT]
+ 
+@@ -140,7 +152,7 @@
+ # out of particular browser(s) that already observed/noted the associated
+ # host requires Strict Transport Security (default when properly anchored
+ # certificate is used and STS not overridden in this user configuration)
+-# -- as an intermediate step, while this option is on, visit luci with
++# -- as an intermediate step, while this option is on, visit @PKGNAME@ with
+ # affected browsers, then downgrade to self-signed cert without worries.
+ #header.Strict-Transport-Security = max-age=0
+ #
+diff -urN a/input_files/initscript/initscript.in b/input_files/initscript/initscript.in
+--- a/input_files/initscript/initscript.in	2016-12-16 12:28:47.833574220 +0100
++++ b/input_files/initscript/initscript.in	2016-12-16 20:38:48.423487632 +0100
+@@ -43,6 +43,7 @@
+ # Defaults that can be overridden by the content of $sysconfig
+ LOG_FILE="@LOGFILE@"
+ KEEP_RUNTIME_DATA=0
++PID_FILE_WAIT=1
+ 
+ # Override defaults with values from initscript configuration file
+ [ -e "$sysconfig" ] && . "$sysconfig"
+@@ -384,7 +385,52 @@
+ 
+     do_exec serve --daemon --user "$DAEMON_USER" --group "$DAEMON_GROUP" \
+                 --log-file="$LOG_FILE" --pid-file="$PID_FILE"          \
+-                --server-name=init --app-name=init "$config" @RELOAD@ >/dev/null
++                --server-name=init --app-name=init "$config" @RELOAD@ INITPID=$$ >/dev/null
++    # This has a bit unreliable return code, hence in case of success:
++    # (1) server already running when start fired, hence $PID_FILE surely exists
++    # (2) server started anew, the child is still running, but $PID_FILE
++    #     not created yet
++    # (3) ditto, but it progressed so that $PID_FILE is already created
++    #
++    # To add more uncertainty, the executed process may fail at any time
++    # during the post-fork initialization procedure (incorrect config, etc.)
++    # we are trying to establish if it has already finished that properly.
++    # We know that the process failed once:
++    # (a) pgrep'ing purposefully (and uniquely-enough) marked process fails
++    #     twice in row (because of just single fork out of original double
++    #     fork is to be carried)
++    # (b) existence of non-empty $PID_FILE was once detected during this
++    #     supervision run (i.e. $PID_FILE a priori removed to be created
++    #     within), but subsequently found missing
++    # but otherwise we have no easy way to detect the process progressed beyond
++    # the initialization phase without possibly waiting forever (halting
++    # problem) and we don't want to impose artificial timeout limits that
++    # will always be wrong for some use cases, so it's safer to defer such
++    # extremely rare cases to administrator by erring on the safe side,
++    # returning failure and providing the hint that real state can be
++    # discovered with a subsequent "status" action after a reasonable
++    # delay.
++    #
++    # Hence we split the detection routine into two parts:
++    # (I)  initial, performed here, that attempts the early distinguishing
++    #      of (1) [returns failure early] and (3) if there's enough time
++    #      for it to evolve from (2), otherwise this unresolved (2) case
++    #      is deferred to second part (II) by signalling a "tentative
++    #      success" (exit status 200); only (a) check is used here
++    # (II) final check at the call site, which will be combination of
++    #      (a) and (b), i.e., verifying that both $PID_FILE exists and
++    #      specify PID of existing process
++    # In case of (2), return distinguishing return code that is to signal
++    # "tentative success"
++    pgrep -f -u ${DAEMON_USER} -- " INITPID=$$" &>/dev/null \
++        || pgrep -f -u ${DAEMON_USER} -- " INITPID=$$" &>/dev/null && {
++            # wait a little if $PID_FILE appears
++            [ -s "${PID_FILE}" ] && return 0
++            sleep "${PID_FILE_WAIT}"
++            pgrep -f -u ${DAEMON_USER} -- " INITPID=$$" &>/dev/null || return 1
++            [ -s "${PID_FILE}" ] && return 0
++        }
++    return 200
+ }
+ 
+ start() {
+@@ -399,25 +445,44 @@
+     [ -n "$CUSTOM_PORT" ] && PORT="$CUSTOM_PORT"
+     [ "$PORT" != "443" ] && PRINT_PORT=":$PORT"
+ 
+-    if [ "$KEEP_RUNTIME_DATA" -eq "0" ]; then
+-        rm -rf -- "$CACHE_DIR" "$SESSIONS_DIR" &>/dev/null
+-    fi
+-
+     if [ "$DAEMON_USER" != "root" -a "$PORT" -lt "1024" ]; then
+         $ECHOFUNC "Unable to use privileged port (<1024) because $PKG_NAME runs as a non-root user." >&2
+         return 1
+     fi
+ 
+-    ret=0
+-    initialize || ret=$?
+-    start_server || ret=$?
++    if [ ! -e "$lockfile" ]; then
++        touch "$lockfile"
++        [ "$KEEP_RUNTIME_DATA" -eq "0" ] \
++            && rm -rf -- "$CACHE_DIR" "$SESSIONS_DIR" &>/dev/null
++    fi
++
++    # running start on a service already running OK
++    kill -s 0 -- "$(head -n1 "${PID_FILE}" 2>/dev/null)" &>/dev/null
++    [ $? -eq 0 ] && return 0 || rm -f -- "${PID_FILE}"
++
++    # see start_server comment for details on the arrangement
++    initialize && start_server
++    retnominal=$?
++    ret=$((retnominal%200))
+ 
+-    [ $ret -eq 0 ] && touch "$lockfile"
+-    [ $ret -eq 0 ] && success || failure; $ECHOFUNC -n "$step"
++    if [ $ret -eq 0 ]; then
++        # wait before testing the liveness of the process when PID file OK
++        kill -s 0 -- "$(head -n1 "${PID_FILE}" 2>/dev/null \
++                        && sleep "${PID_FILE_WAIT}")" &>/dev/null
++        [ $? -eq 0 ] || ret=1
++    else
++        rm -f -- "$lockfile" "$PID_FILE"
++    fi
++    $ECHOFUNC -n "$step"
++    [ $ret -eq 0 ] && success || failure
+     [ $USEFUNCS -eq 0 ] && $ECHOFUNC " $ret" || $ECHOFUNC
+     if [ $ret -eq 0 ]; then
+         $ECHOFUNC "Point your web browser to https://$HOST$PRINT_PORT (or equivalent) to access $PKG_NAME" >&2
+-    fi
++    elif [ $retnominal -eq 200 ]; then
++        # statement below is just not to confuse user if we unexpectedly
++        # won the race trying to read $PID_FILE while not created yet
++        $ECHOFUNC "Start not finished yet, please refer to \"status\" or increase PID_FILE_WAIT in ${sysconfig} above ${PID_FILE_WAIT}" >&2
++    fi
+     return $ret
+ }
+ 
+@@ -433,7 +498,7 @@
+         fi
+         rm -f -- "$lockfile"
+     fi
+-    [ $ret -eq 0 ] && success || failure; $ECHOFUNC -n "$step"
++    $ECHOFUNC -n "$step"; [ $ret -eq 0 ] && success || failure
+     [ $USEFUNCS -eq 0 ] && $ECHOFUNC " $ret" || $ECHOFUNC
+     return $ret
+ }
+@@ -488,7 +553,7 @@
+ case "$1" in
+     start)
+         entry_check || exit $?
+-        status &>/dev/null && exit 0
++        #status &>/dev/null && exit 0
+         $1
+         ;;
+     stop)
+@@ -522,7 +587,6 @@
+         fi
+         shift
+         dump_database $*
+-        exit $?
+         ;;
+     restore-db)
+         entry_check || exit $?
+@@ -533,15 +597,12 @@
+         fi
+         shift
+         load_database $*
+-        exit $?
+         ;;
+     list-backups)
+         entry_check || exit $?
+         list_database_dumps
+-        exit $?
+         ;;
+     *)
+         echo $"Usage: $0 {start|stop|status|reload|restart|condrestart|try-restart|backup-db|restore-db|list-backups}"
+         exit 2
+ esac
+-exit $?

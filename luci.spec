@@ -54,7 +54,7 @@
 
 Name:           luci
 Version:        0.26.0
-Release:        78%{?dist}
+Release:        93%{?dist}
 
 Summary:        Web-based high availability administration application
 URL:            https://fedorahosted.org/cluster/wiki/Luci
@@ -69,7 +69,8 @@ Source1:        sort-images-0.2.tar.gz
 %global breakpoints_luci_ini \
                 0.23.0-1     \
                 0.26.0-53    \
-                0.26.0-72
+                0.26.0-72    \
+                0.26.0-89
 
 Patch0: bz671285.patch
 Patch1: bz786584.patch
@@ -134,7 +135,7 @@ Patch58: bz983693-add_support_for_tns_admin_in_oracle_agents.patch
 Patch59: bz896244-1-default-syslog-facility-is-local4.patch
 Patch60: bz896244-2-reduce-space-waste-by-loopifying-invariants.patch
 Patch61: bz978479-fix-cluster_version-mismatch-upon-adding-2-nodes.patch
-# needs more work
+# needed more work, arrived as Patch 139
 #Patch62: bz877999.patch
 Patch63: bz1001835.patch
 Patch64: bz1001836.patch
@@ -212,6 +213,17 @@ Patch135: bz1285840-fix_allowed_values_for_totem_@secauth.patch
 Patch136: bz1255207-support_alternate_timeout_attributes_for_fence_devices.patch
 Patch137: bz1273954-allow_rrp_configuration_for_udpu.patch
 Patch138: bz1285840-fix_handling_of_binary_totem_secauth_attribute.patch
+Patch139: bz877999.patch
+Patch140: bz1337718-suport_fence_ilo_moonshot.patch
+Patch141: bz1337718-2-add_support_for_fence_ilo_ssh_fence_devices.patch
+Patch142: bz1316952-add_support_for_oracle_data_guard_resources.patch
+Patch143: bz1316970-fix_cluster_shutdown_action.patch
+Patch144: bz885028.patch
+Patch145: bz1173942.patch
+Patch146: bz991608.patch
+Patch147: bz1337718-support_method_attribute_for_fence_ipmilan.patch
+Patch148: bz853462.patch
+Patch149: bz887340.patch
 
 ExclusiveArch:  i686 x86_64
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -402,6 +414,17 @@ popd
 %patch136 -p1 -b .bz1255207.1
 %patch137 -p1 -b .bz1273954.1
 %patch138 -p1 -b .bz1285840.1
+%patch139 -p1 -b .bz877999
+%patch140 -p1 -b .bz1337718.1
+%patch141 -p1 -b .bz1337718.2
+%patch142 -p1 -b .bz1316952.1
+%patch143 -p1 -b .bz1316970.1
+%patch144 -p1 -b .bz885028
+%patch145 -p1 -b .bz1173942
+%patch146 -p1 -b .bz991608
+%patch147 -p1 -b .bz1337718.1
+%patch148 -p1 -b .bz853462
+%patch149 -p1 -b .bz887340
 
 # Make sure no dependency is downloaded by modifying stock setup.cfg
 # (this apparently cannot by used by calling saveopts subcommand
@@ -498,7 +521,7 @@ touch "%{buildroot}%{lucidbfile}"
 %config                      %{lucicertconfig}
 # Base configuration contains sensitive records and should be totally
 # restricted from unauthorized access (created ad-hoc during 1st run)
-%attr(0640,-,-)       %ghost %{lucibaseconfig}
+%attr(0640,root,-)    %ghost %{lucibaseconfig}
 # Database file has to persist (also may contain sensitive records)
 %attr(0640,-,-)       %ghost %{lucidbfile}
 # ... and so the generated certificate (due to problem with as-yet missing
@@ -573,7 +596,7 @@ exit 0
 if [ "$1" == "0" ]; then
     /sbin/service "%{luciservice}" stop &>/dev/null
     /sbin/chkconfig --del "%{luciservice}"
-    rm -f -- "%{lucibaseconfig}".rpmsave-* || :
+    rm -f -- "%{lucicertdir}"/cert_rnd.* "%{lucibaseconfig}".rpmsave-* || :
 elif [ "$1" -ge "1" ] && [ -f "%{lucibaseconfig}" ]; then
 %{breakpoints_luci_ini_fire}
 fi
@@ -585,6 +608,58 @@ fi
 
 
 %changelog
+* Fri Jan 13 2017 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-93
+- Further fixes for rhbz#885028 and rhbz#1173942
+  Resolves: rhbz#885028 and rhbz#1173942
+
+* Fri Dec 16 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-92
+- Further fixes for rhbz#853462, rhbz#877999 and rhbz#885028
+  Resolves: rhbz#853462, rhbz#877999, rhbz#885028
+
+* Wed Nov 30 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-91
+- Fix side navigation panel displayed unexpectedly when accessing index page
+  without prior logging in after luci start
+  Resolves: rhbz#853462
+- Rectify suboptimal logrotate arrangement imposing server restarts
+  Resolves: rhbz#887340
+
+* Mon Nov 21 2016 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-88
+- luci: Support method attribute for fence ipmilan
+  Related: rhbz#1337718
+
+* Wed Nov 16 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-87
+- Ensure luci cannot change its own bootstrap configuration in luci.ini
+  Resolves: rhbz#991608
+
+* Mon Nov 14 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-86
+- Remove temporary seeding file leftover/s upon uninstall
+  Resolves: rhbz#988985
+
+* Fri Nov 11 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-85
+- Allow for listing configured actions per particular resources
+  Resolves: rhbz#1173942
+
+* Thu Nov 10 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-84
+- Add authenticity check of ricci instance via its public key fingerprint
+  Resolves: rhbz#885028
+
+* Thu Nov 03 2016 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-82
+- luci: Fix cluster shutdown action
+  Resolves: rhbz#1316970
+
+* Wed Nov 02 2016 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-81
+- luci: Add support for Oracle Data Guard resources
+  Resolves: rhbz#1316952
+
+* Wed Nov 02 2016 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-80
+- luci: Suport fence_ilo_moonshot
+  luci: Add support for fence_ilo_ssh fence devices
+  Resolves: rhbz#1337718
+
+* Tue Mar 22 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-79
+- Fix luci not running after /etc/init.d/luci reports that it has started
+  Resolves: rhbz#877999
+
 * Tue Mar 22 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-78
 - Further fix for configuration logic wrt. SSL/TLS insecurities
   avoidance

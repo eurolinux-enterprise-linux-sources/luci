@@ -146,7 +146,7 @@ diff -urN a/input_files/sysconfig/sysconfig.in b/input_files/sysconfig/sysconfig
  
  use=config:%(base_config)s
  
-@@ -83,6 +108,20 @@
+@@ -84,6 +109,20 @@
  # (requires repoze.who >= 1.0.14)
  #who.auth_tkt_timeout = 600
  

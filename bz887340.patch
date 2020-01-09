@@ -1,0 +1,229 @@
+diff -ur a/luci/websetup.py b/luci/websetup.py
+--- a/luci/websetup.py	2012-01-23 17:20:32.000000000 +0100
++++ b/luci/websetup.py	2016-11-29 23:04:21.904124782 +0100
+@@ -1,19 +1,59 @@
+ # -*- coding: utf-8 -*-
+ """Setup the luci application"""
+ 
+-import logging
++__all__ = ['setup_app']
+ 
+-import transaction
+-from tg import config
+ 
+-from luci.config.environment import load_environment
++# This is a way how to inject logger file-like object from non-serviceable
++# part of the configuration as a backend for standard and error outputs.
++# Main motivation is to seamlessly switch from naive file-opened-once
++# default # behavior of paster's LazyWriter to the logrotate-aware one
++# (logging.handlers.WatchedFileHandler) should this be relevant, which
++# it commonly is (rhbz#887340).
++def _inject_target_logger_to_stdio():
++    import sys
++    from logging import FileHandler, root
++    from paste.script.serve import LazyWriter
++
++    class WatchedLazyWriter(LazyWriter):
++        """paste.script.serve.LazyWriter working with WatchedFileHandler
++
++        ...from logging.handlers suite"""
++        def __init__(self, logger):
++            file_handler = None
++            for h in reversed(logger.handlers):
++                if isinstance(h, FileHandler):
++                    file_handler = h
++                    break
++            else:
++                raise RuntimeError("no file handler for logger")
++            LazyWriter.__init__(self, file_handler.baseFilename)
++            self.logger = logger
++            self.file_handler = file_handler
++
++        def open(self):
++            if not self.file_handler.stream:
++                self.logger.warn("--enforced logging stream refresh--")
++            if not self.file_handler.stream:
++                raise RuntimeError("cannot refresh logging stream")
++            return self.file_handler.stream
+ 
+-__all__ = ['setup_app']
++    lw = WatchedLazyWriter(root)
++    sys.stdout = sys.stderr = lw
+ 
+-log = logging.getLogger(__name__)
+ 
+ def setup_app(command, conf, vars):
+     """Place any commands to setup luci here"""
++
++    import transaction
++    from tg import config
++
++    from luci.config.environment import load_environment
++
++    # This is analogous to use in initwrappers.server_runner,
++    # but this time for "paste setup-app".
++    _inject_target_logger_to_stdio()
++
+     load_environment(conf.global_conf, conf.local_conf)
+     # Load the models
+     from luci import model
+diff -ur a/luci/initwrappers.py b/luci/initwrappers.py
+--- a/luci/initwrappers.py	2016-11-29 20:58:33.474275765 +0100
++++ b/luci/initwrappers.py	2016-11-29 20:57:36.899162038 +0100
+@@ -14,6 +14,7 @@
+ from paste.httpserver import server_runner as _server_runner
+ 
+ from luci import config_template
++from luci.websetup import _inject_target_logger_to_stdio
+ 
+ 
+ class PylonsInstaller(_PylonsInstaller):
+@@ -114,6 +115,16 @@
+ # This is a way how to inject custom SSL context and in turn, how to have
+ # a control over allowed ciphers (rhbz#991575, rhbz#1156167).
+ def server_runner(wsgi_app, global_conf, **kwargs):
++
++    # We are hooking this here as this is the very first wrapper-facilitated
++    # opportunity to trigger custom code once the "paster serve" sets up
++    # logging, i.e. mounted an instance of its LazyWriter as standard and
++    # error output sinks + loaded the logging arrangement (implicitly,
++    # WatchedFileHandler instantiated in a way that it itself defers to
++    # the file name passed previously to LazyWriter constructor) from
++    # the configuration file.
++    _inject_target_logger_to_stdio()
++
+     ssl_cipher_list = kwargs.pop('ssl_cipher_list', '')
+     ssl_secure = kwargs.pop('ssl_allow_insecure', '').lower() in ('', 'false')
+ 
+diff -ur a/input_files/config.tmpl/config.tmpl.in b/input_files/config.tmpl/config.tmpl.in
+--- a/input_files/config.tmpl/config.tmpl.in	2016-11-29 20:58:56.574322203 +0100
++++ b/input_files/config.tmpl/config.tmpl.in	2016-11-29 21:01:27.638625875 +0100
+@@ -146,7 +146,7 @@
+ 
+ # Set extra headers so as to achieve higher level of security (rhbz#1270958)
+ # NOTE: single, whitespace-preceded semicolon considered a comment start
+-# [x] RFC 7034; clickjacking avoidance (luci not expected to be framed)
++# [x] RFC 7034; clickjacking avoidance (@PKGNAME@ not expected to be framed)
+ header.X-Frame-Options = DENY
+ # [x] W3C TR/CSP2; ditto
+ header.Content-Security-Policy = frame-ancestors 'none'
+@@ -228,7 +228,7 @@
+ keys = root, @PKGNAME@, sqlalchemy, tgi18n
+ 
+ [handlers]
+-keys = console
++keys = console, @PKGNAME@_paster
+ 
+ [formatters]
+ keys = generic
+@@ -238,7 +238,7 @@
+ 
+ [logger_root]
+ level = INFO
+-handlers = console
++handlers = @PKGNAME@_paster
+ 
+ [logger_@PKGNAME@]
+ level = INFO
+@@ -265,6 +265,14 @@
+ level = NOTSET
+ formatter = generic
+ 
++[handler_@PKGNAME@_paster]
++class = handlers.WatchedFileHandler
++# following arrangement will only work if paster is run with --log-file switch;
++# see server_runner + _inject_target_logger_stdio from @PKGNAME@.initwrappers
++args = (getattr(sys.stdout, 'filename', '@LOGFILE@'), )
++level = NOTSET
++formatter = generic
++
+ # ---------------------------------------------------------------------------
+ # Log messages formatters (to be added as a key to [formatters])
+ 
+diff -ur a/input_files/initscript/initscript.in b/input_files/initscript/initscript.in
+--- a/input_files/initscript/initscript.in	2016-11-30 13:30:52.366697204 +0100
++++ b/input_files/initscript/initscript.in	2016-11-30 13:38:11.061594618 +0100
+@@ -39,9 +39,10 @@
+ exec="@PROXYLAUNCHER@"
+ sqlite_bin="/usr/bin/sqlite3"
+ 
++logfile="@LOGFILE@"
+ 
+ # Defaults that can be overridden by the content of $sysconfig
+-LOG_FILE="@LOGFILE@"
++LOG_FILE="$logfile"
+ KEEP_RUNTIME_DATA=0
+ PID_FILE_WAIT=1
+ 
+@@ -217,6 +218,21 @@
+ }
+ 
+ initialize() {
++    # Ensure the existence of the log file(s) incl. the parent directory,
++    # which is a prerequisite for prepare_db, if not earlier
++    logfiles="$logfile"
++    [ "$LOG_FILE" = "$logfile" ] || logfiles="$logfiles $LOG_FILE"
++    for l in $logfiles; do
++        if [ ! -f "$l" ]; then
++            install -o $DAEMON_USER -g $DAEMON_GROUP -d "$(dirname "$l")"
++            touch "$l"
++            chown $DAEMON_USER:$DAEMON_GROUP "$l" && chmod 0640 "$l"
++            if [ $? -ne 0 ]; then
++                $ECHOFUNC "Unable to change ownership/attributes of the $PKG_NAME log file (\`$l')." >&2
++                return 1
++            fi
++        fi
++    done
+     # Ensure the existence of base configuration file
+     if [ ! -f "$config" ]; then
+         prepare_config || return $?
+@@ -242,17 +258,6 @@
+     if [ ! -f "$CERT_PEM" ]; then
+         prepare_cert || return $?
+     fi
+-    # Ensure the existence of log file (and also the parent directory)
+-    if [ ! -f "$LOG_FILE" ]; then
+-        install -o $DAEMON_USER -g $DAEMON_GROUP -d "$(dirname "$LOG_FILE")"
+-        touch "$LOG_FILE"
+-        chown $DAEMON_USER:$DAEMON_GROUP "$LOG_FILE" \
+-        && chmod 0640 "$LOG_FILE"
+-        if [ $? -ne 0 ]; then
+-            $ECHOFUNC "Unable to change ownership/attributes of the $PKG_NAME log file (\`$LOG_FILE')." >&2
+-            return 1
+-        fi
+-    fi
+     # Ensure the existence of directory for run-time data
+     # Note: As our rule is the directories for cache and sessions data are
+     #       direct subdirectories of run-time data dir, we only check that
+diff -ur a/input_files/logrotateconfig/logrotateconfig.in b/input_files/logrotateconfig/logrotateconfig.in
+--- a/input_files/logrotateconfig/logrotateconfig.in	2016-11-29 21:02:22.402735961 +0100
++++ b/input_files/logrotateconfig/logrotateconfig.in	2016-11-29 21:02:32.240755740 +0100
+@@ -3,7 +3,4 @@
+     notifempty
+ 
+     create
+-    postrotate
+-        /sbin/service @SERVICENAME@ condrestart 2>/dev/null >/dev/null || :
+-    endscript
+ }
+diff -ur a/input_files/sysconfig/sysconfig.in b/input_files/sysconfig/sysconfig.in
+--- a/input_files/sysconfig/sysconfig.in	2016-11-30 14:09:30.216590046 +0100
++++ b/input_files/sysconfig/sysconfig.in	2016-11-30 14:12:52.858022743 +0100
+@@ -21,7 +21,7 @@
+ # Change this to set log file; this file either must not exist (so it is
+ # initially created in ownership of user running initscript, presumably root,
+ # and then @USERNAME@ becomes its owner) or must be writeable for @USERNAME@
+-# directly
++# directly; note that some setup tasks may still log to @LOGFILE@
+ #LOG_FILE="path_to/log_file"
+ 
+ # Uncomment this to override default behaviour of removing run time data
+@@ -85,7 +85,7 @@
+ # ===========================================================================
+ [server:main]
+ 
+-# Change this to set the host IP (and, in turn, respective network interface)
++# Change this to set the host IPv4 (and, in turn, respective network interface)
+ # running @PKGNAME@ binds at;  this is particularly useful when it should be bound
+ # only at a specific one according to its IP address (0.0.0.0 => any interface)
+ #host = 127.0.0.1

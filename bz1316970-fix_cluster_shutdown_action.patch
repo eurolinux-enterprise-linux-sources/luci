@@ -1,0 +1,46 @@
+From 0a937d3eaef154340eef7e1dba084d45aeb530b7 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Thu, 3 Nov 2016 09:50:20 -0400
+Subject: [PATCH] luci: Fix cluster shutdown action
+
+When stopping all nodes in a cluster, first disable all
+services to prevent services bouncing around and potentially hanging
+due to loss of quorum.
+
+Resolves: rhbz#1316970
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/cluster.py | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+index c8afce5..dff875a 100644
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -450,12 +450,17 @@ class IndividualClusterController(BaseController):
+             except NotAuthorizedError, e:
+                 flash(e, status="warning")
+                 redirect(tmpl_context.cluster_url)
+-
+-            log.info('User "%s" stopped nodes "%s" in cluster "%s"'
+-                % (self.username, ', '.join(cur_list), self.name))
+-            flash(_("Stopping nodes: %s") % ', '.join(cur_list),
+-                status='info')
+-            rh.cluster_node_stop(self.name, cur_list)
++            if len(cur_list) == len(self.model.getNodes()):
++              log.info('User "%s" stopped all nodes in cluster "%s"'
++                  % (self.username, self.name))
++              flash(_("Stopping all nodes"), status='info')
++              rh.cluster_stop(self.name)
++            else:
++              log.info('User "%s" stopped nodes "%s" in cluster "%s"'
++                  % (self.username, ', '.join(cur_list), self.name))
++              flash(_("Stopping nodes: %s") % ', '.join(cur_list),
++                  status='info')
++              rh.cluster_node_stop(self.name, cur_list)
+         elif command == 'Delete':
+             try:
+                 permission_membership(self.name)
+-- 
+2.5.5
+

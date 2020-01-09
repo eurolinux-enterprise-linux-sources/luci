@@ -20,6 +20,7 @@ diff --git a/luci/lib/ricci_queries.py b/luci/lib/ricci_queries.py
 index 40820b5..2f5ae4d 100644
 --- a/luci/lib/ricci_queries.py
 +++ b/luci/lib/ricci_queries.py
+@@ -1,4 +1,4 @@
 -# Copyright (C) 2006-2010 Red Hat, Inc.
 +# Copyright 2013 Red Hat, Inc.
  #

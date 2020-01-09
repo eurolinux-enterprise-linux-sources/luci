@@ -1,0 +1,148 @@
+diff -urN a/luci/lib/ClusterConf/BaseResource.py b/luci/lib/ClusterConf/BaseResource.py
+--- a/luci/lib/ClusterConf/BaseResource.py	2016-11-11 14:29:26.310560413 +0100
++++ b/luci/lib/ClusterConf/BaseResource.py	2016-11-11 18:51:53.222578362 +0100
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2014 Red Hat, Inc.
++# Copyright 2016 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -6,6 +6,7 @@
+ # Free Software Foundation.
+ 
+ from TagObject import TagObject
++from Action import Action
+ 
+ TAG_NAME = "base_resource"  #This tag name should never be seen
+ 
+@@ -122,6 +123,16 @@
+         ret.append(i)
+     return ret
+ 
++  def getActions(self, exclude=()):
++    if exclude and isinstance(exclude, basestring):
++      exclude = [e.strip() for e in exclude.split(',')]
++    ret = []
++    for i in self.getChildren():
++      if issubclass(type(i), Action) and i.getName() not in exclude:
++        ret.append(i)
++    ret.sort(key=lambda a: (a.getName(), a.getDepth() or 0))
++    return ret
++
+   def delSubtreeProperties(self):
+     self.delIndependentSubtree()
+     self.delEnforceTimeouts()
+@@ -131,6 +142,6 @@
+     self.delResRestartExpireTime()
+ 
+   def SanityCheck(self):
+-    if self.isDenyAll() and self.getChildren():
++    if self.isDenyAll() and self.getChildResources():
+       raise Exception, '%s resources may not have children' % self.getTagName()
+     super(BaseResource, self).SanityCheck()
+diff -urN a/luci/lib/ClusterConf/RefObject.py b/luci/lib/ClusterConf/RefObject.py
+--- a/luci/lib/ClusterConf/RefObject.py	2016-11-11 14:29:26.310560413 +0100
++++ b/luci/lib/ClusterConf/RefObject.py	2016-11-11 20:14:58.819289675 +0100
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2014 Red Hat, Inc.
++# Copyright 2016 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -51,6 +51,9 @@
+   def isDenyAll(self):
+     return self.obj_ptr.isDenyAll()
+ 
++  def getActions(self, **kwargs):
++    return self.obj_ptr.getActions(**kwargs)
++
+   def SanityCheck(self):
+     robj = self.getObj()
+     c = robj.clone()
+diff -urN a/luci/public/css/shared.css b/luci/public/css/shared.css
+--- a/luci/public/css/shared.css	2016-11-11 14:29:26.313560418 +0100
++++ b/luci/public/css/shared.css	2016-11-11 20:15:36.624363119 +0100
+@@ -31,7 +31,7 @@
+   padding: 1em;
+ }
+ 
+-legend	{
++legend, .table_header {
+   font-weight: bold;
+ }
+ 
+@@ -308,7 +308,7 @@
+   background-color: #c8deec;
+ }
+ 
+-#overview tbody tr:hover {
++#overview tbody tr:hover, .table_plain tbody tr:hover {
+   background-color: #e9f4fa;
+ }
+ 
+diff -urN a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+--- a/luci/templates/resource_list.html	2016-11-11 14:29:26.330560449 +0100
++++ b/luci/templates/resource_list.html	2016-11-11 20:17:06.894538489 +0100
+@@ -64,6 +64,62 @@
+             </table>
+         </fieldset>
+     </td></tr>
++    <tr py:if="res"><td>
++        <fieldset>
++            <legend>Actions (read-only)</legend>
++            <table class="table_plain">
++                <thead class="table_header">
++                    <tr>
++                        <td>Name</td>
++                        <td>Timeout</td>
++                        <td>Interval</td>
++                        <td>Depth</td>
++                    </tr>
++                </thead>
++                <tbody py:with="r_enforce_timeouts = res.getEnforceTimeouts()">
++                   <tr py:for="action in res.getActions(exclude='monitor,metadata')"
++		       py:with="a_name = action.getName();
++		                a_startstop = a_name in ('start', 'stop');
++		                a_timeout = action.getTimeout();
++		                a_interval = action.getInterval();
++				a_depth = action.getDepth();
++				img_startstop = dict(src=tg.url('/images/delete-grey.png'));
++				img_others = dict(src=tg.url('/images/question.png'))">
++                       <td>${a_name}</td>
++                       <td>
++                         <py:choose test="">
++                         <span py:when="a_timeout is not None and a_startstop and r_enforce_timeouts"
++                               style="font-weight:bold;" title="enforced">${a_timeout}</span>
++                         <py:otherwise>${a_timeout}</py:otherwise>
++                         </py:choose>
++                         <py:if test="a_timeout is None" py:choose="">
++                           <img py:when="not a_startstop" py:attrs="img_others"
++                                alt="undefined" title="undefined (agent's default will be used)" />
++                           <img py:otherwise="" py:attrs="img_startstop"
++                                alt="undefined" title="undefined" />
++                         </py:if>
++                       </td>
++                       <td py:choose="">
++                         <py:when test="not a_startstop">${a_interval}
++                           <img py:if="a_interval is None" py:attrs="img_others"
++                                alt="undefined" title="undefined (agent's default will be used)" />
++                         </py:when>
++                         <img py:otherwise="" py:attrs="img_startstop"
++                              alt="N/A" title="not applicable" />
++                       </td>
++                       <td py:choose="">
++                         <py:when test="not a_startstop">${a_depth}
++                           <img py:if="a_depth is None" py:attrs="img_others"
++                                alt="undefined" title="undefined (agent's default will be used)" />
++                         </py:when>
++                         <img py:otherwise="" py:attrs="img_startstop"
++                              alt="N/A" title="not applicable" />
++                       </td>
++                   </tr>
++                </tbody>
++            </table>
++        </fieldset>
++    </td></tr>
+     </py:if>
+ </div>
+ 

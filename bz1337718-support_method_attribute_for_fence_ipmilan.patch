@@ -1,0 +1,104 @@
+diff -ur a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+--- a/luci/templates/fence_devices.html	2016-11-21 11:18:57.909582034 -0500
++++ b/luci/templates/fence_devices.html	2016-11-21 11:19:08.650390850 -0500
+@@ -2426,6 +2426,17 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Method to Fence</td>
++      <td>
++        <select name="method">
++          <option value="onoff"
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('method')) and {'selected':'selected'} or {}">onoff</option>
++          <option value="cycle"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('method') == 'cycle' and {'selected':'selected'} or {}">cycle</option>
++        </select>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -2577,6 +2588,17 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Method to Fence</td>
++      <td>
++        <select name="method">
++          <option value="onoff"
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('method')) and {'selected':'selected'} or {}">onoff</option>
++          <option value="cycle"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('method') == 'cycle' and {'selected':'selected'} or {}">cycle</option>
++        </select>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -3160,6 +3182,17 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Method to Fence</td>
++      <td>
++        <select name="method">
++          <option value="onoff"
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('method')) and {'selected':'selected'} or {}">onoff</option>
++          <option value="cycle"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('method') == 'cycle' and {'selected':'selected'} or {}">cycle</option>
++        </select>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -3311,6 +3344,17 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Method to Fence</td>
++      <td>
++        <select name="method">
++          <option value="onoff"
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('method')) and {'selected':'selected'} or {}">onoff</option>
++          <option value="cycle"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('method') == 'cycle' and {'selected':'selected'} or {}">cycle</option>
++        </select>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -3462,6 +3506,17 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Method to Fence</td>
++      <td>
++        <select name="method">
++          <option value="onoff"
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('method')) and {'selected':'selected'} or {}">onoff</option>
++          <option value="cycle"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('method') == 'cycle' and {'selected':'selected'} or {}">cycle</option>
++        </select>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+diff -ur a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+--- a/luci/validation/validate_fence.py	2016-11-21 11:18:57.910582016 -0500
++++ b/luci/validation/validate_fence.py	2016-11-21 11:23:42.450517272 -0500
+@@ -530,6 +530,7 @@
+ 		('shell_timeout', False),
+ 		('login_timeout', False),
+ 		('retry_on', False),
++		('method', False),
+ 		('power_wait', False),
+ 		('delay', False),
+ 	)

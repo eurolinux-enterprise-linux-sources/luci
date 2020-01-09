@@ -1,0 +1,525 @@
+diff -urN a/luci/controllers/async.py b/luci/controllers/async.py
+--- a/luci/controllers/async.py	2012-01-23 17:20:32.000000000 +0100
++++ b/luci/controllers/async.py	2016-12-15 16:08:54.632157695 +0100
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2011 Red Hat, Inc.
++# Copyright 2016 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -50,7 +50,35 @@
+             permission_view(cluster_name)
+         except Exception, e:
+             return {'code': -2, 'data': {'status': str(e)}}
+-        
++
+         if not cluster_name:
+             return {'code': -2, 'data': {'status': _('No cluster name was given')}}
+         return cluster_is_busy(cluster_name)
++
++    @expose("json")
++    def get_system_info(self, **data_io):
++        from luci.lib.ricci_communicator import RicciCommunicator, RicciError
++        digest = data_io.pop('__digest__', None)
++        fp = {} if digest is None else dict(digest=digest)
++        digest = ''
++        for i in sorted(data_io.keys()):
++            try:
++                int(i)
++            except ValueError:
++                data_io.pop(i)
++            else:
++                h, _, p= data_io[i].partition('@')
++                try:
++                    p = int(p)
++                except ValueError:
++                    p = 0
++                sys = (('hostname', h), ) + ((('port', p), ) if p else ())
++                entry = data_io[i] = {}
++                try:
++                    rc = RicciCommunicator(**dict(sys))
++                    digest, entry['fp'] = rc.fingerprint(**fp)
++                except (IOError, RicciError) as e:
++                    entry.setdefault('errors', []).append(str(e))
++        if digest:
++            data_io['__digest__'] = digest
++        return data_io
+diff -urN a/luci/lib/ricci_communicator.py b/luci/lib/ricci_communicator.py
+--- a/luci/lib/ricci_communicator.py	2016-12-15 16:08:54.607157609 +0100
++++ b/luci/lib/ricci_communicator.py	2016-12-15 16:08:54.632157695 +0100
+@@ -11,6 +11,7 @@
+ import struct
+ 
+ from OpenSSL import SSL
++from OpenSSL.crypto import FILETYPE_ASN1, load_certificate
+ from tg import config
+ 
+ from luci.lib.helpers import ugettext as _
+@@ -187,12 +188,14 @@
+                 % (self.__authed, self.__dom0, self.__hostname, self.__port))
+         return self.__dom0
+ 
+-    def fingerprint(self):
+-        fp = self.ss.peer_fingerprint()
++    def fingerprint(self, digest="sha256"):
++        certbytes = self.ss.getpeercert(binary_form=True)
++        cert = load_certificate(FILETYPE_ASN1, certbytes)
++        fp = cert.digest(digest)
+         if LUCI_LOG_DEBUG_NETWORK is True:
+             log.debug('fp [auth=%d] fp for %s:%d = %s' \
+                 % (self.__authed, self.__hostname, self.__port, fp))
+-        return fp
++        return digest, fp
+ 
+     def auth(self, password):
+         if self.authed():
+diff -urN a/luci/public/css/create.css b/luci/public/css/create.css
+--- a/luci/public/css/create.css	2012-01-23 17:20:32.000000000 +0100
++++ b/luci/public/css/create.css	2016-12-15 16:08:54.633157698 +0100
+@@ -1,6 +1,19 @@
+-ul.vanilla, li.vanilla {
+-    list-style-type: none ! important;
+-    list-style-image: none !important;
+-    margin-left: 0 ! important;
++.systeminfo td {
++        padding: 0 0 1px;
+ }
+ 
++.systeminfo_frame {
++        -webkit-border-bottom-left-radius: .5em;
++        -webkit-border-bottom-right-radius: .5em;
++        -moz-border-bottom-left-radius: .5em;
++        -moz-border-bottom-right-radius: .5em;
++        border-bottom-left-radius: .5em;
++        border-bottom-right-radius: .5em;
++        margin: 0 1px 4px;
++        padding: 2px 4px 4px;
++        cursor: pointer;
++}
++
++.systeminfo_frame span {
++        cursor: auto;
++}
+diff -urN a/luci/public/css/style.css b/luci/public/css/style.css
+--- a/luci/public/css/style.css	2016-12-15 16:08:54.554157428 +0100
++++ b/luci/public/css/style.css	2016-12-15 20:57:09.198745469 +0100
+@@ -203,21 +203,19 @@
+ form.loginfields label {
+     clear: left;
+     float: left;
+-    margin-bottom: 6px;
+     margin-left: 20px;
+-    width: 65px;
+-    line-height: 31px;
++    width: 80px;
+     vertical-align: middle;
++    padding: 6px 6px 6px 0;
+ }
+ 
+ form.loginfields input.text {
+     float: left;
+-    margin-left: 10px;
+-    margin-bottom: 6px;
++    margin-bottom: 10px;
+     width: 170px;
+-	font-size: 12px;
++    font-size: 12px;
+     padding: 5px;
+-	border:1px solid #CAD0D4;
++    border:1px solid #CAD0D4;
+ }
+ 
+ form.loginfields input#submit {
+@@ -375,10 +373,14 @@
+ 	width: auto;
+ }
+ 
+-table.clusternodes, table#clusternodes td, table#addclusternode td, table#qdisk_heuristics td{
++table.clusternodes, table#clusternodes td, table#qdisk_heuristics td {
+     padding: 0 1em 1em 0;
+ }
+ 
++table#addclusternode td {
++    padding: 0 1em 0 0;
++}
++
+ div.row {
+     clear: both;
+     margin-top: 1em;
+diff -urN a/luci/public/js/add_existing.js b/luci/public/js/add_existing.js
+--- a/luci/public/js/add_existing.js	2016-12-15 16:08:54.374156814 +0100
++++ b/luci/public/js/add_existing.js	2016-12-15 16:08:54.633157698 +0100
+@@ -20,7 +20,7 @@
+         var num_nodes;
+         var gen_string;
+         for (num_nodes = 0 ; num_nodes < data['nodes'].length ; num_nodes++) {
+-            gen_string = '<tr>\n'
++            gen_string = '<tr id="add_existing2_row_elem' + num_nodes + '">\n'
+             gen_string += '<td><input class="text" name="node' + num_nodes + '_host" type="text" value="' + data['nodes'][num_nodes] + '" /></td>\n'
+             gen_string += '<td><input class="text" name="node' + num_nodes + '_passwd" type="password" autocomplete="off" value="' + (data['nodes'][num_nodes] == $("#node0host").val() ? $("#node0passwd").val() : "") + '" /></td>\n'
+             gen_string += '<td><input class="text" name="node' + num_nodes + '_riccihost" type="text" value="' + data['nodes'][num_nodes] + '" /></td>\n'
+diff -urN a/luci/public/js/shared.js b/luci/public/js/shared.js
+--- a/luci/public/js/shared.js	2012-01-23 17:20:32.000000000 +0100
++++ b/luci/public/js/shared.js	2016-12-15 16:08:54.633157698 +0100
+@@ -3,76 +3,6 @@
+  *
+  */
+ 
+-/**
+- * Handle request for an overview collapse.
+- */
+-function onOverviewCollapse() {
+-    var tb_shown = document.getElementById('toolbar_shown');
+-    var tb_collapsed = document.getElementById('toolbar_collapsed');
+-    var overview = document.getElementById('overview');
+-
+-    if (tb_shown && tb_collapsed) {
+-        tb_shown.style.display = 'none';
+-        tb_collapsed.style.display = 'inherit';
+-        overview.style.display = 'none';
+-    }
+-}
+-
+-/**
+- * Handle request for an overview show.
+- */
+-function onOverviewShow() {
+-    var tb_shown = document.getElementById('toolbar_shown');
+-    var tb_collapsed = document.getElementById('toolbar_collapsed');
+-    var overview = document.getElementById('overview');
+-
+-    if (tb_shown && tb_collapsed) {
+-        tb_shown.style.display = 'inherit';
+-        tb_collapsed.style.display = 'none';
+-        overview.style.display = 'inherit';
+-    }
+-}
+-
+-function allPasswdsSame(checkbox_obj) {
+-    if ($(checkbox_obj).is(':checked')) {
+-        var pw_elem = $('input:password', $(checkbox_obj.form));
+-        $.each(pw_elem, function() {
+-            var cur_val = $(this).val();
+-            if (cur_val) {
+-                $(pw_elem).val(cur_val);
+-                return false;
+-            }
+-        });
+-    }
+-}
+-
+-function add_system_row(form) {
+-    var cur_count = $('.systemtriple', $(form)).length;
+-    var new_elem = $('#system_row_elem').clone();
+-    var input_elems = $(':input', $(new_elem));
+-    var num_nodes = Number(form.num_nodes.value) + 1;
+-    form.num_nodes.value = num_nodes;
+-    var new_id = $(form).attr('name') + '_system_row_elem' + num_nodes;
+-    $(new_elem).attr('id', new_id);
+-    $(input_elems).attr('name',
+-        function() { return this.name + num_nodes; });
+-    var img_elem = $('img', $(new_elem));
+-    $(img_elem).click(
+-	function() { $('#'+new_id).remove(); });
+-    $('.add_node_button_row', $(form)).before($(new_elem));
+-    if ($(form.allSameCheckBox).is(':checked')) {
+-        allPasswdsSame(form.allSameCheckBox);
+-    }
+-}
+-
+-function update_node_hostname(form_elem) {
+-    var host_number = form_elem.name.substr(8);
+-    var rh_elem = $(':input[name="riccihost' + host_number + '"]', $(form_elem.form));
+-    if (!$(rh_elem).val()) {
+-        $(rh_elem).val(form_elem.value);
+-    }
+-}
+-
+ function input_to_xml(elem) {
+     var cur_xml_str = "";
+     if ($(elem).attr('type') == 'checkbox') {
+diff -urN a/luci/public/js/system_spec.js b/luci/public/js/system_spec.js
+--- a/luci/public/js/system_spec.js	2016-12-15 16:08:54.633157698 +0100
++++ b/luci/public/js/system_spec.js	2016-12-15 20:26:48.600166116 +0100
+@@ -0,0 +1,129 @@
++/*
++ * JS functions specific for adding/quering nodes
++ */
++
++
++/* synchronous */
++
++function allPasswdsSame(checkbox_obj) {
++    if ($(checkbox_obj).is(':checked')) {
++        var pw_elem = $('input:password', $(checkbox_obj.form));
++        $.each(pw_elem, function() {
++            var cur_val = $(this).val();
++            if (cur_val) {
++                $(pw_elem).val(cur_val);
++                return false;
++            }
++        });
++    }
++}
++
++function add_system_row(form) {
++    var new_elem = $('#system_row_elem').clone();
++    var input_elems = $(':input', $(new_elem));
++    var num_nodes = Number(form.num_nodes.value) + 1;
++    form.num_nodes.value = num_nodes;
++    var new_id = $(form).attr('name') + '_system_row_elem' + num_nodes;
++    $(new_elem).attr('id', new_id);
++    $(input_elems).attr('name',
++        function() { return this.name + num_nodes; });
++    var img_elem = $('img', $(new_elem));
++    $(img_elem).click(function() {
++        $('#' + new_id + ', #systeminfo_row_elem' + num_nodes).remove();
++    });
++    $('table.clusternodes tr', $(form)).not('.add_node_button_row')
++        .filter(':last').after($(new_elem));
++    if ($(form.allSameCheckBox).is(':checked')) {
++        allPasswdsSame(form.allSameCheckBox);
++    }
++}
++
++function update_node_hostname(form_elem) {
++    var host_number = form_elem.name.substr(8);
++    var rh_elem = $(':input[name="riccihost' + host_number + '"]', $(form_elem.form));
++    if (!$(rh_elem).val()) {
++        $(rh_elem).val(form_elem.value).change();
++    }
++}
++
++
++/* asynchronous */
++
++function get_sysinfo_async(rowelemset) {
++    if (!rowelemset.length)
++        return;
++
++    var submit = $( 'input[type="submit"]', rowelemset[0].parentElement.parentElement );
++    if (submit)
++            submit.attr('disabled', 'disabled');
++    var out_data = {};
++    rowelemset.each(function(index) {
++        var hostname, port;
++        /* riccihostX, nodeX_riccihost, hostnameX, nodeXhost */
++        hostname = $( 'input[name^="riccihost"],'
++                      + 'input[name$="riccihost"]', this );
++        hostname = hostname.length
++                   ? hostname
++                   : $( 'input[name^="hostname"],'
++                        + 'input[name$="host"]', this );
++        hostname = hostname.attr("value");
++        /* portX */
++        port = $( 'input[name^="port"]', this ).attr("value");
++
++        out_data[index] = hostname + '@' + port;
++    });
++
++    $.post('/async/get_system_info', out_data, function (in_data) {
++        rowelemset.each(function(index) {
++            var colspan = $( "td", this ).length;
++            var sysinfo = $(this).next( 'tr.systeminfo' );
++            var content = '';
++            var pairindex = $(this).attr('id').match(/\d+$/)[0];
++
++            if (in_data[index]['errors']) {
++                if (out_data[index].lastIndexOf('@', 0) === 0) {
++                    if (sysinfo.length) {
++                        sysinfo.click();
++                    }
++                    return true;
++                }
++                content = '<span onclick="event.stopPropagation();">'
++                          + '<em>errors getting certificate fingerprint</em>:';
++                $.each(in_data[index]['errors'], function(i, val) {
++                    content += '</span><br/><span onclick="event.stopPropagation();">' + val;
++                });
++                content += '</span>';
++            } else {
++                var digest = in_data['__digest__'] || '(undefined)';
++                var seps = [];
++                var val;
++                switch (digest) {
++                    /* put the break indices in reverse order */
++                    case 'sha256': seps.push(48); break;
++                }
++                content = in_data[index]['fp'];
++                $.each(seps, function(i, val) {
++                    content = content.substring(0, val)
++                              + '<br/><span onclick="event.stopPropagation();">'
++                              + content.substring(val) + '</span>';
++                });
++                val = (seps.length) ? seps[seps.length - 1] : content.length;
++                content = '<span onclick="event.stopPropagation();"><em>' + digest
++                          + ' certificate fingerprint</em>:</span><br/>'
++                          + '<span onclick="event.stopPropagation();">'
++                          + content.substring(0, val)
++                          + '</span>' + content.substring(val);
++            }
++            sysinfo = sysinfo.length
++                    ? sysinfo
++                    : $( '<tr class="systeminfo"'
++                        + ' id="systeminfo_row_elem' + pairindex + '"'
++                        + ' onclick="$(this).fadeOut(complete=function() {$(this).remove();});">'
++                        + '<td colspan="' + colspan + '">'
++                        + '<div class="systeminfo_frame silver"/></td></tr>' )
++                      .insertAfter(this);
++            $( "div.systeminfo_frame", sysinfo[0] ).hide()
++                                                   .html(content).fadeIn();
++        });
++    }, 'json');
++}
+diff -urN a/luci/templates/add_existing.html b/luci/templates/add_existing.html
+--- a/luci/templates/add_existing.html	2016-12-15 16:08:54.550157415 +0100
++++ b/luci/templates/add_existing.html	2016-12-15 16:08:54.634157702 +0100
+@@ -7,18 +7,26 @@
+    </div>
+    <div class="row">
+    <table id="addclusternode">
++      <colgroup span="3" />
+       <tr>
+          <td>Node Hostname</td>
+          <td>Password</td>
+          <td>Ricci Port</td>
+       </tr>
+-      <tr>
+-         <td><input type="text" class="text" name="hostname" id="node0host" value="" /></td>
++      <tr id="add_existing_row_elem0">
++         <td><input type="text" class="text" name="hostname" id="node0host" value="" onchange="get_sysinfo_async($(this.parentNode.parentNode));" /></td>
+          <td><input type="password" class="text" name="password" id="node0passwd" autocomplete="off" /></td>
+          <td><input type="text" class="text" name="port" maxlength="5" size="5" value="${app_globals.DEFAULT_RICCI_PORT}" /></td>
+       </tr>
+     </table>
+     </div>
++    <div class="add_node_button_row">
++       <input type="button" class="button small silver" value="View Certificate Fingerprint"
++              onclick="get_sysinfo_async($( 'tr', this.form )
++	                                               .filter(function() {
++	                                                   return this.id.match(/add_existing_row_elem\d+/);
++	                                               }));" />
++    </div>
+     <input id="connect_button" type="button" class="button formsubmit blue" value="Connect" onclick="add_existing_async(this.form)" />
+     <input type="button" class="button formsubmit silver" value="Cancel"
+         onclick="$('#add_existing_dialog').dialog('close');reset_form(this.form)" />
+@@ -51,6 +59,13 @@
+          <tbody id="sys_tbody"></tbody>
+       </table>
+    </div>
++   <div class="add_node_button_row">
++      <input type="button" class="button small silver" value="View Certificate Fingerprint(s)"
++             onclick="get_sysinfo_async($( 'tr', this.form )
++                                                      .filter(function() {
++                                                          return this.id.match(/add_existing2_row_elem\d+/);
++                                                      }));" />
++   </div>
+    <div class="row">
+     <input type="submit" class="button formsubmit blue" value="Add Cluster" />
+     <input type="button" class="button formsubmit silver" value="Cancel"
+diff -urN a/luci/templates/add_node.html b/luci/templates/add_node.html
+--- a/luci/templates/add_node.html	2012-01-23 17:20:32.000000000 +0100
++++ b/luci/templates/add_node.html	2016-12-15 20:35:23.435191912 +0100
+@@ -20,19 +20,21 @@
+        <tr id="add_node_system_row_elem0" class="systemtriple">
+           <td><input type="text" class="text" name="hostname0" value="" onchange="update_node_hostname(this)"/></td>
+           <td><input type="password" class="text" name="password0" autocomplete="off" /></td>
+-          <td><input type="text" class="text" name="riccihost0" value="" /></td>
++          <td><input type="text" class="text" name="riccihost0" value="" onchange="get_sysinfo_async($(this.parentNode.parentNode));" /></td>
+           <td><input type="text" class="text" name="port0" maxlength="5" size="5" value="${app_globals.DEFAULT_RICCI_PORT}" /></td>
+-          <td><img src="/images/delete-grey.png" onclick="$(':input[name!=port0]', '#add_node_system_row_elem0').val('')" /></td>
+-       </tr>
+-       <tr class="add_node_button_row">
+-          <td>
+-            <input type="button" value="Add Another Node" class="button small silver"
+-                onclick="add_system_row(this.form)"/>
+-          </td>
++          <td><img src="/images/delete-grey.png" onclick="$(':input[name!=port0]', '#add_node_system_row_elem0').val('').change()" /></td>
+        </tr>
+        </tbody>
+     </table>
+     </div>
++    <div class="add_node_button_row">
++       <input type="button" class="button small silver" value="Add Another Node" onclick="add_system_row(this.form)" />
++       <input type="button" class="button small silver" value="View certificate fingerprint(s)"
++              onclick="get_sysinfo_async($( 'tr', this.form )
++                                           .filter(function() {
++                                               return this.id.match(/add_node_system_row_elem\d+/);
++                                           }));" />
++    </div>
+     <div class="row">
+         <input type="radio" class="radio" name="download_pkgs" value="download" />
+         <label class="choice">Download Packages</label>
+@@ -59,7 +61,7 @@
+        <tr id="system_row_elem" class="systemtriple">
+           <td><input type="text" class="text" name="hostname" value="" onchange="update_node_hostname(this)"/></td>
+           <td><input type="password" class="text" name="password" autocomplete="off" /></td>
+-          <td><input type="text" class="text" name="riccihost" value="" /></td>
++          <td><input type="text" class="text" name="riccihost" value="" onchange="get_sysinfo_async($(this.parentNode.parentNode));" /></td>
+           <td><input type="text" class="text" name="port" maxlength="5" size="5" value="${app_globals.DEFAULT_RICCI_PORT}" /></td>
+           <td><img src="/images/delete-grey.png"/></td>
+        </tr>
+diff -urN a/luci/templates/cluster_list.html b/luci/templates/cluster_list.html
+--- a/luci/templates/cluster_list.html	2016-12-15 16:08:54.457157097 +0100
++++ b/luci/templates/cluster_list.html	2016-12-15 16:08:54.634157702 +0100
+@@ -18,6 +18,7 @@
+ <body py:with="clusters = db_helpers.get_cluster_list_full()">
+   <script type="text/javascript" src="/js/cluster_list.js"></script>
+   <script type="text/javascript" src="/js/add_existing.js"></script>
++  <script type="text/javascript" src="/js/system_spec.js"></script>
+ 
+   <form class="confirm_form" action="${tg.url('/' + page + '/delete_cmd')}" method="post">
+ 
+diff -urN a/luci/templates/create_cluster.html b/luci/templates/create_cluster.html
+--- a/luci/templates/create_cluster.html	2012-01-23 17:20:32.000000000 +0100
++++ b/luci/templates/create_cluster.html	2016-12-15 20:36:37.382338434 +0100
+@@ -20,18 +20,23 @@
+           <td></td>
+        </tr>
+        <tr id="create_cluster_system_row_elem0" class="systemtriple">
+-          <td><input type="text" class="text" name="hostname0" onchange="update_node_hostname(this)" value="" /></td>
++          <td><input type="text" class="text" name="hostname0" value="" onchange="update_node_hostname(this)" /></td>
+           <td><input type="password" class="text" name="password0" autocomplete="off" /></td>
+-          <td><input type="text" class="text" name="riccihost0" value="" /></td>
++          <td><input type="text" class="text" name="riccihost0" value="" onchange="get_sysinfo_async($(this.parentNode.parentNode));" /></td>
+           <td><input type="text" class="text" name="port0" maxlength="5" size="5" value="${app_globals.DEFAULT_RICCI_PORT}" /></td>
+-          <td><img src="/images/delete-grey.png" onclick="$(':input[name!=port0]', '#create_cluster_system_row_elem0').val('')" /></td>
+-       </tr>
+-       <tr class="add_node_button_row">
+-          <td><input type="button" class="button small silver" value="Add Another Node" onclick="add_system_row(this.form)" /></td>
++          <td><img src="/images/delete-grey.png" onclick="$(':input[name!=port0]', '#create_cluster_system_row_elem0').val('').change()" /></td>
+        </tr>
+        </tbody>
+     </table>
+     </div>
++    <div class="add_node_button_row">
++       <input type="button" class="button small silver" value="Add Another Node" onclick="add_system_row(this.form)" />
++       <input type="button" class="button small silver" value="View Certificate Fingerprint(s)"
++              onclick="get_sysinfo_async($( 'tr', this.form )
++                                           .filter(function() {
++                                               return this.id.match(/create_cluster_system_row_elem\d+/);
++                                           }));" />
++    </div>
+     <div class="row">
+         <input type="radio" class="radio" name="download_pkgs" value="download" />
+         <label class="choice">Download Packages</label>
+@@ -58,7 +63,7 @@
+        <tr id="system_row_elem" class="systemtriple">
+           <td><input type="text" class="text" name="hostname" value="" onchange="update_node_hostname(this)"/></td>
+           <td><input type="password" class="text" name="password" autocomplete="off" /></td>
+-          <td><input type="text" class="text" name="riccihost" value="" /></td>
++          <td><input type="text" class="text" name="riccihost" value="" onchange="get_sysinfo_async($(this.parentNode.parentNode));"/></td>
+           <td><input type="text" class="text" name="port" maxlength="5" size="5" value="${app_globals.DEFAULT_RICCI_PORT}" /></td>
+           <td><img src="/images/delete-grey.png"/></td>
+        </tr>
+diff -urN a/luci/templates/node.html b/luci/templates/node.html
+--- a/luci/templates/node.html	2016-12-15 16:08:54.550157415 +0100
++++ b/luci/templates/node.html	2016-12-15 16:08:54.634157702 +0100
+@@ -22,6 +22,7 @@
+ 
+   <script type="text/javascript" src="/js/add_nodes.js"></script>
+   <script type="text/javascript" src="/js/node.js"></script>
++  <script type="text/javascript" src="/js/system_spec.js"></script>
+ 
+   <py:if test="name is not None">
+    <script type="text/javascript" src="/js/fence.js"></script>

@@ -1,0 +1,13 @@
+diff -urN a/input_files/initscript/initscript.in b/input_files/initscript/initscript.in
+--- a/input_files/initscript/initscript.in	2016-11-11 14:29:26.296560388 +0100
++++ b/input_files/initscript/initscript.in	2016-11-16 18:05:56.292552165 +0100
+@@ -156,7 +156,8 @@
+         $ECHOFUNC "Unable to create the $PKG_NAME base configuration file (\`$config')." >&2
+         return 6
+     fi
+-    chown $DAEMON_USER:$DAEMON_GROUP "$config" \
++    # luci does not write back to its config, better to keep access read-only
++    chgrp $DAEMON_GROUP "$config" \
+     && chmod 0640 "$config"
+     if [ $? -ne 0 ]; then
+         rm -f -- "$config" &>/dev/null
