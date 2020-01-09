@@ -1,0 +1,62 @@
+From 72fa237fc759c83c927d87bad5ee8d51dab3c0db Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 8 Oct 2012 09:55:18 -0400
+Subject: [PATCH] luci: Fix double click on add existing dialog
+
+Fix a bug that caused nodes to be listed twice if you accidentally
+double clicked the "Connect" button on the add existing cluster
+dialog.
+
+Resolves: rhbz#856253
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/js/add_existing.js   | 4 ++++
+ luci/templates/add_existing.html | 2 +-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/luci/public/js/add_existing.js b/luci/public/js/add_existing.js
+index 59b99b9..25d742c 100644
+--- a/luci/public/js/add_existing.js
++++ b/luci/public/js/add_existing.js
+@@ -5,13 +5,16 @@ function add_existing_callback(data) {
+     if (data) {
+         if ('errors' in data) {
+             alert('Error adding this cluster: ' + data['errors'].join(' '));
++            $("#connect_button").removeAttr('disabled', 'disabled');
+             return;
+         } else if (!'nodes' in data) {
+             alert('Unable to retrieve the list of cluster nodes');
++            $("#connect_button").removeAttr('disabled', 'disabled');
+             return;
+         }
+         var tbody_elem = $("#sys_tbody");
+         if (!tbody_elem) {
++            $("#connect_button").removeAttr('disabled', 'disabled');
+             return;
+         }
+         var num_nodes;
+@@ -43,6 +46,7 @@ function add_existing_async(form) {
+     if (!form.port) {
+         errors.append('No port was given');
+     }
++    $("#connect_button").attr('disabled', 'disabled');
+     $.post("/async/get_cluster_nodes",
+         {
+             'host': form.hostname.value,
+diff --git a/luci/templates/add_existing.html b/luci/templates/add_existing.html
+index cf3cb30..dad5519 100644
+--- a/luci/templates/add_existing.html
++++ b/luci/templates/add_existing.html
+@@ -19,7 +19,7 @@
+       </tr>
+     </table>
+     </div>
+-    <input type="button" class="button formsubmit blue" value="Connect" onclick="add_existing_async(this.form)" />
++    <input id="connect_button" type="button" class="button formsubmit blue" value="Connect" onclick="add_existing_async(this.form)" />
+     <input type="button" class="button formsubmit silver" value="Cancel"
+         onclick="$('#add_existing_dialog').dialog('close');reset_form(this.form)" />
+    </form>
+-- 
+1.7.11.4
+

@@ -1,0 +1,307 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<xi:include href="master.html" />
+
+<head>
+  <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+  <title>${title()}</title>
+</head>
+
+<body py:with="cluster_data = tmpl_context.cluster.get_model();
+               svc = True;
+               cluster_status = tmpl_context.cluster.get_status()">
+  <script type="text/javascript" src="/js/encoder.js"></script>
+  <script type="text/javascript" src="/js/service.js"></script>
+  <xi:include href="resource_list.html" />
+  ${resource_container(cluster_data)}
+
+  <form action="${tg.url(services_cmd)}" method="post" class="confirm_form">
+  <div class="sectionblock">
+  <xi:include href="submenu.html"/>
+  <div id="toolbar">
+    <a href="#" class="toolbar_button" id="tb_add" onclick="$('#add_service_dialog').dialog('open');return false;">Add</a>
+    <input type="submit" name="MultiAction" value="${_('Start')}" class="toolbar_button MultiAction" id="tb_start" disabled="disabled"/>
+    <input type="submit" name="MultiAction" value="${_('Restart')}" class="toolbar_button MultiAction" id="tb_restart" disabled="disabled"/>
+    <input type="submit" name="MultiAction" value="${_('Disable')}" class="toolbar_button MultiAction" id="tb_disable" disabled="disabled"/>
+    <input type="submit" name="MultiAction" value="${_('Delete')}" class="confirm_form toolbar_button MultiAction" id="tb_delete" disabled="disabled"/>
+  </div>
+
+  <!--! OVERVIEW SECTION. -->
+  <div id="overview">
+    <table id="service_tlist" class="maintable">
+      <thead>
+        <tr>
+          <th class="checkbox"></th>
+          <th class="icon">!</th>
+          <th class="main_id">Name</th>
+          <th class="service_tlist_status">Status</th>
+          <th class="service_tlist_enabled">Autostart</th>
+          <th class="service_tlist_fdom">Failover Domain</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!--! TODO: Avoid following nasty hack !-->
+        ${setattr(tmpl_context, 'current_service_status', '')}
+        <!--! List all the services. -->
+        <py:if test="cluster_data">
+        <tr py:for="(i, service_data) in enumerate(cluster_data.getServices())"
+            py:with="entity_name = service_data.getName();
+                     entity_obj = (cluster_status and cluster_status.services and cluster_status.services.has_key(entity_name)) and cluster_status.services[entity_name] or {}"
+            py:attrs="entity_name==name and {'class': 'chosen'} or (not i%2 and {'class': 'even'} or None)">
+          <td class="checkbox">
+            <input type="checkbox" name="${entity_name}" onclick="update_multi_action(this)" class="MultiActionItem"/>
+          </td>
+          <!--! Branch according to the status of the service. -->
+          <py:choose test="hasattr(entity_obj, 'running') and entity_obj.running">
+          <!--! 1) Service is running. -->
+          <py:when test="'true'">
+          <td class="icon"></td>
+          <td class="main_id">
+            <a href="${tg.url(base_url + '/' + entity_name)}">
+              <span class="entity_ok">${entity_name}</span>
+            </a>
+          </td>
+          <td class="service_tlist_status"
+              py:with="msg = _('Running on %s') % cluster_status.services[entity_name].nodename">
+              <span title="${msg}">${msg}</span>
+            <!--! TODO: Avoid following nasty hack !-->
+            <py:if test="name == entity_name">
+              ${setattr(tmpl_context, 'current_service_status', msg)}
+            </py:if>
+          </td>
+          </py:when>
+          <!--! 2) Service is not running. -->
+          <py:when test="'false'">
+          <td class="icon">
+            <img src="${tg.url('/images/exclamation.png')}" alt="Service has a problem." />
+          </td>
+          <td class="main_id">
+            <a href="${tg.url(base_url + '/' + entity_name)}">
+              <span class="entity_fail">${entity_name}</span>
+            </a>
+          </td>
+          <td class="service_tlist_status"
+           py:with="msg = cluster_status.services[entity_name].failed == 'true' and _('Failed') or _('Disabled')">
+            <span title="${msg}">${msg}</span>
+            <!--! TODO: Avoid following nasty hack !-->
+            <py:if test="name == entity_name">
+              ${setattr(tmpl_context, 'current_service_status', msg)}
+            </py:if>
+          </td>
+          </py:when>
+          <py:otherwise>
+          <td class="icon">
+            <img src="${tg.url('/images/question.png')}" alt="Internal error; file a bug report." />
+          </td>
+          <td class="main_id">
+            <a href="${tg.url(base_url + '/' + entity_name)}">
+              <span class="entity_ok">${entity_name}</span>
+            </a>
+          </td>
+          <td class="service_tlist_status"
+           py:with="msg = _('Unknown')">
+            <span title="${msg}">${msg}</span>
+          </td>
+          </py:otherwise>
+          </py:choose>
+          <td class="service_tlist_enabled">
+            <input type="checkbox" disabled="disabled"
+                py:attrs="service_data.getAutostart() and {'checked': 'checked'} or {}"/>
+          </td>
+          <td class="service_tlist_fdom">${service_data.getFailoverDomain() or _('No/default failover domain')}</td>
+        </tr>
+        </py:if>
+      </tbody>
+    </table>
+  </div>
+  </div>
+  </form>
+
+  <div id="bad_conf" class="sectionblock" py:if="cluster_data and cluster_data.errors">
+      <img alt="Errors parsing cluster.conf XML" src="/images/exclamation.png"/>
+      <span class="error">Luci was not able to parse this cluster's configuration without errors. Your configuration may be invalid.</span>
+
+      <py:if test="cluster_data.errmsg">
+        The following errors occurred:<br/>
+        <ul>
+            <li py:for="m in cluster_data.errmsg">${m}</li>
+        </ul>
+      </py:if>
+      <span class="error">
+        Fixing this may require you to log into one of the cluster nodes, edit the cluster.conf file to fix the error, and propagate the new configuration.
+      </span>
+  </div>
+
+  <!--! DETAILS SECTION. -->
+  <div class="sectionblock sectionblock2">
+  <div id="details" py:choose="name">
+
+    <py:when test="None">
+    <div id="details_header">
+      <div id="not_selected">
+        <py:if test="cluster_data">
+            <py:choose test="len(cluster_data.getServices())">
+                <py:when test="0">No item to display</py:when>
+                <py:otherwise>Select an item to view details</py:otherwise>
+            </py:choose>
+        </py:if>
+        <py:if test="not cluster_data">
+            No nodes from this cluster could be contacted. The status of this cluster is unknown.
+        </py:if>
+      </div>
+    </div>
+    </py:when>
+
+    <py:otherwise
+        py:with="details = cluster_status.services.get(name);
+                 svc = tmpl_context.cluster.get_model().getService(name)">
+
+    <!--! DETAILS - header section. -->
+    <div id="details_header">
+      <h3 py:content="name"/>
+      <form style="display: inline; padding-left: 24px; ">
+      <div id="details_header_buttons">
+        <a class="confirm_link" href="${tg.url(services_cmd + '?command=Delete' + '&amp;name=' + name)}" id="dh_delete" title="delete"><span class="hide">delete</span></a>
+        <a href="${tg.url(services_cmd + '?command=Disable' + '&amp;name=' + name)}" id="dh_stop" title="stop (disable)"><span class="hide">stop</span></a>
+        <a href="${tg.url(services_cmd + '?command=Restart' + '&amp;name=' + name)}" id="dh_update" title="restart"><span class="hide">restart</span></a>
+        <a href="#" onclick="move_service_group('${tg.url(services_cmd + '?command=Start' + '&amp;name=' + name)}')" id="dh_start" title="start"><span class="hide">start</span></a>
+      </div>
+      <span class="details_header_info_label">Status</span> <span class="details_header_info">${tmpl_context.current_service_status}</span>
+
+        <py:choose test="details and details.is_vm and details.running.lower() == 'true'">
+          <py:when test="True">
+             <input type="hidden" id="move_action" name="move_action" value="migrate"/>
+             <select id="preferred_node" style="font-size: small;" name="preferred_node" py:if="cluster_data">
+              <option value="">Migrate to node...</option>
+              <py:for each="node in cluster_data.getNodeNames()" py:if="not details or node != details.nodename">
+                  <option value="${node}">${node}</option>
+              </py:for>
+             </select>
+          </py:when>
+          <py:otherwise>
+            <input type="hidden" id="move_action" name="move_action" value="relocate"/>
+            <select id="preferred_node" style="font-size: small;" name="preferred_node" py:if="cluster_data">
+              <option value="">Start on node...</option>
+              <py:for each="node in cluster_data.getNodeNames()" py:if="not details or node != details.nodename">
+                  <option value="${node}">${node}</option>
+              </py:for>
+            </select>
+          </py:otherwise>
+        </py:choose>
+      </form>
+    </div>
+
+    <div id="edit_service_dialog">
+      <form
+        style="padding-left: 24px; "
+        name="edit_service_dialog" method="post" action="${tg.url(services_cmd + '?command=Edit')}">
+        <h4>Edit service</h4>
+        <input type="hidden" name="old_name" value="${svc.getName()}"/>
+        <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+            <div class="resprop">
+              ${service_properties_dialog(svc, cluster_data)}
+            </div>
+
+            <div id="esvc_root">
+                <?python
+                def gen_seq():
+                    i = 0
+                    while True:
+                        yield i
+                        i += 1
+                last_formid = gen_seq()
+                ?>
+                <py:choose test="svc.getTagName()">
+                    <py:when test="'vm'">
+                        ${print_svc_children(cluster_data, [ svc ], 'esvc_root')}
+                    </py:when>
+                    <py:otherwise>
+                        ${print_svc_children(cluster_data, svc.getChildren(), 'esvc_root')}
+                    </py:otherwise>
+            </py:choose>
+            </div>
+
+        <div class="row resource_selector" py:if="svc.getTagName() != 'vm'">
+            <input type="button" class="button small silver" value="Add Resource"
+                onclick="${'insert_resource_dialog(this.form, \'esvc_root\', \'esvc_root\')'}"/>
+        </div>
+
+        <div class="row">
+            <input type="button" class="formsubmit button blue" value="Submit"
+                onclick="submit_svc_form(this.form)"/>
+        </div>
+
+        <input type="hidden" name="root_elem" value="esvc_root" />
+        <input type="hidden" name="action" value="edit"/>
+        <input type="hidden" name="res_count" value="${last_formid.next()}"/>
+        <input type="hidden" name="form_xml" value=""/>
+      </form>
+    </div>
+
+    <!--! DETAILS - resources. -->
+    <div class="details_section">
+      <div class="details_inner">
+        <table id="service_tresources" class="detailstable" py:if="False">
+          <thead>
+            <tr class="grid_row">
+              <th class="icon"></th>
+              <th class="service_tresources_name"></th>
+              <th class="service_tresources_type">Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr py:for="res_vals in ()" class="grid_row">
+              <td class="icon"></td>
+              <td class="service_tresources_name">${res_vals.getName()}</td>
+              <td class="service_tresources_type">${res_vals.getResourceType()}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    </py:otherwise>
+  </div>
+  </div>
+
+  <div class="hidden">
+    <div id="confirm_remove_service_dialog" title="Confirm deletion">
+      <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>Removing a service group will cause the resources that comprise it to be stopped on any cluster nodes on which they may be running. If unintended, this will result in service interruption. This operation cannot be undone.</p>
+    </div>
+    <div id="insert_resource_dialog">
+        <div class="row resource_selector">
+            ${resource_selector(cluster_data, '', '')}
+        </div>
+    </div>
+    <div id="add_service_dialog">
+      <form name="add_service_dialog" method="post" action="${tg.url(services_cmd + '?command=Create')}">
+            <div class="resprop">
+              ${service_properties_dialog(None, cluster_data)}
+            </div>
+
+            <div id="svc_root">
+            </div>
+
+        <div class="row resource_selector">
+            <input type="button" class="button small silver" value="Add Resource"
+                onclick="${'insert_resource_dialog(this.form, \'svc_root\', \'svc_root\')'}"/>
+        </div>
+
+        <div class="row">
+            <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+            <input type="button" class="formsubmit button blue" value="Submit"
+                onclick="submit_svc_form(this.form)"/>
+            <input type="button" class="formsubmit button silver" value="Cancel"
+                onclick="$('#add_service_dialog').dialog('close');reset_service_form(this.form)" />
+        </div>
+        <input type="hidden" name="action" value="create"/>
+        <input type="hidden" name="res_count" value="0"/>
+        <input type="hidden" name="form_xml" value=""/>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

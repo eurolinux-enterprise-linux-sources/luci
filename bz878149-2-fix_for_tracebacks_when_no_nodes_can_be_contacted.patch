@@ -1,0 +1,66 @@
+From 04b72fa55081041a79b339ad10ca0d8a582b0256 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Fri, 7 Dec 2012 13:31:14 -0500
+Subject: [PATCH] luci: Fix for tracebacks when no nodes can be contacted
+
+Patch from Radek Steiger <rsteiger@redhat.com> to fix
+tracebacks that occurred in the fence devices, failover
+domains, and services sections when no nodes from a cluster
+cannot be contacted.
+
+Resolves: rhbz#878149
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/cluster.py | 21 +++++++++++++++------
+ 1 file changed, 15 insertions(+), 6 deletions(-)
+
+diff --git a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+index 593d6e1..0e3f043 100644
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -640,8 +640,11 @@ class IndividualClusterController(BaseController):
+         if 'name' in request.params:
+             servicename = request.params['name']
+ 
+-        self.get_model()
+-        if not self.model.getService(servicename):
++        try:
++            self.get_model()
++            if not self.model.getService(servicename):
++                servicename = None
++        except Exception, e:
+             servicename = None
+ 
+         return dict(page='nodes', name=servicename, base_url=base_url, services_cmd=services_cmd)
+@@ -812,8 +815,11 @@ class IndividualClusterController(BaseController):
+         if 'name' in request.params:
+             failovername = request.params['name']
+ 
+-        self.get_model()
+-        if not self.model.getFailoverDomainByName(failovername):
++        try:
++            self.get_model()
++            if not self.model.getFailoverDomainByName(failovername):
++                failovername = None
++        except Exception, e:
+             failovername = None
+ 
+         return dict(page='nodes', name=failovername, base_url = '/cluster/' + self.name + '/failovers', failovers_cmd=failovers_cmd)
+@@ -932,8 +938,11 @@ class IndividualClusterController(BaseController):
+         if 'name' in request.params:
+             fencename = request.params['name']
+ 
+-        self.get_model()
+-        if not self.model.getFenceDeviceByName(fencename):
++        try:
++            self.get_model()
++            if not self.model.getFenceDeviceByName(fencename):
++                fencename = None
++        except Exception, e:
+             fencename = None
+ 
+         return dict(page='nodes', name=fencename, base_url='/cluster/' + self.name + '/fences', fences_cmd=fences_cmd)
+-- 
+1.8.3.1
+

@@ -1,0 +1,6 @@
+ul.vanilla, li.vanilla {
+    list-style-type: none ! important;
+    list-style-image: none !important;
+    margin-left: 0 ! important;
+}
+

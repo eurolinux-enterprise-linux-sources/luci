@@ -1,0 +1,60 @@
+From 405d177e7b9a959aa78b8a2a05352b45f5b313cc Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 15:01:08 -0400
+Subject: [PATCH] luci: Update name for fence_egenera
+
+Display the name for fence_egenera as "Egenera BladeFrame"
+instead of "Egenera SAN Controller"
+
+Resolves: rhbz#1008510
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/FenceDeviceAttr.py | 4 ++--
+ luci/templates/fence_devices.html       | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/FenceDeviceAttr.py b/luci/lib/ClusterConf/FenceDeviceAttr.py
+index 05fdb92..90883dd 100644
+--- a/luci/lib/ClusterConf/FenceDeviceAttr.py
++++ b/luci/lib/ClusterConf/FenceDeviceAttr.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2007-2010 Red Hat, Inc.
++# Copyright (C) 2007-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -23,7 +23,7 @@ FENCE_OPTS = {
+ 	'fence_hpblade':		'HP BladeSystem',
+ 	'fence_mcdata':			'McDATA SAN Switch',
+ 	'fence_eaton_snmp':		'Eaton Network Power Controller (SNMP Interface)',
+-	'fence_egenera':		'Egenera SAN Controller',
++	'fence_egenera':		'Egenera BladeFrame',
+ 	'fence_bullpap':		'Bull PAP',
+ 	'fence_xvm':			'xvm Virtual Machine Fencing',
+ 	'fence_virt':			'fence_virt Virtual Machine Fencing',
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index 40bc4c1..d71ef92 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -737,7 +737,7 @@
+   <table class="formtable">
+     <tr>
+       <td>Fence Type</td>
+-      <td>Egenera SAN Controller</td>
++      <td>Egenera BladeFrame</td>
+     </tr>
+     <tr>
+       <td>Name</td>
+@@ -4915,7 +4915,7 @@ ${fence_unknown(None,0)}
+       <option name="fence_drac5" value="fence_drac5">Dell DRAC 5</option> <!-- needs work -->
+       <option name="fence_idrac" value="fence_idrac">Dell iDRAC</option>
+       <option py:if="cluster_version == 3" name="fence_eaton_snmp" value="fence_eaton_snmp">Eaton Network Power Switch (SNMP interface)</option>
+-      <option name="fence_egenera" value="fence_egenera">Egenera SAN Controller</option>
++      <option name="fence_egenera" value="fence_egenera">Egenera BladeFrame</option>
+ 
+       <option name="fence_eps" value="fence_eps">ePowerSwitch</option>
+       <py:choose test="cluster_version">
+-- 
+1.9.3
+

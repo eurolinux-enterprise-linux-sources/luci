@@ -1,0 +1,80 @@
+/*====================== F A I L O V E R   D O M A I N S ==================== */
+
+/* -------------------------------- overview -------------------------------- */
+
+.fdom_tlist_enabled {
+  text-align: center;
+  padding: 1px 10px;
+}
+
+.fdom_tlist_prioritizied {
+  text-align: center;
+  padding: 1px 10px;
+}
+
+.fdom_tlist_restricted {
+  text-align: center;
+  padding: 1px 10px;
+}
+
+
+/* --------------------------------- details -------------------------------- */
+
+/* attributes setting */
+
+#fdom_tattr {
+  margin: 0 15em 0 0;
+}
+
+.fdom_tattr_caption {
+  padding: 8px 0 8px 5px;
+}
+
+.fdom_tattr_hint {
+  padding: 8px 0 8px 25px;
+  color: #777;
+}
+
+
+/* list of services */
+
+#fdom_tservices tr {
+  background-color: #f4f4f4;
+  border-bottom: 2px solid white;
+}
+
+.fdom_tservices_service {
+  width: 20%;
+  min-width: 20%;
+}
+
+
+/* table of members */
+
+#fdom_tmembers {
+  margin-top: -15px;
+}
+
+#fdom_tmembers thead tr {
+  background-color: inherit;
+}
+
+.fdom_tmembers_name {
+ padding: 0 10px 0 0;
+}
+
+th.fdom_tmembers_name {
+  width: 15%;
+  min-width: 15%;
+}
+
+.fdom_tmembers_member {
+  padding: 1px 10px;
+  text-align: center;
+}
+
+.fdom_tmembers_priority {
+  padding: 1px 10px;
+  text-align: center;
+}
+

@@ -1,0 +1,157 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<xi:include href="master.html" />
+
+<head>
+  <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+  <title>${title()}</title>
+</head>
+
+<body py:with="cluster_data = tmpl_context.cluster.get_model();
+               cluster_status = tmpl_context.cluster.get_status()">
+  <script type="text/javascript" src="/js/resource.js"></script>
+  <xi:include href="resource_list.html" />
+
+  <form action="${tg.url(resources_cmd)}" method="post">
+  <div class="sectionblock">
+  <xi:include href="submenu.html"/>
+  <div id="toolbar">
+    <a href="#" class="toolbar_button" id="tb_add" onclick="$('#add_resource_dialog').dialog('open')">Add</a>
+    <input type="submit" name="MultiAction" value="${_('Delete')}" class="toolbar_button MultiAction" id="tb_delete" disabled="disabled"/>
+  </div>
+
+  <!--! OVERVIEW SECTION. -->
+  <div id="overview">
+    <table id="resource_tlist" class="maintable">
+      <thead>
+	<tr>
+	  <th class="checkbox"></th>
+	  <th class="main_id">Name/IP</th>
+	  <th class="resource_tlist_type">Type</th>
+	  <th class="resource_tlist_used">In Use</th>
+    </tr>
+    </thead>
+    <tbody>
+     <!--! List all the resources. -->
+     <py:if test="cluster_data">
+      <tr py:for="(i, resource_data) in enumerate(cluster_data.getResources())"
+        py:with="entity_name = resource_data.getName();
+                 refcount = resource_data.getRefcount()"
+        py:attrs="entity_name==name and {'class': 'chosen'} or (not i%2 and {'class': 'even'} or None)">
+        <td class="checkbox">
+            <input type="checkbox" name="${entity_name}"
+                onclick="update_multi_action(this)" class="MultiActionItem"
+                py:attrs="refcount != 1 and {'disabled':'disabled'} or {}"/>
+        </td>
+        <td class="main_id">
+            <a href="${tg.url(base_url + '/' + entity_name + '.html')}"><span class="entity_ok">${entity_name}</span></a>
+        </td>
+        <td class="resource_tlist_type">
+            ${resource_data.getResourceType()}
+        </td>
+        <td class="resource_tlist_used">
+    	    <py:choose test="refcount">
+	            <py:when test="1">
+	                No
+	            </py:when>
+	            <py:otherwise>
+	                <img src="${tg.url('/images/check-11.png')}" alt="Yes" />
+	            </py:otherwise>
+	        </py:choose>
+	    </td>
+      </tr>
+     </py:if>
+    </tbody>
+  </table>
+  </div>
+  </div>
+  </form>
+
+  <div id="bad_conf" class="sectionblock" py:if="cluster_data and cluster_data.errors">
+      <img alt="Errors parsing cluster.conf XML" src="/images/exclamation.png"/>
+      <span class="error">Luci was not able to parse this cluster's configuration without errors. Your configuration may be invalid.</span>
+
+      <py:if test="cluster_data.errmsg">
+        The following errors occurred:<br/>
+        <ul>
+            <li py:for="m in cluster_data.errmsg">${m}</li>
+        </ul>
+      </py:if>
+      <span class="error">
+        Fixing this may require you to log into one of the cluster nodes, edit the cluster.conf file to fix the error, and propagate the new configuration.
+      </span>
+  </div>
+
+  <!--! DETAILS SECTION. -->
+  <div class="sectionblock">
+  <div id="details" py:choose="name">
+
+    <py:when test="None">
+    <div id="details_header">
+      <div id="not_selected">
+        <py:if test="cluster_data">
+            <py:choose test="len(cluster_data.getResources())">
+                <py:when test="0">No item to display</py:when>
+                <py:otherwise>Select an item to view details</py:otherwise>
+            </py:choose>
+        </py:if>
+        <py:if test="not cluster_data">
+            No nodes from this cluster could be contacted. The status of this cluster is unknown.
+        </py:if>
+      </div>
+    </div>
+    </py:when>
+
+    <py:otherwise py:with="resource = cluster_data.getResourceByName(name)">
+
+    <!--! DETAILS - header section. -->
+    <div id="details_header">
+      <h3 py:content="name"/>
+      <div id="details_header_buttons">
+        <a href="${tg.url(resources_cmd + '?command=Delete' + '&amp;name=' + name)}" id="dh_delete" title="delete"><span class="hide">delete</span></a>
+      </div>
+    </div>
+
+    <!--! DETAILS - resources. -->
+    <div class="details_section">
+      <div class="details_inner">
+       <form name="add_resource_dialog" method="post" action="${tg.url(resources_cmd + '?command=Edit')}">
+        <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+        <input type="hidden" name="edit" value="1"/>
+         <?python
+            resource = cluster_data.getResourceByName(name)
+            resource_func = '%s_resource' % resource.getTagName().replace('-', '')
+         ?>
+         ${vars()["__data__"][resource_func](resource, None, None, 0)}
+         <div class="row"><input type="submit" class="button formsubmit blue" value="Apply"/></div>
+       </form>
+      </div>
+    </div>
+
+    </py:otherwise>
+
+  </div>
+  </div>
+  <div class="hidden">
+    <div id="add_resource_dialog">
+      <form name="add_resource_dialog" method="post" action="${tg.url(resources_cmd + '?command=Create')}">
+	<div class="row">
+    ${resource_selector(None, None, None)}
+	</div>
+	<div id="resource_form_area" />
+        <div class="row">
+        <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+        <input type="submit" class="formsubmit button blue" value="Submit"/>
+        <input type="button" class="formsubmit button silver" value="Cancel"
+            onclick="$('#add_resource_dialog').dialog('close');reset_form(this.form)" />
+        </div>
+      </form>
+    </div>
+  </div>
+  ${resource_container(None)}
+</body>
+</html>

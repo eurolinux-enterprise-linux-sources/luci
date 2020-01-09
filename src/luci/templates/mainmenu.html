@@ -1,0 +1,30 @@
+<div xmlns:py="http://genshi.edgewall.org/">
+<?python
+  from luci.lib import db_helpers
+?>
+  <div class="sidebar">
+    <div class="sidenav">
+      <ul class="sidenavlist" id="primarynav">
+        <li><a py:attrs="{'class': 'homebase' in dir(tmpl_context) and 'current' or '', 'href': tg.url('/homebase')}">Homebase</a></li>
+        <li><a py:attrs="{'class': 'manage_clusters' in dir(tmpl_context) and 'current' or '', 'href': tg.url('/clusters')}">Manage Clusters</a></li>
+      </ul>
+      <ul class="sidenavlist" id="clusterlist">
+        <py:if test="getattr(tmpl_context, 'cluster', None)">
+          <li py:for="i, (entity_name, cluster_data) in enumerate(db_helpers.get_cluster_list_status(tmpl_context.cluster).iteritems())"
+               py:attrs="not i%2 and {'class': 'even'} or None">
+            <py:if test="hasattr(cluster_data['status'],'quorate')">
+              <?python if cluster_data['status'].quorate == 'true': cclass = "ok"  ?>
+              <?python if cluster_data['status'].quorate != 'true': cclass = "problem"  ?>
+              <?python if cclass == None : cclass = "problem"  ?>
+
+              <a href="${tg.url('/cluster/%s' % entity_name)}"
+                 py:with="url_str = 'cluster_url' in dir(tmpl_context) and tmpl_context.cluster_url or ''"
+                 py:attrs="{'class': '%s%s' % (cclass, ('', ' current')[url_str.find('/cluster/%s/' % entity_name) != -1])}">${entity_name}</a>
+            </py:if>
+          </li>
+        </py:if>
+        <li/>
+      </ul>
+    </div>
+  </div>
+</div>

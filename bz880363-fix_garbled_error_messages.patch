@@ -1,0 +1,48 @@
+From 6dd7d119b3ad4fdb55f537044da32a8d37ea3003 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 28 Nov 2012 13:56:14 -0500
+Subject: [PATCH] luci: Fix garbled error messages
+
+Fix failover domain related error messages that were returned as
+strings instead of lists, causing the error messages to be garbled.
+
+Resolves: rhbz#880363
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/validation/validate_cluster_prop.py | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+index 62d0a9d..9fedfb1 100644
+--- a/luci/validation/validate_cluster_prop.py
++++ b/luci/validation/validate_cluster_prop.py
+@@ -37,10 +37,10 @@ def validate_fdom_prop_form(model, **kw):
+ 
+     fdom_name = kw.get('name')
+     if not fdom_name or fdom_name.isspace():
+-        return (False, {'errors': _('No failover domain name was given')})
++        return (False, {'errors': [_('No failover domain name was given')]})
+     fdom = model.getFailoverDomainByName(fdom_name)
+     if not fdom:
+-        return (False, {'errors': _('No failover domain named "%s" exists') % fdom_name})
++        return (False, {'errors': [_('No failover domain named "%s" exists') % fdom_name]})
+ 
+     fdom.setOrdered(kw.get('ordered') is not None)
+     fdom.setRestricted(kw.get('restricted') is not None)
+@@ -89,10 +89,10 @@ def validate_fdom_prop_settings_form(model, **kw):
+ 
+     fdom_name = kw.get('name')
+     if not fdom_name or fdom_name.isspace():
+-        return (False, {'errors': _('No failover domain name was given')})
++        return (False, {'errors': [_('No failover domain name was given')]})
+     fdom = model.getFailoverDomainByName(fdom_name)
+     if not fdom:
+-        return (False, {'errors': _('No failover domain named "%s" exists') % fdom_name})
++        return (False, {'errors': [_('No failover domain named "%s" exists') % fdom_name]})
+ 
+     restricted = fdom.getRestricted()
+     ordered = fdom.getOrdered()
+-- 
+1.8.3.1
+

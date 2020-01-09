@@ -1,0 +1,160 @@
+From f89e06b65c51641a67000d7f74606859965ef5fc Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 14:32:54 -0400
+Subject: [PATCH] luci: Add support for configuring missing totem
+ attributes
+
+Add support for configuring the totem attributes "max_messages"
+"netmtu" "window_size" and "seqno_unchanged_const" in expert
+mode.
+
+Resolves: rhbz#917771
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/Totem.py            | 50 +++++++++++++++++++++++++++++++-
+ luci/templates/configure.html            |  4 +++
+ luci/validation/validate_cluster_prop.py | 36 +++++++++++++++++++++++
+ 3 files changed, 89 insertions(+), 1 deletion(-)
+
+diff --git a/luci/lib/ClusterConf/Totem.py b/luci/lib/ClusterConf/Totem.py
+index 0799907..f98b5f7 100644
+--- a/luci/lib/ClusterConf/Totem.py
++++ b/luci/lib/ClusterConf/Totem.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2011 Red Hat, Inc.
++# Copyright (C) 2006-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -17,6 +17,10 @@ class Totem(TagObject):
+     'token_retransmits_before_loss_const':  '20',
+     'consensus':                            '4800',
+     'secauth':                              '1',
++    'max_messages':                         '17',
++    'netmtu':                               '1500',
++    'window_size':                          '50',
++    'seqno_unchanged_const':                '30',
+   }
+ 
+   def __init__(self):
+@@ -104,6 +108,42 @@ class Totem(TagObject):
+   def delKeyFile(self):
+     return self.removeAttribute('keyfile')
+ 
++  def getMaxMessages(self):
++    return self.getAttribute('max_messages')
++
++  def setMaxMessages(self, val):
++    return self.addIntegerAttribute('max_messages', val, (0, None))
++
++  def delMaxMessages(self):
++    return self.removeAttribute('max_messages')
++
++  def getNetMTU(self):
++    return self.getAttribute('netmtu')
++
++  def setNetMTU(self, val):
++    return self.addIntegerAttribute('netmtu', val, (0, None))
++
++  def delNetMTU(self):
++    return self.removeAttribute('netmtu')
++
++  def getWindowSize(self):
++    return self.getAttribute('window_size')
++
++  def setWindowSize(self, val):
++    return self.addIntegerAttribute('window_size', val, (0, None))
++
++  def delWindowSize(self):
++    return self.removeAttribute('window_size')
++
++  def getSeqnoUnchangedConst(self):
++    return self.getAttribute('seqno_unchanged_const')
++
++  def setSeqnoUnchangedConst(self, val):
++    return self.addIntegerAttribute('seqno_unchanged_const', val, (0, None))
++
++  def delSeqnoUnchangedConst(self):
++    return self.removeAttribute('seqno_unchanged_const')
++
+   def removeDefaults(self):
+     if self.getJoinTimeout() == self.DEFAULTS.get('join'):
+         self.delJoinTimeout()
+@@ -119,3 +159,11 @@ class Totem(TagObject):
+         self.delFailRecvConst()
+     if self.getRRPMode() == self.DEFAULTS.get('rrp_mode'):
+         self.delRRPMode()
++    if self.getMaxMessages() == self.DEFAULTS.get('max_messages'):
++        self.delMaxMessages()
++    if self.getNetMTU() == self.DEFAULTS.get('netmtu'):
++        self.delNetMTU()
++    if self.getWindowSize() == self.DEFAULTS.get('window_size'):
++        self.delWindowSize()
++    if self.getSeqnoUnchangedConst() == self.DEFAULTS.get('seqno_unchanged_const'):
++        self.delSeqnoUnchangedConst()
+diff --git a/luci/templates/configure.html b/luci/templates/configure.html
+index 7b9dd56..168af2c 100644
+--- a/luci/templates/configure.html
++++ b/luci/templates/configure.html
+@@ -177,6 +177,10 @@
+                 <div class="row"><label class="wide">Consensus Timeout (ms)</label><input name="consensus_timeout" class="text" type="text" py:attrs="totem and { 'value': totem.getConsensusTimeout() } or {}"/></div>
+                 <div class="row"><label class="wide">Token Retransmits Before Loss</label><input name="token_retransmits_before_loss_const" class="text" type="text" py:attrs="totem and { 'value': totem.getTokenRetransmits() } or {}"/></div>
+                 <div class="row"><label class="wide">Failure to Receive Constant</label><input name="fail_recv_const" class="text" type="text" py:attrs="totem and { 'value': totem.getFailRecvConst() } or {}"/></div>
++                <div class="row"><label class="wide">Max Messages</label><input name="max_messages" class="text" type="text" py:attrs="totem and { 'value': totem.getMaxMessages() } or {}"/></div>
++                <div class="row"><label class="wide">Network MTU</label><input name="netmtu" class="text" type="text" py:attrs="totem and { 'value': totem.getNetMTU() } or {}"/></div>
++                <div class="row"><label class="wide">Window Size</label><input name="window_size" class="text" type="text" py:attrs="totem and { 'value': totem.getWindowSize() } or {}"/></div>
++                <div class="row"><label class="wide">Sequence Number Unchanged Constant</label><input name="seqno_unchanged_const" class="text" type="text" py:attrs="totem and { 'value': totem.getSeqnoUnchangedConst() } or {}"/></div>
+                 <div class="row"><label class="wide">Encrypt Totem Network Traffic</label><input name="secauth" type="checkbox" class="checkbox" py:attrs="(not totem or totem.getSecAuth()) and {'checked':'checked'} or {}"/></div>
+             </div>
+             <div class="row"><input type="submit" class="button formsubmit blue" value="Apply"/>
+diff --git a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+index 718b8b3..aaff1c4 100644
+--- a/luci/validation/validate_cluster_prop.py
++++ b/luci/validation/validate_cluster_prop.py
+@@ -624,6 +624,42 @@ def validate_network_config(model, **kw):
+     else:
+         totem.delFailRecvConst()
+ 
++    max_messages = kw.get('max_messages')
++    if max_messages and not max_messages.isspace():
++        try:
++            totem.setMaxMessages(max_messages)
++        except:
++            errors.append(_('Invalid value for max messages constant: %s') % max_messages)
++    else:
++        totem.delMaxMessages()
++
++    netmtu = kw.get('netmtu')
++    if netmtu and not netmtu.isspace():
++        try:
++            totem.setNetMTU(netmtu)
++        except:
++            errors.append(_('Invalid value for network MTU: %s') % netmtu)
++    else:
++        totem.delNetMTU()
++
++    window_size = kw.get('window_size')
++    if window_size and not window_size.isspace():
++        try:
++            totem.setWindowSize(window_size)
++        except:
++            errors.append(_('Invalid value for window size: %s') % window_size)
++    else:
++        totem.delWindowSize()
++
++    seqno_unchanged_const = kw.get('seqno_unchanged_const')
++    if seqno_unchanged_const and not seqno_unchanged_const.isspace():
++        try:
++            totem.setSeqnoUnchangedConst(seqno_unchanged_const)
++        except:
++            errors.append(_('Invalid value for sequence number unchanged constant: %s') % seqno_unchanged_const)
++    else:
++        totem.delSeqnoUnchangedConst()
++
+     totem.setSecAuth(kw.get('secauth') is not None)
+     return (len(errors) < 1, {'errors': errors})
+ 
+-- 
+1.9.3
+

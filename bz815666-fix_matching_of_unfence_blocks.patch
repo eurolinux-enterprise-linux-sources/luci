@@ -1,0 +1,47 @@
+From 540cb862124bfdea7af251603377c98822f34871 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 3 Dec 2012 20:08:31 -0500
+Subject: [PATCH] luci: Fix matching of unfence blocks
+
+Correctly match <unfence> blocks to <device> blocks when
+editing or removing fence instances.
+
+Resolves: rhbz#815666
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/cluster.py         | 4 ++--
+ luci/lib/ClusterConf/ClusterNode.py | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+index 48d0837..25d8088 100644
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -339,8 +339,8 @@ class IndividualClusterController(BaseController):
+                             # Try to find existing unfence device that mirrored old fence device instance
+                             # (i.e. before the change, with original values of attributes) and remove it
+                             # or replace it with current attributes (i.e. after the change).
+-                            if len(set(old_device.getAttributes().items()).difference(child_device.getAttributes().items())) == 0:
+-                                if (retunfence is None):
++                            if old_device.matchesUnfence(child_device):
++                                if retunfence is None:
+                                     unfence.removeChild(child_device)
+                                     if len(unfence.getChildren()) == 0:
+                                         # Remove the whole 'unfence' section from within 'node' section
+diff --git a/luci/lib/ClusterConf/ClusterNode.py b/luci/lib/ClusterConf/ClusterNode.py
+index 1203704..5223160 100644
+--- a/luci/lib/ClusterConf/ClusterNode.py
++++ b/luci/lib/ClusterConf/ClusterNode.py
+@@ -108,7 +108,7 @@ class ClusterNode(TagObject):
+         for child_device in unfence.children:
+           # Try to find existing unfence device that mirrored fence device instance
+           # to be removed and remove it, too.
+-          if len(set(instance.getAttributes().items()).difference(child_device.getAttributes().items())) == 0:
++          if instance.matchesUnfence(child_device):
+             unfence.removeChild(child_device)
+             if len(unfence.children) == 0:
+               # Remove the whole 'unfence' section from within 'node' section
+-- 
+1.7.11.7
+

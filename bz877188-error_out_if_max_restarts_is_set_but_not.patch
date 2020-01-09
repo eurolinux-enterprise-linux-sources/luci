@@ -1,0 +1,45 @@
+From 0f0db639ab786c386fb8182fa82ce6bbe93dda8e Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Thu, 15 Nov 2012 10:56:52 -0500
+Subject: [PATCH] luci: Error out if max_restarts is set but not
+ restart_expire_time
+
+Error out if max_restarts is set but restart_expire_time is not set,
+and vice versa, on the service group config form.
+
+Resolves: rhbz#877188
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/validation/validate_resource.py | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 7969e0b..674f420 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -613,6 +613,7 @@ def validate_clusvc_form(model, **kw):
+ 			except:
+ 				errors.append(_('Maximum restarts must be a number greater than or equal to 0'))
+ 		else:
++			max_restarts = None
+ 			new_service.delMaxRestarts()
+ 
+ 		restart_expire_time = kw.get('restart_expire_time')
+@@ -622,7 +623,13 @@ def validate_clusvc_form(model, **kw):
+ 			except:
+ 				errors.append(_('Restart expire time must be a number greater than or equal to 0'))
+ 		else:
++			restart_expire_time = None
+ 			new_service.delRestartExpireTime()
++
++		if max_restarts and not restart_expire_time:
++			errors.append(_('Restart expire time must be set if maximum restarts is set'))
++		if not max_restarts and restart_expire_time:
++			errors.append(_('Maximum restarts must be set if restart expire time is set'))
+ 	else:
+ 		new_service.delMaxRestarts()
+ 		new_service.delRestartExpireTime()
+-- 
+1.7.11.7
+

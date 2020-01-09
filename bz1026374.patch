@@ -1,0 +1,109 @@
+--- a/input_files/initscript/initscript.in	2014-08-04 13:49:14.574039537 +0200
++++ b/input_files/initscript/initscript.in	2014-08-04 13:49:24.834078999 +0200
+@@ -36,7 +36,7 @@
+ prog="@SERVICENAME@"
+ config="@BASECONFIG@"
+ sysconfig="@SYSCONFIG@"
+-exec="@LAUNCHER@"
++exec="@PROXYLAUNCHER@"
+ sqlite_bin="/usr/bin/sqlite3"
+ 
+ 
+--- /dev/null	2014-07-28 13:41:47.309152706 +0200
++++ b/input_files/proxylauncher/proxylauncher.in	2014-08-04 13:48:58.927979361 +0200
+@@ -0,0 +1,7 @@
++#!/usr/bin/python -Es
++try:
++    execfile("@LAUNCHER@")
++except IOError:
++    with open("@LOGFILE@", 'a') as log:
++        log.write("@LAUNCHER@ execution failed\n")
++    raise
+--- a/setup.py	2014-08-04 13:51:03.871459918 +0200
++++ b/setup.py	2014-08-04 14:29:08.947248795 +0200
+@@ -279,7 +279,8 @@
+     # System files (initscript and configuration files)
+     ('initscript'      , "initscript file"),
+     ('sysconfig'       , "configuration file coming with initscript"),
+-    ('launcher'        , "launcher script for luci (wrapper above paster)"),
++    ('launcher'        , "final launcher for the app ('paster' wrapper)"),
++    ('proxylauncher'   , "initial launcher for the app ('launcher' wrapper)"),
+     ('logrotateconfig' , "logrotate configuration file"),
+     ('pamconfig'       , "PAM configuration file"),
+     ('sasl2config'     , "Cyrus SASL configuration file"),
+@@ -309,6 +310,7 @@
+     'configtmpl'        : path_join(path_norm(pkg.config_template)),
+ 
+     '__initscript'      : path_norm("input_files/initscript/initscript.in"),
++    '__proxylauncher'   : path_norm("input_files/proxylauncher/proxylauncher.in"),
+     '__sysconfig'       : path_norm("input_files/sysconfig/sysconfig.in"),
+     '__logrotateconfig' : path_norm("input_files/logrotateconfig/logrotateconfig.in"),
+     '__pamconfig'       : path_norm("input_files/pamconfig/pamconfig.in"),
+@@ -412,6 +414,7 @@
+             data_files=[
+                 dict(src='__certconfig',      dst='certconfig',      substitute=True),
+                 dict(src='__initscript',      dst='initscript',      substitute=True),
++                dict(src='__proxylauncher',   dst='proxylauncher',   substitute=True),
+                 dict(src='__sysconfig',       dst='sysconfig',       substitute=True),
+                 dict(src='__logrotateconfig', dst='logrotateconfig', substitute=True),
+                 dict(src='__pamconfig',       dst='pamconfig',       substitute=False),
+--- a/setup.cfg	2014-08-04 14:51:09.733328813 +0200
++++ b/setup.cfg	2014-08-04 14:51:33.229419184 +0200
+@@ -21,7 +21,8 @@
+ # System files (initscript and configuration files)
+ initscript      = /etc/rc.d/init.d/luci
+ sysconfig       = /etc/sysconfig/luci
+-launcher        = /usr/bin/python -Es /usr/bin/paster
++launcher        = /usr/bin/paster
++proxylauncher   = /usr/sbin/luci
+ logrotateconfig = /etc/logrotate.d/luci
+ pamconfig       = /etc/pam.d/luci
+ sasl2config     = /etc/sasl2/luci.conf
+--- a/input_files/initscript/initscript.in	2014-08-11 21:53:25.567110752 +0200
++++ b/input_files/initscript/initscript.in	2014-08-11 22:11:43.104730065 +0200
+@@ -441,6 +441,35 @@
+     start
+ }
+ 
++# kludge to make SELinux related changes compatible with condrestart
++# triggered upon update in %postun scriptlet (rhbz#1023202, rhbz#1026374)
++condrestart_scriptlet_kludge() {
++    luci_pid=$(head -n1 "${PID_FILE}")
++    if [ -n "${luci_pid}" ] \
++      && [ "$(ps --no-header -Zp "${luci_pid}" 2>/dev/null \
++              | awk '{print $1}' | cut -d: -f3)" = "initrc_t" ]; then
++        # XXX /etc/init.d/functions:killproc
++        kill -15 -- "${luci_pid}" 2>/dev/null
++        if [ $? -eq 0 ]; then
++            cnt=0
++            while kill -0 -- "${luci_pid}" 2>/dev/null; do
++                if [ "${cnt}" -ge 5 ]; then
++                    kill -9 -- "${luci_pid}" 2>/dev/null
++                    break
++                fi
++                sleep 1
++                let cnt++
++            done
++        fi
++        rm -f -- "${PID_FILE}"
++        start
++    else
++        # non-kludge way
++        status &>/dev/null || exit 0
++        restart
++    fi
++}
++
+ status() {
+     # If PID file exists and contains valid PID, paster returns 0 otherwise 1
+     out=$(do_exec serve --status --pid-file="$PID_FILE" "$config" 2>&1)
+@@ -476,8 +505,7 @@
+         ;;
+     condrestart|try-restart)
+         entry_check || exit $?
+-        status &>/dev/null || exit 0
+-        restart
++        condrestart_scriptlet_kludge
+         ;;
+     status)
+         entry_check || exit 4

@@ -1,0 +1,3142 @@
+<html xmlns:py="http://genshi.edgewall.org/"
+    xmlns:xi="http://www.w3.org/2001/XInclude"
+    py:strip="">
+
+<div py:def="fence_apc(cur_fencedev, ni)" id="fence_apc" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>APC Power Switch</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_apc" />
+</div>
+
+<div py:def="fence_apc_snmp(cur_fencedev, ni)" id="fence_apc_snmp" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>APC Power Switch (SNMP interface)</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>UDP/TCP Port (optional, defaults to 161)</td>
+      <td>
+        <input name="udpport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('udpport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Version</td>
+      <td>
+        <select name="snmp_version">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_version')) and {'selected':'selected'} or {}">Default</option>
+          <option value="1"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '1' and {'selected':'selected'} or {}">1</option>
+          <option value="2c"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '2c' and {'selected':'selected'} or {}">2c</option>
+          <option value="3"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '3' and {'selected':'selected'} or {}">3</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Community</td>
+      <td>
+        <input name="community" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('community')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Security Level</td>
+      <td>
+        <select name="snmp_sec_level">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_sec_level')) and {'selected':'selected'} or {}">Default</option>
+          <option value="noAuthNoPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'noAuthNoPriv' and {'selected':'selected'} or {}">noAuthNoPriv</option>
+          <option value="authNoPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authNoPriv' and {'selected':'selected'} or {}">authNoPriv</option>
+          <option value="authPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authPriv' and {'selected':'selected'} or {}">authPriv</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Authentication Protocol</td>
+      <td>
+        <select name="snmp_auth_prot">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_auth_prot')) and {'selected':'selected'} or {}">Default</option>
+          <option value="MD5"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'MD5' and {'selected':'selected'} or {}">MD5</option>
+          <option value="SHA"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'SHA' and {'selected':'selected'} or {}">SHA</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Privacy Protocol</td>
+      <td>
+        <select name="snmp_priv_prot">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_priv_prot')) and {'selected':'selected'} or {}">Default</option>
+          <option value="DES"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'DES' and {'selected':'selected'} or {}">DES</option>
+          <option value="AES"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'AES' and {'selected':'selected'} or {}">AES</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Privacy Protocol Password</td>
+      <td>
+        <input name="snmp_priv_passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        SNMP Privacy Protocol Script
+      </td>
+      <td>
+        <input type="text" class="text" name="snmp_priv_passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_apc_snmp" />
+</div>
+
+<div py:def="fence_mcdata(cur_fencedev, ni)" id="fence_mcdata" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>McData SAN Switch</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_mcdata" />
+</div>
+
+<div py:def="fence_wti(cur_fencedev, ni)" id="fence_wti" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>WTI Power Switch</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Force Command Prompt</td>
+      <td>
+        <input type="text" class="text" name="cmd_prompt"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_wti" />
+</div>
+
+<div py:def="fence_brocade(cur_fencedev, ni)" id="fence_brocade" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Brocade Fabric Switch</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_brocade" />
+</div>
+
+<div py:def="fence_sanbox2(cur_fencedev, ni)" id="fence_sanbox2" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>QLogic SANbox2</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Force Command Prompt</td>
+      <td>
+        <input type="text" class="text" name="cmd_prompt"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_sanbox2" />
+</div>
+
+<div py:def="fence_vixel(cur_fencedev, ni)" id="fence_vixel" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Vixel SAN Switch</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_vixel" />
+</div>
+
+<div py:def="fence_gnbd(cur_fencedev, ni)" id="fence_gnbd" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>GNBD</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Servers (whitespace separated list)</td>
+      <td>
+        <input name="servers" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('servers')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_gnbd" />
+</div>
+
+<div py:def="fence_egenera(cur_fencedev, ni)" id="fence_egenera" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Egenera SAN Controller</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>CServer</td>
+      <td>
+        <input name="cserver" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cserver')} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>ESH Path (optional)</td>
+      <td>
+        <input name="esh" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('esh')} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Username</td>
+      <td>
+        <input name="user" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('user')} or {}" />
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_egenera" />
+</div>
+
+<div py:def="fence_bladecenter(cur_fencedev, ni)" id="fence_bladecenter" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>IBM Blade Center</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_bladecenter" />
+</div>
+
+<div py:def="fence_bullpap(cur_fencedev, ni)" id="fence_bullpap" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Bull PAP</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_bullpap" />
+</div>
+
+<div py:def="fence_virt(cur_fencedev, ni)" id="fence_virt" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Fence virt</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Serial Device</td>
+      <td>
+        <input type="text" class="text" name="serial_device"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('serial_device')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Serial Parameters</td>
+      <td>
+        <input type="text" class="text" name="serial_params"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('serial_params')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>VM Channel IP Address</td>
+      <td>
+        <input type="text" class="text" name="channel_address"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('channel_address')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_virt" />
+</div>
+
+<div py:def="fence_xvm(cur_fencedev, ni)" id="fence_xvm" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Fence xvm</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_xvm" />
+</div>
+
+<div py:def="fence_scsi(cur_fencedev, ni)" id="fence_scsi" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>SCSI Reservation Fencing</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <!--
+    <tr>
+      <td>Devices to be used for action</td>
+      <td>
+        <input type="text" class="text" name="devices"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('devices')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Key for current action</td>
+      <td>
+        <input type="text" class="text" name="key"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('key')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>APTPL flag</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="aptpl"
+          py:attrs="cur_fencedev and cur_fencedev.getAttribute('aptpl') and {'checked': 'checked'}"/>
+        <label class="choice">Use APTPL flag</label>
+      </td>
+    </tr>
+    -->
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_scsi" />
+</div>
+
+<div py:def="fence_lpar(cur_fencedev, ni)" id="fence_lpar" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>LPAR</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Force Command Prompt</td>
+      <td>
+        <input type="text" class="text" name="cmd_prompt"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Force HMC version</td>
+      <td>
+        <input type="text" class="text" name="hmc_version"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('hmc_version')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_lpar" />
+</div>
+
+<div py:def="fence_virsh(cur_fencedev, ni)" id="fence_virsh" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>virsh Fence Agent</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_virsh" />
+</div>
+
+<div py:def="fence_rhevm(cur_fencedev, ni)" id="fence_rhevm" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>RHEV-M fencing</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Use SSL</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="ssl"
+          py:attrs="cur_fencedev and cur_fencedev.getAttribute('ssl') and {'checked': 'checked'}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_rhevm" />
+</div>
+
+<div py:def="fence_vmware_soap(cur_fencedev, ni)" id="fence_vmware_soap" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>VMware (SOAP Interface)</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Separator</td>
+      <td>
+        <input type="text" class="text" name="separator"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('separator')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_vmware_soap" />
+</div>
+
+<div py:def="fence_vmware(cur_fencedev, ni)" id="fence_vmware" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>VMware</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>VMware ESX Management Login</td>
+      <td>
+        <input name="vmlogin" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('vmlogin')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>VMware ESX Management Password</td>
+      <td>
+        <input name="vmpasswd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('vmpasswd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate VMware ESX Management password">VMware ESX Management Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="vmpasswd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('vmpasswd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_vmware" />
+</div>
+
+<div py:def="fence_ilo(cur_fencedev, ni)" id="fence_ilo" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>HP iLO / iLO2</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_ilo" />
+</div>
+
+<div py:def="fence_drac(cur_fencedev, ni)" id="fence_drac" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Dell DRAC</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Module Name</td>
+      <td>
+        <input name="modulename" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('modulename')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Force Command Prompt</td>
+      <td>
+        <input type="text" class="text" name="cmd_prompt"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Force DRAC Version</td>
+      <td>
+        <select name="drac_version" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('drac_version')) and {'selected':'selected'} or {}">None</option>
+          <option value="DRAC III/XT"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('drac_version') == 'DRAC III/XT' and {'selected':'selected'} or {}">DRAC III/XT</option>
+          <option value="DRAC/MC"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('drac_version') == 'DRAC/MC' and {'selected':'selected'} or {}">DRAC/MC</option>
+          <option value="DRAC 4/I"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('drac_version') == 'DRAC 4/I' and {'selected':'selected'} or {}">DRAC 4/I</option>
+          <option value="DRAC 4/P"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('drac_version') == 'DRAC 4/P' and {'selected':'selected'} or {}">DRAC 4/P</option>
+          <option value="DRAC 5"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('drac_version') == 'DRAC 5' and {'selected':'selected'} or {}">DRAC 5</option>
+        </select>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_drac" />
+</div>
+
+<div py:def="fence_rsa(cur_fencedev, ni)" id="fence_rsa" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>IBM RSA II</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SSH</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="secure"
+          py:attrs="cur_fencedev and cur_fencedev.getAttribute('secure') and {'checked': 'checked'}"/>
+        <label class="choice">Use SSH</label>
+      </td>
+    </tr>
+    <tr>
+      <td>Path to SSH Identity File</td>
+      <td>
+        <input type="text" class="text" name="identity_file"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('identity_file')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Force Command Prompt</td>
+      <td>
+        <input type="text" class="text" name="cmd_prompt"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_rsa" />
+</div>
+
+<div py:def="fence_rsb(cur_fencedev, ni)" id="fence_rsb" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Fujitsu Siemens RemoteView Service Board (RSB)</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>TCP Port</td>
+      <td>
+        <input type="text" class="text" name="telnet_port"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('telnet_port')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_rsb" />
+</div>
+
+<div py:def="fence_rps10(cur_fencedev, ni)" id="fence_rps10" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>RPS10 Serial Switch</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Device Name</td>
+      <td>
+        <input name="device" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('device')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Port (Outlet) Number</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('port')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_rps10" />
+</div>
+
+<div py:def="fence_ipmilan(cur_fencedev, ni)" id="fence_ipmilan" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>IPMI Lan</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Authentication Type</td>
+      <td>
+        <select name="auth" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('auth')) and {'selected':'selected'} or {}">None</option>
+          <option value="password"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'password' and {'selected':'selected'} or {}">Password</option>
+          <option value="md5"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'md5' and {'selected':'selected'} or {}">MD5</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>Use Lanplus</td>
+      <td>
+        <input name="lanplus" type="checkbox" class="checkbox"
+          py:attrs="cur_fencedev and cur_fencedev.getAttribute('lanplus') and {'checked':'checked'} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Ciphersuite to use</td>
+      <td>
+        <input name="cipher" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cipher')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_ipmilan" />
+</div>
+
+<div py:def="fence_alom(cur_fencedev, ni)" id="fence_alom" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Sun ALOM</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Path to SSH Identity File</td>
+      <td>
+        <input type="text" class="text" name="identity_file"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('identity_file')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_alom" />
+</div>
+
+<div py:def="fence_cisco_mds(cur_fencedev, ni)" id="fence_cisco_mds" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Cisco MDS</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>UDP/TCP Port (optional, defaults to 161)</td>
+      <td>
+        <input name="udpport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('udpport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Version</td>
+      <td>
+        <select name="snmp_version" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_version')) and {'selected':'selected'} or {}">Default</option>
+          <option value="1"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '1' and {'selected':'selected'} or {}">1</option>
+          <option value="2c"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '2c' and {'selected':'selected'} or {}">2c</option>
+          <option value="3"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '3' and {'selected':'selected'} or {}">3</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Community</td>
+      <td>
+        <input name="community" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('community')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Security Level</td>
+      <td>
+        <select name="snmp_sec_level" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_sec_level')) and {'selected':'selected'} or {}">Default</option>
+          <option value="noAuthNoPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'noAuthNoPriv' and {'selected':'selected'} or {}">noAuthNoPriv</option>
+          <option value="authNoPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authNoPriv' and {'selected':'selected'} or {}">authNoPriv</option>
+          <option value="authPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authPriv' and {'selected':'selected'} or {}">authPriv</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Authentication Protocol</td>
+      <td>
+        <select name="snmp_auth_prot" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_auth_prot')) and {'selected':'selected'} or {}">Default</option>
+          <option value="MD5"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'MD5' and {'selected':'selected'} or {}">MD5</option>
+          <option value="SHA"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'SHA' and {'selected':'selected'} or {}">SHA</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Privacy Protocol</td>
+      <td>
+        <select name="snmp_priv_prot" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_priv_prot')) and {'selected':'selected'} or {}">Default</option>
+          <option value="DES"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'DES' and {'selected':'selected'} or {}">DES</option>
+          <option value="AES"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'AES' and {'selected':'selected'} or {}">AES</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Privacy Protocol Password</td>
+      <td>
+        <input name="snmp_priv_passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        SNMP Privacy Protocol Script
+      </td>
+      <td>
+        <input type="text" class="text" name="snmp_priv_passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_cisco_mds" />
+</div>
+
+<div py:def="fence_cisco_ucs(cur_fencedev, ni)" id="fence_cisco_ucs" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Cisco UCS</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Use SSL</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="ssl"
+          py:attrs="cur_fencedev and cur_fencedev.getAttribute('ssl') and {'checked': 'checked'}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Sub-Organization</td>
+      <td>
+        <input name="suborg" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('suborg')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_cisco_ucs" />
+</div>
+
+<div py:def="fence_cpint(cur_fencedev, ni)" id="fence_cpint" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>IBM S/390 cpint</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>User ID of the Virtual Machine to Fence</td>
+      <td>
+        <input name="userid" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('userid')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_cpint" />
+</div>
+
+<div py:def="fence_drac5(cur_fencedev, ni)" id="fence_drac5" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Dell DRAC 5</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SSH</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="secure"
+          py:attrs="cur_fencedev and cur_fencedev.getAttribute('secure') and {'checked': 'checked'}"/>
+        <label class="choice">Use SSH</label>
+      </td>
+    </tr>
+    <tr>
+      <td>Path to SSH Identity File</td>
+      <td>
+        <input type="text" class="text" name="identity_file"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('identity_file')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Module Name</td>
+      <td>
+        <input name="module_name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('module_name')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Force Command Prompt</td>
+      <td>
+        <input type="text" class="text" name="cmd_prompt"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_drac5" />
+</div>
+
+<div py:def="fence_eps(cur_fencedev, ni)" id="fence_eps" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>ePowerSwitch</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Name of Hidden Page</td>
+      <td>
+        <input name="hidden_page" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('hidden_page')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_eps" />
+</div>
+
+<div py:def="fence_ifmib(cur_fencedev, ni)" id="fence_ifmib" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>IF MIB</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>UDP/TCP Port (optional, defaults to 161)</td>
+      <td>
+        <input name="udpport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('udpport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Version</td>
+      <td>
+        <select name="snmp_version" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_version')) and {'selected':'selected'} or {}">Default</option>
+          <option value="1"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '1' and {'selected':'selected'} or {}">1</option>
+          <option value="2c"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '2c' and {'selected':'selected'} or {}">2c</option>
+          <option value="3"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '3' and {'selected':'selected'} or {}">3</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Community</td>
+      <td>
+        <input name="community" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('community')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Security Level</td>
+      <td>
+        <select name="snmp_sec_level" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_sec_level')) and {'selected':'selected'} or {}">Default</option>
+          <option value="noAuthNoPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'noAuthNoPriv' and {'selected':'selected'} or {}">noAuthNoPriv</option>
+          <option value="authNoPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authNoPriv' and {'selected':'selected'} or {}">authNoPriv</option>
+          <option value="authPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authPriv' and {'selected':'selected'} or {}">authPriv</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Authentication Protocol</td>
+      <td>
+        <select name="snmp_auth_prot" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_auth_prot')) and {'selected':'selected'} or {}">Default</option>
+          <option value="MD5"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'MD5' and {'selected':'selected'} or {}">MD5</option>
+          <option value="SHA"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'SHA' and {'selected':'selected'} or {}">SHA</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Privacy Protocol</td>
+      <td>
+        <select name="snmp_priv_prot" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_priv_prot')) and {'selected':'selected'} or {}">Default</option>
+          <option value="DES"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'DES' and {'selected':'selected'} or {}">DES</option>
+          <option value="AES"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'AES' and {'selected':'selected'} or {}">AES</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Privacy Protocol Password</td>
+      <td>
+        <input name="snmp_priv_passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        SNMP Privacy Protocol Script
+      </td>
+      <td>
+        <input type="text" class="text" name="snmp_priv_passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_ifmib" />
+</div>
+
+<div py:def="fence_ilo_mp(cur_fencedev, ni)" id="fence_ilo_mp" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>HP iLO MP</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Port (optional)</td>
+      <td>
+        <input name="ipport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SSH</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="secure"
+          py:attrs="cur_fencedev and cur_fencedev.getAttribute('secure') and {'checked': 'checked'}"/>
+        <label class="choice">Use SSH</label>
+      </td>
+    </tr>
+    <tr>
+      <td>Path to SSH Identity File</td>
+      <td>
+        <input type="text" class="text" name="identity_file"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('identity_file')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Force Command Prompt</td>
+      <td>
+        <input type="text" class="text" name="cmd_prompt"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_ilo_mp" />
+</div>
+
+<div py:def="fence_intelmodular(cur_fencedev, ni)" id="fence_intelmodular" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Intel Modular</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>UDP/TCP Port (optional, defaults to 161)</td>
+      <td>
+        <input name="udpport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('udpport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Version</td>
+      <td>
+        <select name="snmp_version" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_version')) and {'selected':'selected'} or {}">Default</option>
+          <option value="1"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '1' and {'selected':'selected'} or {}">1</option>
+          <option value="2c"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '2c' and {'selected':'selected'} or {}">2c</option>
+          <option value="3"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '3' and {'selected':'selected'} or {}">3</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Community</td>
+      <td>
+        <input name="community" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('community')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Security Level</td>
+      <td>
+        <select name="snmp_sec_level" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_sec_level')) and {'selected':'selected'} or {}">Default</option>
+          <option value="noAuthNoPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'noAuthNoPriv' and {'selected':'selected'} or {}">noAuthNoPriv</option>
+          <option value="authNoPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authNoPriv' and {'selected':'selected'} or {}">authNoPriv</option>
+          <option value="authPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authPriv' and {'selected':'selected'} or {}">authPriv</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Authentication Protocol</td>
+      <td>
+        <select name="snmp_auth_prot" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_auth_prot')) and {'selected':'selected'} or {}">Default</option>
+          <option value="MD5"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'MD5' and {'selected':'selected'} or {}">MD5</option>
+          <option value="SHA"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'SHA' and {'selected':'selected'} or {}">SHA</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Privacy Protocol</td>
+      <td>
+        <select name="snmp_priv_prot" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_priv_prot')) and {'selected':'selected'} or {}">Default</option>
+          <option value="DES"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'DES' and {'selected':'selected'} or {}">DES</option>
+          <option value="AES"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'AES' and {'selected':'selected'} or {}">AES</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Privacy Protocol Password</td>
+      <td>
+        <input name="snmp_priv_passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        SNMP Privacy Protocol Script
+      </td>
+      <td>
+        <input type="text" class="text" name="snmp_priv_passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_intelmodular" />
+</div>
+
+<div py:def="fence_unknown(cur_fencedev, ni)" id="fence_unknown" class="fencedevform row">
+  <span class="error">Unknown fence device type</span>
+</div>
+
+<div py:def="fence_ldom(cur_fencedev, ni)" id="fence_ldom" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>Sun LDOM</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Force Command Prompt</td>
+      <td>
+        <input type="text" class="text" name="cmd_prompt"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_ldom" />
+</div>
+
+<div py:def="fence_rackswitch(cur_fencedev, ni)" id="fence_rackswitch" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>RackSaver RackSwitch</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_rackswitch" />
+</div>
+
+<div py:def="fence_xcat(cur_fencedev, ni)" id="fence_xcat" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>xCAT</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Node Name</td>
+      <td>
+        <input name="nodename" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('nodename')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>rpower Command</td>
+      <td>
+        <input name="rpower" type="text" class="text" value="rpower"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('rpower')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_xcat" />
+</div>
+
+<div py:def="fence_zvm(cur_fencedev, ni)" id="fence_zvm" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>IBM S/390 z/VM</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IPL Device</td>
+      <td>
+        <input type="text" class="text" name="ipl"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipl')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>User ID of the Virtual Machine to Fence</td>
+      <td>
+        <input name="userid" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('userid')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="fence_type" value="fence_zvm" />
+</div>
+
+<div py:def="fence_ibmblade(cur_fencedev, ni)" id="fence_ibmblade" class="fencedevform row"
+   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+  <table class="formtable">
+    <tr>
+      <td>Fence Type</td>
+      <td>IBM BladeCenter SNMP</td>
+    </tr>
+    <tr>
+      <td>Name</td>
+      <td>
+        <input name="name" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>IP Address or Hostname</td>
+      <td>
+        <input name="ipaddr" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>UDP/TCP Port (optional, defaults to 161)</td>
+      <td>
+        <input name="udpport" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('udpport')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Login</td>
+      <td>
+        <input name="login" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Password</td>
+      <td>
+        <input name="passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Version</td>
+      <td>
+        <select name="snmp_version" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_version')) and {'selected':'selected'} or {}">Default</option>
+          <option value="1"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '1' and {'selected':'selected'} or {}">1</option>
+          <option value="2c"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '2c' and {'selected':'selected'} or {}">2c</option>
+          <option value="3"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '3' and {'selected':'selected'} or {}">3</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Community</td>
+      <td>
+        <input name="community" type="text" class="text"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('community')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Security Level</td>
+      <td>
+        <select name="snmp_sec_level" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_sec_level')) and {'selected':'selected'} or {}">Default</option>
+          <option value="noAuthNoPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'noAuthNoPriv' and {'selected':'selected'} or {}">noAuthNoPriv</option>
+          <option value="authNoPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authNoPriv' and {'selected':'selected'} or {}">authNoPriv</option>
+          <option value="authPriv"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authPriv' and {'selected':'selected'} or {}">authPriv</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Authentication Protocol</td>
+      <td>
+        <select name="snmp_auth_prot" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_auth_prot')) and {'selected':'selected'} or {}">Default</option>
+          <option value="MD5"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'MD5' and {'selected':'selected'} or {}">MD5</option>
+          <option value="SHA"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'SHA' and {'selected':'selected'} or {}">SHA</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Privacy Protocol</td>
+      <td>
+        <select name="snmp_priv_prot" class="fencedevformselect">
+          <option value=""
+            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_priv_prot')) and {'selected':'selected'} or {}">Default</option>
+          <option value="DES"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'DES' and {'selected':'selected'} or {}">DES</option>
+          <option value="AES"
+            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'AES' and {'selected':'selected'} or {}">AES</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>SNMP Privacy Protocol Password</td>
+      <td>
+        <input name="snmp_priv_passwd" type="password" class="text" autocomplete="off"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        SNMP Privacy Protocol Script
+      </td>
+      <td>
+        <input type="text" class="text" name="snmp_priv_passwd_script"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd_script')} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Power Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="power_wait"
+          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+      </td>
+    </tr>
+  </table>
+
+  <py:if test="cur_fencedev">
+    <input type="hidden"
+      name="orig_name" value="${cur_fencedev.getName()}"/>
+    <input type="hidden"
+      name="existing_device" value="1" />
+  </py:if>
+
+  <input type="hidden" name="sharable" value="1" />
+  <input type="hidden" name="num_instances" value="${ni}"/>
+  <input type="hidden" name="fence_type" value="fence_ibmblade" />
+</div>
+
+<div py:def="fence_device_container" id="fence_device_container" class="hidden">
+${fence_apc(None,0)}
+${fence_apc_snmp(None,0)}
+${fence_mcdata(None,0)}
+${fence_wti(None,0)}
+${fence_brocade(None,0)}
+${fence_sanbox2(None,0)}
+${fence_vixel(None,0)}
+${fence_gnbd(None,0)}
+${fence_egenera(None,0)}
+${fence_bladecenter(None,0)}
+${fence_bullpap(None,0)}
+${fence_virt(None,0)}
+${fence_virsh(None,0)}
+${fence_rhevm(None,0)}
+${fence_xvm(None,0)}
+${fence_scsi(None,0)}
+${fence_lpar(None,0)}
+${fence_vmware(None,0)}
+${fence_vmware_soap(None,0)}
+${fence_ilo(None,0)}
+${fence_drac(None,0)}
+${fence_rsa(None,0)}
+${fence_rsb(None,0)}
+${fence_rps10(None,0)}
+${fence_ipmilan(None,0)}
+${fence_alom(None,0)}
+${fence_cisco_mds(None,0)}
+${fence_cisco_ucs(None,0)}
+${fence_cpint(None,0)}
+${fence_drac5(None,0)}
+${fence_eps(None,0)}
+${fence_ifmib(None,0)}
+${fence_ilo_mp(None,0)}
+${fence_intelmodular(None,0)}
+${fence_ldom(None,0)}
+${fence_rackswitch(None,0)}
+${fence_xcat(None,0)}
+${fence_zvm(None,0)}
+${fence_ibmblade(None,0)}
+${fence_unknown(None,0)}
+</div>
+
+<script type="text/javascript">
+  var fencedevicetype = new Array();
+</script>
+
+<div py:def="fence_device_select(model, cont_id)" class="hidden" py:strip="">
+  <div class="row">
+  <div name="fence_select_area">
+    <py:if test="model and len(model.getFenceDevices()) != 0">
+    <select name="select_div"
+      onchange="add_fenceinst('${cont_id}',fencedevicetype[this.options[this.selectedIndex].value],this.options[this.selectedIndex].value);">
+      <option value="-1" disabled="disabled" selected="selected">-- Select a Fence Device --</option>
+        <py:for each="fencedev in model.getFenceDevices()">
+        <script type="text/javascript">
+          fencedevicetype['${'fd_%s' % fencedev.getName()}'] = "${fencedev.getAgentType()}";
+        </script>
+          <py:if test="fencedev.isShared() or len(cluster_data.getNodesUsingFence(fencedev.getName())) == 0">
+            <option value="${'fd_%s' % fencedev.getName()}">${fencedev.getName()} (${fencedev.getPrettyName()})</option>
+          </py:if>
+        </py:for>
+    </select>
+    </py:if>
+    <py:if test="not model">
+    <select name="select_div"
+      onchange="swap_fence_form(this.options[this.selectedIndex].value, '${cont_id}')"
+      py:with="cluster_version = tmpl_context.cluster.get_version();
+           cluster_os = tmpl_context.cluster.get_OS()">
+      <option selected="selected" disabled="disabled">-- Select a Fence Device --</option>
+      <option name="fence_apc" value="fence_apc">APC Power Switch</option>
+      <option name="fence_apc_snmp" value="fence_apc_snmp">APC Power Switch (SNMP interface)</option>
+      <option name="fence_brocade" value="fence_brocade">Brocade Fabric Switch</option>
+      <option py:if="cluster_version == 2" name="fence_bullpap" value="fence_bullpap">Bull PAP</option>
+      <option name="fence_cisco_mds" value="fence_cisco_mds">Cisco MDS</option>
+      <option name="fence_cisco_ucs" value="fence_cisco_ucs">Cisco UCS</option>
+
+      <option py:if="cluster_version == 2" name="fence_drac" value="fence_drac">Dell DRAC</option>
+      <option py:if="cluster_version == 3" name="fence_drac" value="fence_drac">Dell DRAC (Deprecated)</option>
+
+      <option name="fence_drac5" value="fence_drac5">Dell DRAC 5</option> <!-- needs work -->
+      <option name="fence_egenera" value="fence_egenera">Egenera SAN Controller</option>
+
+      <option name="fence_eps" value="fence_eps">ePowerSwitch</option>
+      <py:choose test="cluster_version">
+        <py:when test="3">
+          <option name="fence_virt" value="fence_virt">Fence virt (Tech Preview)</option>
+          <option name="fence_xvm" value="fence_xvm">Fence virt (Multicast Mode)</option>
+        </py:when>
+      </py:choose>
+      <option py:if="cluster_version == 2" name="fence_xvm" value="fence_xvm">Fence xvm</option>
+
+      <option name="fence_rsb" value="fence_rsb">Fujitsu Siemens RemoteView Service Board</option>
+      <option name="fence_ilo" value="fence_ilo">HP iLO Device</option>
+      <option name="fence_ilo_mp" value="fence_ilo_mp">HP iLO MP</option> <!-- needs work -->
+      <option name="fence_bladecenter" value="fence_bladecenter">IBM BladeCenter</option>
+      <option py:if="cluster_version == 3" name="fence_ibmblade" value="fence_ibmblade">IBM BladeCenter SNMP</option>
+
+      <option py:if="cluster_version == 2" name="fence_rsa" value="fence_rsa">IBM RSA II Device</option>  <!-- needs work -->
+      <option py:if="cluster_version == 3" name="fence_rsa" value="fence_rsa">IBM RSA II Device (Deprecated)</option> <!-- needs work -->
+
+      <py:if test="cluster_version == 3 and cluster_os != 'RHEL'">
+        <option name="fence_cpint" value="fence_cpint">IBM S/390 cpint</option>
+        <option name="fence_zvm" value="fence_zvm">IBM S/390 z/VM</option>
+        <option name="fence_ifmib" value="fence_ifmib">IF MIB</option>
+        <option name="fence_intelmodular" value="fence_intelmodular">Intel Modular</option>
+        <option name="fence_virsh" value="fence_virsh">virsh fence agent</option>
+      </py:if>
+
+      <option name="fence_rhevm" value="fence_rhevm">RHEV-M fencing</option>
+      <option name="fence_ipmilan" value="fence_ipmilan">IPMI Lan</option>
+      <option py:if="cluster_version == 2" name="fence_lpar" value="fence_lpar">LPAR Fencing</option>
+      <option py:if="cluster_version == 2" name="fence_mcdata" value="fence_mcdata">McData SAN Switch</option>
+
+      <option py:if="cluster_version == 2" name="fence_sanbox2" value="fence_sanbox2">QLogic SANbox2</option>
+      <option py:if="cluster_version == 3" name="fence_sanbox2" value="fence_sanbox2">QLogic SANbox2 (Deprecated)</option>
+
+      <option py:if="cluster_version == 3 and cluster_os != 'RHEL'" name="fence_rackswitch" value="fence_rackswitch">RackSaver RackSwitch</option>
+      <option py:if="cluster_version == 2" name="fence_rps10" value="fence_rps10">RPS10 Serial Switch</option>
+      <option name="fence_scsi" value="fence_scsi">SCSI Reservation Fencing</option>
+
+      <py:if test="cluster_version == 3 and cluster_os != 'RHEL'">
+        <option name="fence_alom" value="fence_alom">Sun ALOM</option>
+        <option name="fence_ldom" value="fence_ldom">Sun LDOM</option>
+      </py:if>
+
+      <option py:if="cluster_version == 2" name="fence_vixel" value="fence_vixel">Vixel SAN Switch</option>
+      <option name="fence_vmware_soap" value="fence_vmware_soap">VMware Fencing (SOAP Interface)</option>
+      <option name="fence_wti" value="fence_wti">WTI Power Switch</option>
+
+      <py:if test="cluster_version == 3 and cluster_os != 'RHEL'">
+        <option name="fence_xcat" value="fence_xcat">xCAT</option>
+        <option name="fence_zvm" value="fence_zvm">s390 z/VM</option>
+      </py:if>
+    </select>
+    </py:if>
+  </div>
+  </div>
+</div>
+</html>

@@ -1,0 +1,190 @@
+From c43a44d2d51e4c356ae8a52aaea31aef54e6a4dd Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 8 Oct 2012 23:33:55 -0400
+Subject: [PATCH] luci: Add the ability to remove users
+
+Add an interface to remove user DB objects.
+
+Resolves: rhbz#809892
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/root.py                 | 11 ++++++++++
+ luci/lib/db_helpers.py                   | 10 ++++++++-
+ luci/model/auth.py                       |  5 +++++
+ luci/templates/admin.html                | 37 ++++++++++++++++++++++++++++++++
+ luci/validation/validate_cluster_prop.py | 33 ++++++++++++++++++++++++++++
+ 5 files changed, 95 insertions(+), 1 deletion(-)
+
+diff --git a/luci/controllers/root.py b/luci/controllers/root.py
+index 21b5f6f..a2c6cd3 100644
+--- a/luci/controllers/root.py
++++ b/luci/controllers/root.py
+@@ -115,6 +115,17 @@ class RootController(BaseController):
+                     flash(','.join(ret[1]['errors']), status="error")
+             else:
+                 flash(_("Settings Applied"))
++        elif command == 'deluser':
++            ret = vcp.validate_user_delete(name, **args)
++            if ret[0] is False:
++                if ret[1].has_key('errors'):
++                    flash(','.join(ret[1]['errors']), status="error")
++            else:
++                msgs = ret[1].get('flash')
++                if msgs and len(msgs) > 0:
++                    flash(', '.join(msgs))
++        else:
++            flash(_('Unknown command: %s') % command, status="error")
+         return dict(page='admin')
+ 
+     @expose('luci.templates.homebase')
+diff --git a/luci/lib/db_helpers.py b/luci/lib/db_helpers.py
+index 6f79aa8..0b7daa3 100644
+--- a/luci/lib/db_helpers.py
++++ b/luci/lib/db_helpers.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2011 Red Hat, Inc.
++# Copyright (C) 2009-2012 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -560,6 +560,14 @@ def update_db_objects():
+                 DBSession.add(grole)
+     transaction.commit()
+ 
++def get_user_list():
++    ret = []
++    try:
++        ret = DBSession.query(User).all()
++    except:
++        log.exception("Getting user list")
++    return ret
++
+ def get_user_names():
+     ret = []
+     try:
+diff --git a/luci/model/auth.py b/luci/model/auth.py
+index cff8f7b..8fe3335 100644
+--- a/luci/model/auth.py
++++ b/luci/model/auth.py
+@@ -151,6 +151,11 @@ class User(DeclarativeBase):
+         """Return the user object whose user name is ``username``."""
+         return DBSession.query(cls).filter(cls.user_name==username).first()
+ 
++    @classmethod
++    def by_user_id(cls, userid):
++        """Return the user object whose user id is ``userid``."""
++        return DBSession.query(cls).filter(cls.user_id==userid).first()
++
+     def _set_password(self, password):
+         """Hash ``password`` on the fly and store its hashed version."""
+         hashed_password = password
+diff --git a/luci/templates/admin.html b/luci/templates/admin.html
+index 5c1f44e..5fd1b31 100644
+--- a/luci/templates/admin.html
++++ b/luci/templates/admin.html
+@@ -49,14 +49,51 @@
+ 
+        <div id="tabs-1">
+          <h2>Users and Permissions</h2>
++         <h4>Existing Users</h4>
++         <form name="manage_edit" method="post" action="${tg.url('admin_cmd' + '?command=deluser')}">
++           <table class="maintable" id="overview"
++             py:with="user_list = db_helpers.get_user_list()">
++             <thead>
++               <tr>
++                 <th>
++                   <input type="checkbox" name="check_all_users"
++                     onchange="if ($(this).is(':checked')) {$('input:checkbox.userdel').attr('checked', 'checked');} else {$('input:checkbox.userdel').removeAttr('checked');}"/>
++                 </th>
++                 <th>User name</th>
++                 <th>User ID</th>
++                 <th>Created</th>
++               </tr>
++             </thead>
++             <tbody>
++               <tr py:for="(i, cur_user) in enumerate(user_list)"
++                 py:attrs="not i%2 and {'class': 'even'} or {}">
++                 <td>
++                   <input class="checkbox userdel" type="checkbox"
++                     name="uid${cur_user.user_id}"
++                     py:attrs="cur_user.user_id == 1 and {'disabled':'disabled'} or {}"/>
++                 </td>
++                 <td>${cur_user.user_name}</td>
++                 <td>${cur_user.user_id}</td>
++                 <td>${cur_user.created}</td>
++               </tr>
++             </tbody>
++           </table>
++           <div>
++             <br/>
++             <input type="submit" class="small button silver" value="Delete Selected"/>
++           </div>
++         </form>
++
+          <div id="cluster_perms">
+            <form name="user_select" method="get" action="${tg.url('/admin')}">
++             <h4>Add New User</h4>
+              <p>
+                <p>
+                  <input type="button" class="small button silver"
+                    value="Add a User"
+                    onclick="$('#add_user_dialog').dialog('open')"/>
+                </p>
++               <h4>User Permissions</h4>
+                <select name="name" onchange="this.form.submit()"
+                  py:with="usernames = db_helpers.get_user_names() or []">
+                  <option value=""
+diff --git a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+index a754d40..62d0a9d 100644
+--- a/luci/validation/validate_cluster_prop.py
++++ b/luci/validation/validate_cluster_prop.py
+@@ -22,6 +22,7 @@ from luci.lib.ricci_communicator import RicciCommunicator
+ from luci.lib.ricci_helpers import send_batch_parallel
+ 
+ from luci.model import DBSession
++import transaction
+ from luci.model.auth import User, Group
+ 
+ from validate_fence import validateFenceDevice, validateNewFenceDevice, validate_fenceinstance
+@@ -1307,6 +1308,38 @@ def validate_add_user(name, **kw):
+         return (True, {})
+     return (False, {'errors': [err]})
+ 
++def validate_user_delete(name, **kw):
++    errors = []
++    kill_list = []
++
++    for k in kw:
++        if k.startswith('uid'):
++            try:
++                cur_user = User.by_user_id(int(k[3:]))
++            except:
++                log.exception("User lookup %s" % k)
++                continue
++            
++            if cur_user.user_id == 1:
++                errors.append(_('The root user may not be removed'))
++            else:
++                kill_list.append(cur_user)
++
++    del_count = len(kill_list)
++    try:
++        for k in kill_list:
++            DBSession.delete(k)
++        transaction.commit()
++    except:
++        errors.append(_('Unable to remove users'))
++        log.exception('Removing users')
++        DBSession.rollback()
++        
++    if errors:
++        return (False, {'errors': errors})
++
++    return (True, {'flash': [_('%d users removed') % del_count]})
++
+ def validate_user_perms(name, **kw):
+     errors = []
+ 
+-- 
+1.7.11.4
+

@@ -1,0 +1,93 @@
+From 866c980e4224682344794fb5a999c8cec69cdfda Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 12 Aug 2013 23:51:44 -0400
+Subject: [PATCH] luci: Add support for TNS_ADMIN in oracle agents
+
+Add support for setting and viewing the newly-added
+"tns_admin" attribute for oracledb, orainstance, and oralistener.
+
+Resolves: rhbz#983693
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html    | 21 +++++++++++++++++++++
+ luci/validation/validate_resource.py |  3 +++
+ 2 files changed, 24 insertions(+)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 6549bbf..3cfd829 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1443,6 +1443,13 @@
+           py:attrs="res and {'value':res.getAttribute('vhost'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
++    <tr>
++      <td>TNS_ADMIN (optional)</td>
++      <td>
++        <input type="text" class="text" name="tns_admin"
++          py:attrs="res and {'value':res.getAttribute('tns_admin'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
+     ${res_footer(res)}
+   </table>
+ </div>
+@@ -1494,6 +1501,13 @@
+           py:attrs="res and {'value':res.getAttribute('lockfile'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
++    <tr>
++      <td>TNS_ADMIN (optional)</td>
++      <td>
++        <input type="text" class="text" name="tns_admin"
++          py:attrs="res and {'value':res.getAttribute('tns_admin'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
+     ${res_footer(res)}
+   </table>
+ </div>
+@@ -1531,6 +1545,13 @@
+           py:attrs="res and {'value':res.getAttribute('home'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
++    <tr>
++      <td>TNS_ADMIN (optional)</td>
++      <td>
++        <input type="text" class="text" name="tns_admin"
++          py:attrs="res and {'value':res.getAttribute('tns_admin'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
+     ${res_footer(res)}
+   </table>
+ </div>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index c6cd8c8..2c67d62 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -445,6 +445,7 @@ def addOracleDB(res, rname, model, **kw):
+ 	params = (
+ 		('user', _('Oracle User Name'), True, None),
+ 		('home', _('Oracle Home Directory'), True, None),
++		('tns_admin', _('Value for TNS_ADMIN'), False, None),
+ 		('listener_name', '', False, None),
+ 		('oracletype', _('Oracle Installation Type'), True, '10g'),
+ 		('vhost', _('Virtual Hostname'), False, None)
+@@ -462,6 +463,7 @@ def addOracleInstance(res, rname, model, **kw):
+ 	params = (
+ 		('user', _('Oracle User Name'), True, None),
+ 		('home', _('Oracle Home Directory'), True, None),
++		('tns_admin', _('Value for TNS_ADMIN'), False, None),
+ 		('listeners', _('Oracle listeners'), False, None),
+ 		('lockfile', _('Path to lock file'), False, None),
+ 	)
+@@ -472,6 +474,7 @@ def addOracleListener(res, rname, model, **kw):
+ 	params = (
+ 		('user', _('Oracle User Name'), True, None),
+ 		('home', _('Oracle Home Directory'), True, None),
++		('tns_admin', _('Value for TNS_ADMIN'), False, None),
+ 	)
+ 	errors = config_resource(params, res, rname, **kw)
+ 	return errors
+-- 
+1.8.3.1
+

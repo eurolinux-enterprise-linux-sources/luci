@@ -1,0 +1,268 @@
+--- a/luci/templates/fence.html	2014-08-05 17:48:23.933543374 +0200
++++ b/luci/templates/fence.html	2014-08-05 17:48:44.741623406 +0200
+@@ -130,20 +130,14 @@
+ 
+     <!--! DETAILS - hostname/IP/port section. -->
+     <div class="details_section">
+-        <form name="create_fence_device" method="post" action="${tg.url(fences_cmd + '?command=Update')}">
+-        <?python
+-            try:
+-                agent_type = details.getAgentType()
+-                agent_fn = eval(agent_type)
+-            except NameError:
+-                agent_fn = eval('fence_unknown')
+-        ?>
++      <form name="create_fence_device" method="post" action="${tg.url(fences_cmd + '?command=Update')}"
++       py:with="data = locals()['__data__'];
++                agent_fn = data.get(details.getAgentType(), None) or data['fence_unknown']">
+         ${agent_fn(details, 0)}
+         <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+         <input type="submit" class="button formsubmit blue" value="Apply"/>
+-        </form>
+-      <ul id="fence_details_list">
+-      </ul>
++      </form>
++      <ul id="fence_details_list"/>
+     </div>
+ 
+     <!--! DETAILS - nodes section. -->
+--- a/luci/templates/node.html	2014-08-05 17:55:57.922289509 +0200
++++ b/luci/templates/node.html	2014-08-05 18:11:56.332975756 +0200
+@@ -29,25 +29,20 @@
+ 
+ 
+   <py:if test="name is not None">
+-   <xi:include href="fence_devices.html" />
+-   <xi:include href="fence_instances.html" />
+-   ${fence_instance_container(nodename)}
+-   ${fence_device_container()}
+-
+-   <div id="existing_fencedev" class="hidden" py:if="cluster_data">
+-    <py:for each="fencedev in cluster_data.getFenceDevices()">
+-        <py:if test="fencedev.isShared() or len(cluster_data.getNodesUsingFence(fencedev.getName())) == 0">
+-            <?python
+-                agent_type = fencedev.getAgentType()
+-                try:
+-                    agent_fn = eval(agent_type)
+-                except NameError:
+-                    agent_fn = eval("fence_unknown")
+-            ?>
+-            ${agent_fn(fencedev,0)}
++    <xi:include href="fence_devices.html" />
++    <xi:include href="fence_instances.html" />
++    ${fence_instance_container(nodename)}
++    ${fence_device_container()}
++
++    <div id="existing_fencedev" class="hidden" py:if="cluster_data"
++     py:with="data = locals()['__data__']">
++      <py:for each="fencedev in cluster_data.getFenceDevices()">
++        <py:if test="fencedev.isShared() or len(cluster_data.getNodesUsingFence(fencedev.getName())) == 0"
++         py:with="agent_fn = data.get(fencedev.getAgentType(), None) or data['fence_unknown']">
++          ${agent_fn(fencedev,0)}
+         </py:if>
+-    </py:for>
+-   </div>
++      </py:for>
++    </div>
+   </py:if>
+ 
+   <form action="${tg.url('%snodes_cmd' % tmpl_context.cluster_url)}" class="confirm_form" method="post">
+@@ -363,7 +358,7 @@
+           </thead>
+           <tbody>
+         <py:for each="order,(method,instances) in enumerate(fence_info)"
+-        py:with="cur_dev_id=method">
++         py:with="cur_dev_id=method">
+         <tr py:with="method_name = method.getName()">
+           <td colspan="2">${method_name.replace(' ','&nbsp;')}</td>
+           <td align="right">
+@@ -380,7 +375,7 @@
+         <tr>
+           <td></td>
+           <td colspan="4">
+-        <table class="fence_instances">
++        <table class="fence_instances" py:with="data = locals()['__data__']">
+           <tr>
+             <th class="fence_instances">Name</th>
+             <th>Type/Values</th>
+@@ -388,11 +383,10 @@
+           </tr>
+           <py:for each="instancenum,(fin,fd,unfencing) in enumerate(instances)">
+             <?python
+-                agent_type = fd.getAgentType()
+-                agent_name = fd.getPrettyName()
+-                agent_alias = fd.getName()
+-                fenceinst_num += 1
+-                instance_id = "%s-%s" % (order, instancenum)
++              agent_name = fd.getPrettyName()
++              agent_alias = fd.getName()
++              fenceinst_num += 1
++              instance_id = '%s-%s' % (order, instancenum)
+             ?>
+           <tr><td>
+               <div class="hidden">
+@@ -403,15 +397,10 @@
+                 <input type="hidden" name="instance_id" value="${instance_id}"/>
+                 <input type="hidden" name="fencedev" value="${agent_alias}"/>
+ 
+-                <div id="fence_instance_area">
+-                    <?python
+-                        try:
+-                            inst_fn = eval(agent_type + '_instance')
+-                        except NameError:
+-                            inst_fn = eval('fence_unknown_instance')
+-                        inst_fn(fin, instance_id, None, nodename=nodename)
+-                    ?>
+-                    ${inst_fn(fin, cur_dev_id, '%s_%s' % (cur_dev_id, cur_dev_id), unfencing=unfencing, nodename=nodename)}
++                <div id="fence_instance_area"
++                 py:with="inst_fn = data.get(fd.getAgentType() + '_instance', None) or data['fence_unknown_instance']">
++                  ${inst_fn(fin, cur_dev_id, '%s_%s' % (cur_dev_id, cur_dev_id),
++                            unfencing=unfencing, nodename=nodename)}
+                 </div>
+                 <div class="row">
+                   <input type="submit" value="Submit" class="button formsubmit blue" />
+--- a/luci/templates/resource.html	2014-08-05 17:48:29.021562943 +0200
++++ b/luci/templates/resource.html	2014-08-05 17:48:44.741623406 +0200
+@@ -40,11 +40,11 @@
+   <div id="overview">
+     <table id="resource_tlist" class="maintable tablesorter">
+       <thead>
+-	<tr>
+-	  <th class="checkbox"></th>
+-	  <th class="main_id">Name/IP</th>
+-	  <th class="resource_tlist_type">Type</th>
+-	  <th class="resource_tlist_used">In Use</th>
++        <tr>
++          <th class="checkbox"></th>
++          <th class="main_id">Name/IP</th>
++          <th class="resource_tlist_type">Type</th>
++          <th class="resource_tlist_used">In Use</th>
+     </tr>
+     </thead>
+     <tbody>
+@@ -66,15 +66,15 @@
+             ${resource_data.getResourceType()}
+         </td>
+         <td class="resource_tlist_used">
+-    	    <py:choose test="refcount">
+-	            <py:when test="1">
+-	                No
+-	            </py:when>
+-	            <py:otherwise>
+-	                <img src="${tg.url('/images/check-11.png')}" alt="Yes" />
+-	            </py:otherwise>
+-	        </py:choose>
+-	    </td>
++            <py:choose test="refcount">
++                <py:when test="1">
++                    No
++                </py:when>
++                <py:otherwise>
++                    <img src="${tg.url('/images/check-11.png')}" alt="Yes" />
++                </py:otherwise>
++            </py:choose>
++        </td>
+       </tr>
+      </py:if>
+     </tbody>
+@@ -131,16 +131,16 @@
+     <!--! DETAILS - resources. -->
+     <div class="details_section">
+       <div class="details_inner">
+-       <form name="add_resource_dialog" method="post" action="${tg.url(resources_cmd + '?command=Edit')}">
+-        <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+-        <input type="hidden" name="edit" value="1"/>
+-         <?python
+-            resource = cluster_data.getResourceByName(name)
+-            resource_func = '%s_resource' % resource.getTagName().replace('-', '')
+-         ?>
+-         ${vars()["__data__"][resource_func](resource, None, None, 0)}
+-         <div class="row"><input type="submit" class="button formsubmit blue" value="Apply"/></div>
+-       </form>
++        <form name="add_resource_dialog" method="post" action="${tg.url(resources_cmd + '?command=Edit')}"
++         py:with="resource = cluster_data.getResourceByName(name);
++                  resource_func = '%s_resource' % resource.getTagName().replace('-', '')">
++           <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
++           <input type="hidden" name="edit" value="1"/>
++           ${locals()['__data__'][resource_func](resource, None, None, 0)}
++           <div class="row">
++             <input type="submit" class="button formsubmit blue" value="Apply"/>
++           </div>
++        </form>
+       </div>
+     </div>
+ 
+@@ -151,15 +151,15 @@
+   <div class="hidden">
+     <div id="add_resource_dialog">
+       <form name="add_resource_dialog" method="post" action="${tg.url(resources_cmd + '?command=Create')}">
+-	<div class="row">
++        <div class="row">
+     ${resource_selector(None, None, None)}
+-	</div>
+-	<div id="resource_form_area" />
++        </div>
++        <div id="resource_form_area"/>
+         <div class="row">
+         <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+         <input type="submit" class="formsubmit button blue" value="Submit"/>
+         <input type="button" class="formsubmit button silver" value="Cancel"
+-            onclick="$('#add_resource_dialog').dialog('close');reset_form(this.form)" />
++            onclick="$('#add_resource_dialog').dialog('close');reset_form(this.form)"/>
+         </div>
+       </form>
+     </div>
+--- a/luci/controllers/root.py	2014-08-05 19:19:14.477507384 +0200
++++ b/luci/controllers/root.py	2014-08-05 19:19:08.332483749 +0200
+@@ -1,4 +1,4 @@
+-# -*- coding: utf-8 -*-
++# Copyright 2014 Red Hat, Inc.
+ 
+ """Main Controller"""
+ from tg import expose, flash, require, url, request, redirect, tmpl_context
+@@ -23,7 +23,16 @@
+ __all__ = ['RootController']
+ 
+ 
+-# Imports into module's namespace.
++def req_method(*methods):
++    """Helper decorator so as to limit applicable request methods"""
++    def deco(fnc):
++        def deco_inner(*args, **kwargs):
++            if request.method not in methods:
++                flash(_("Given method not supported"), status="error")
++                redirect('/homebase')
++            return fnc(*args, **kwargs)
++        return deco_inner
++    return deco
+ 
+ 
+ class RootController(BaseController):
+@@ -161,6 +170,7 @@
+                  Any(is_user('root'),
+                      in_any_group('managers', 'import_cluster')),
+              msg=_("You must be an administrator or be granted access to import clusters")))
++    @req_method('POST')
+     def add_existing_cmd(self, **args):
+         username = None
+         try:
+--- luci-0.26.0/luci/templates/add_existing.html	2014-08-05 19:27:59.399526344 +0200
++++ luci-0.26.0/luci/templates/add_existing.html	2014-08-05 19:34:14.386968623 +0200
+@@ -1,7 +1,7 @@
+ <div>
+ <div id="add_existing_dialog">
+ <div id="add_existing_inner">
+-   <form name="add_existing_dialog" action="/add_existing_cmd">
++   <form name="add_existing_dialog" action="/add_existing_cmd" method="POST">
+    <div class="row">
+    <p>Enter credentials for a node in the cluster you would like to add.</p>
+    </div>
+@@ -26,7 +26,7 @@
+    </div>
+ </div>
+ <div id="add_existing_dialog_final">
+-   <form name="add_existing_final_form" action="/add_existing_cmd">
++   <form name="add_existing_final_form" action="/add_existing_cmd" method="POST">
+    <div class="row">
+    <p>Cluster Name: <strong><span id="cluster_name_span" /></strong>
+                   <input type="hidden" id="clustername" name="clustername" value="" />

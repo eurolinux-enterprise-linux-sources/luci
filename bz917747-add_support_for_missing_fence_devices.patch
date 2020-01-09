@@ -1,0 +1,797 @@
+diff -urN a/luci/lib/ClusterConf/FenceDeviceAttr.py b/luci/lib/ClusterConf/FenceDeviceAttr.py
+--- a/luci/lib/ClusterConf/FenceDeviceAttr.py	2013-10-04 22:27:55.850224342 +0200
++++ b/luci/lib/ClusterConf/FenceDeviceAttr.py	2013-10-04 22:49:23.529652499 +0200
+@@ -29,7 +29,12 @@
+ 	'fence_virt':			'fence_virt Virtual Machine Fencing',
+ 	'fence_scsi':			'SCSI Reservation Fencing',
+ 	'fence_ilo':			'HP iLO Device',
++	'fence_ilo2':			'HP iLO2 Device',
++	'fence_ilo3':			'HP iLO3 Device',
++	'fence_ilo4':			'HP iLO4 Device',
+ 	'fence_ipmilan':		'IPMI Lan',
++	'fence_idrac':			'Dell iDRAC',
++	'fence_imm':			'IBM Integrated Management Module',
+ 	'fence_ipdu':			'IBM iPDU',
+ 	'fence_drac':			'Dell DRAC',
+ 	'fence_drac5':			'Dell DRAC 5',
+@@ -90,8 +95,13 @@
+ 	'fence_rhevm':			True,
+ 	'fence_sanlock':		True,
+ 	'fence_ilo':			False,
++	'fence_ilo2':			False,
++	'fence_ilo3':			False,
++	'fence_ilo4':			False,
+ 	'fence_ilo_mp':			False,
+ 	'fence_ipmilan':		False,
++	'fence_idrac':			False,
++	'fence_imm':			False,
+ 	'fence_drac':			False,
+ 	'fence_drac5':			False,
+ 	'fence_rps10':			False,
+diff -urN a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+--- a/luci/templates/fence_devices.html	2013-10-04 22:27:55.918224315 +0200
++++ b/luci/templates/fence_devices.html	2013-10-04 23:03:26.484162744 +0200
+@@ -1878,6 +1878,357 @@
+   <input type="hidden" name="fence_type" value="fence_ilo" />
+ </div>
+ 
++<div py:def="fence_ilo2(cur_fencedev, ni)" id="fence_ilo2" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>HP iLO2</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Address or Hostname</td>
++      <td>
++        <input name="ipaddr" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Port (optional)</td>
++      <td>
++        <input name="ipport" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login</td>
++      <td>
++        <input name="login" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Password</td>
++      <td>
++        <input name="passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
++      </td>
++      <td>
++        <input type="text" class="text" name="passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="fence_type" value="fence_ilo2" />
++</div>
++
++<div py:def="fence_ilo3(cur_fencedev, ni)" id="fence_ilo3" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>HP iLO3</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Address or Hostname</td>
++      <td>
++        <input name="ipaddr" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login</td>
++      <td>
++        <input name="login" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Password</td>
++      <td>
++        <input name="passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
++      </td>
++      <td>
++        <input type="text" class="text" name="passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Authentication Type</td>
++      <td>
++        <select name="auth" class="fencedevformselect">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('auth')) and {'selected':'selected'} or {}">None</option>
++          <option value="password"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'password' and {'selected':'selected'} or {}">Password</option>
++          <option value="md5"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'md5' and {'selected':'selected'} or {}">MD5</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>Use Lanplus</td>
++      <td>
++        <input name="lanplus" type="checkbox" class="checkbox"
++          py:attrs="cur_fencedev and cur_fencedev.getAttribute('lanplus') and {'checked':'checked'} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Ciphersuite to use</td>
++      <td>
++        <input name="cipher" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cipher')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Privilege Level</td>
++      <td>
++        <py:with vars="privlvl = cur_fencedev and cur_fencedev.getAttribute('privlvl')">
++        <select name="privlvl">
++          <option value=""
++            py:attrs="not privlvl and {'selected':'selected'} or {}">Default</option>
++          <option value="CALLBACK"
++            py:attrs="privlvl and privlvl.upper() == 'CALLBACK' and {'selected':'selected'} or {}">CALLBACK</option>
++          <option value="USER"
++            py:attrs="privlvl and privlvl.upper() == 'USER' and {'selected':'selected'} or {}">USER</option>
++          <option value="OPERATOR"
++            py:attrs="privlvl and privlvl.upper() == 'OPERATOR' and {'selected':'selected'} or {}">OPERATOR</option>
++          <option value="ADMINISTRATOR"
++            py:attrs="privlvl and privlvl.upper() == 'ADMINISTRATOR' and {'selected':'selected'} or {}">ADMINISTRATOR</option>
++        </select>
++        </py:with>
++      </td>
++    </tr>
++    <tr>
++      <td>IPMI Operation Timeout</td>
++      <td>
++        <input name="timeout" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('timeout')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="fence_type" value="fence_ilo3" />
++</div>
++
++<div py:def="fence_ilo4(cur_fencedev, ni)" id="fence_ilo4" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>HP iLO4</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Address or Hostname</td>
++      <td>
++        <input name="ipaddr" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login</td>
++      <td>
++        <input name="login" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Password</td>
++      <td>
++        <input name="passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
++      </td>
++      <td>
++        <input type="text" class="text" name="passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Authentication Type</td>
++      <td>
++        <select name="auth" class="fencedevformselect">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('auth')) and {'selected':'selected'} or {}">None</option>
++          <option value="password"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'password' and {'selected':'selected'} or {}">Password</option>
++          <option value="md5"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'md5' and {'selected':'selected'} or {}">MD5</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>Use Lanplus</td>
++      <td>
++        <input name="lanplus" type="checkbox" class="checkbox"
++          py:attrs="cur_fencedev and cur_fencedev.getAttribute('lanplus') and {'checked':'checked'} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Ciphersuite to use</td>
++      <td>
++        <input name="cipher" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cipher')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Privilege Level</td>
++      <td>
++        <py:with vars="privlvl = cur_fencedev and cur_fencedev.getAttribute('privlvl')">
++        <select name="privlvl">
++          <option value=""
++            py:attrs="not privlvl and {'selected':'selected'} or {}">Default</option>
++          <option value="CALLBACK"
++            py:attrs="privlvl and privlvl.upper() == 'CALLBACK' and {'selected':'selected'} or {}">CALLBACK</option>
++          <option value="USER"
++            py:attrs="privlvl and privlvl.upper() == 'USER' and {'selected':'selected'} or {}">USER</option>
++          <option value="OPERATOR"
++            py:attrs="privlvl and privlvl.upper() == 'OPERATOR' and {'selected':'selected'} or {}">OPERATOR</option>
++          <option value="ADMINISTRATOR"
++            py:attrs="privlvl and privlvl.upper() == 'ADMINISTRATOR' and {'selected':'selected'} or {}">ADMINISTRATOR</option>
++        </select>
++        </py:with>
++      </td>
++    </tr>
++    <tr>
++      <td>IPMI Operation Timeout</td>
++      <td>
++        <input name="timeout" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('timeout')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="fence_type" value="fence_ilo4" />
++</div>
++
+ <div py:def="fence_drac(cur_fencedev, ni)" id="fence_drac" class="fencedevform row"
+    py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+   <table class="formtable">
+@@ -2376,6 +2727,252 @@
+   <input type="hidden" name="fence_type" value="fence_ipmilan" />
+ </div>
+ 
++<div py:def="fence_imm(cur_fencedev, ni)" id="fence_imm" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>IBM Integrated Management Module</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Address or Hostname</td>
++      <td>
++        <input name="ipaddr" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login</td>
++      <td>
++        <input name="login" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Password</td>
++      <td>
++        <input name="passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
++      </td>
++      <td>
++        <input type="text" class="text" name="passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Authentication Type</td>
++      <td>
++        <select name="auth" class="fencedevformselect">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('auth')) and {'selected':'selected'} or {}">None</option>
++          <option value="password"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'password' and {'selected':'selected'} or {}">Password</option>
++          <option value="md5"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'md5' and {'selected':'selected'} or {}">MD5</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>Use Lanplus</td>
++      <td>
++        <input name="lanplus" type="checkbox" class="checkbox"
++          py:attrs="cur_fencedev and cur_fencedev.getAttribute('lanplus') and {'checked':'checked'} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Ciphersuite to use</td>
++      <td>
++        <input name="cipher" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cipher')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Privilege Level</td>
++      <td>
++        <py:with vars="privlvl = cur_fencedev and cur_fencedev.getAttribute('privlvl')">
++        <select name="privlvl">
++          <option value=""
++            py:attrs="not privlvl and {'selected':'selected'} or {}">Default</option>
++          <option value="CALLBACK"
++            py:attrs="privlvl and privlvl.upper() == 'CALLBACK' and {'selected':'selected'} or {}">CALLBACK</option>
++          <option value="USER"
++            py:attrs="privlvl and privlvl.upper() == 'USER' and {'selected':'selected'} or {}">USER</option>
++          <option value="OPERATOR"
++            py:attrs="privlvl and privlvl.upper() == 'OPERATOR' and {'selected':'selected'} or {}">OPERATOR</option>
++          <option value="ADMINISTRATOR"
++            py:attrs="privlvl and privlvl.upper() == 'ADMINISTRATOR' and {'selected':'selected'} or {}">ADMINISTRATOR</option>
++        </select>
++        </py:with>
++      </td>
++    </tr>
++    <tr>
++      <td>IPMI Operation Timeout</td>
++      <td>
++        <input name="timeout" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('timeout')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="fence_type" value="fence_imm" />
++</div>
++
++<div py:def="fence_idrac(cur_fencedev, ni)" id="fence_idrac" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>Dell iDRAC</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Address or Hostname</td>
++      <td>
++        <input name="ipaddr" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login</td>
++      <td>
++        <input name="login" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Password</td>
++      <td>
++        <input name="passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
++      </td>
++      <td>
++        <input type="text" class="text" name="passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Authentication Type</td>
++      <td>
++        <select name="auth" class="fencedevformselect">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('auth')) and {'selected':'selected'} or {}">None</option>
++          <option value="password"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'password' and {'selected':'selected'} or {}">Password</option>
++          <option value="md5"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'md5' and {'selected':'selected'} or {}">MD5</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>Use Lanplus</td>
++      <td>
++        <input name="lanplus" type="checkbox" class="checkbox"
++          py:attrs="cur_fencedev and cur_fencedev.getAttribute('lanplus') and {'checked':'checked'} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Ciphersuite to use</td>
++      <td>
++        <input name="cipher" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cipher')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Privilege Level</td>
++      <td>
++        <py:with vars="privlvl = cur_fencedev and cur_fencedev.getAttribute('privlvl')">
++        <select name="privlvl">
++          <option value=""
++            py:attrs="not privlvl and {'selected':'selected'} or {}">Default</option>
++          <option value="CALLBACK"
++            py:attrs="privlvl and privlvl.upper() == 'CALLBACK' and {'selected':'selected'} or {}">CALLBACK</option>
++          <option value="USER"
++            py:attrs="privlvl and privlvl.upper() == 'USER' and {'selected':'selected'} or {}">USER</option>
++          <option value="OPERATOR"
++            py:attrs="privlvl and privlvl.upper() == 'OPERATOR' and {'selected':'selected'} or {}">OPERATOR</option>
++          <option value="ADMINISTRATOR"
++            py:attrs="privlvl and privlvl.upper() == 'ADMINISTRATOR' and {'selected':'selected'} or {}">ADMINISTRATOR</option>
++        </select>
++        </py:with>
++      </td>
++    </tr>
++    <tr>
++      <td>IPMI Operation Timeout</td>
++      <td>
++        <input name="timeout" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('timeout')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="fence_type" value="fence_idrac" />
++</div>
++
+ <div py:def="fence_alom(cur_fencedev, ni)" id="fence_alom" class="fencedevform row"
+    py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+   <table class="formtable">
+@@ -4248,11 +4845,16 @@
+ ${fence_vmware(None,0)}
+ ${fence_vmware_soap(None,0)}
+ ${fence_ilo(None,0)}
++${fence_ilo2(None,0)}
++${fence_ilo3(None,0)}
++${fence_ilo4(None,0)}
+ ${fence_drac(None,0)}
+ ${fence_rsa(None,0)}
+ ${fence_rsb(None,0)}
+ ${fence_rps10(None,0)}
+ ${fence_ipmilan(None,0)}
++${fence_idrac(None,0)}
++${fence_imm(None,0)}
+ ${fence_alom(None,0)}
+ ${fence_cisco_mds(None,0)}
+ ${fence_cisco_ucs(None,0)}
+@@ -4311,6 +4913,7 @@
+       <option py:if="cluster_version == 3" name="fence_drac" value="fence_drac">Dell DRAC (Deprecated)</option>
+ 
+       <option name="fence_drac5" value="fence_drac5">Dell DRAC 5</option> <!-- needs work -->
++      <option name="fence_idrac" value="fence_idrac">Dell iDRAC</option>
+       <option py:if="cluster_version == 3" name="fence_eaton_snmp" value="fence_eaton_snmp">Eaton Network Power Switch (SNMP interface)</option>
+       <option name="fence_egenera" value="fence_egenera">Egenera SAN Controller</option>
+ 
+@@ -4327,9 +4930,13 @@
+       <option name="fence_rsb" value="fence_rsb">Fujitsu Siemens RemoteView Service Board</option>
+       <option name="fence_hpblade" value="fence_hpblade">HP BladeSystem</option>
+       <option name="fence_ilo" value="fence_ilo">HP iLO Device</option>
++      <option name="fence_ilo2" value="fence_ilo2">HP iLO2 Device</option>
++      <option name="fence_ilo3" value="fence_ilo3">HP iLO3 Device</option>
++      <option name="fence_ilo4" value="fence_ilo4">HP iLO4 Device</option>
+       <option name="fence_ilo_mp" value="fence_ilo_mp">HP iLO MP</option> <!-- needs work -->
+       <option name="fence_bladecenter" value="fence_bladecenter">IBM BladeCenter</option>
+       <option py:if="cluster_version == 3" name="fence_ibmblade" value="fence_ibmblade">IBM BladeCenter SNMP</option>
++      <option name="fence_imm" value="fence_imm">IBM Integrated Management Module</option>
+       <option name="fence_ipdu" value="fence_ipdu">IBM iPDU</option>
+ 
+       <option py:if="cluster_version == 2" name="fence_rsa" value="fence_rsa">IBM RSA II Device</option>  <!-- needs work -->
+diff -urN a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+--- a/luci/templates/fence_instances.html	2013-10-04 22:27:55.888224327 +0200
++++ b/luci/templates/fence_instances.html	2013-10-04 22:49:23.528652500 +0200
+@@ -897,6 +897,36 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
++<div py:def="fence_ilo2_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ilo2_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++
++  <div class="emptyfenceinst">No additional parameters</div>
++  <input type="hidden" name="fence_type" value="fence_ilo2" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
++<div py:def="fence_ilo3_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ilo3_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++
++  <div class="emptyfenceinst">No additional parameters</div>
++  <input type="hidden" name="fence_type" value="fence_ilo3" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
++<div py:def="fence_ilo4_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ilo4_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++
++  <div class="emptyfenceinst">No additional parameters</div>
++  <input type="hidden" name="fence_type" value="fence_ilo4" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
+ <div py:def="fence_ilo_mp_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ilo_mp_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+ 
+@@ -927,6 +957,26 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
++<div py:def="fence_idrac_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_idrac_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++
++  <div class="emptyfenceinst">No additional parameters</div>
++  <input type="hidden" name="fence_type" value="fence_idrac" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
++<div py:def="fence_imm_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_imm_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++
++  <div class="emptyfenceinst">No additional parameters</div>
++  <input type="hidden" name="fence_type" value="fence_imm" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
+ <div py:def="fence_ipdu_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ipdu_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+   <table class="detailstable">
+@@ -1171,9 +1221,14 @@
+ ${fence_drac_instance(None, None, None)}
+ ${fence_drac5_instance(None, None, None)}
+ ${fence_ilo_instance(None, None, None)}
++${fence_ilo2_instance(None, None, None)}
++${fence_ilo3_instance(None, None, None)}
++${fence_ilo4_instance(None, None, None)}
+ ${fence_ilo_mp_instance(None, None, None)}
+ ${fence_rsa_instance(None, None, None)}
+ ${fence_ipmilan_instance(None, None, None)}
++${fence_imm_instance(None, None, None)}
++${fence_idrac_instance(None, None, None)}
+ ${fence_alom_instance(None, None, None)}
+ ${fence_cpint_instance(None, None, None)}
+ ${fence_rps10_instance(None, None, None)}
+diff -urN a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+--- a/luci/validation/validate_fence.py	2013-10-04 22:27:55.924224313 +0200
++++ b/luci/validation/validate_fence.py	2013-10-04 23:05:34.276080340 +0200
+@@ -852,9 +852,14 @@
+ 	'fence_ifmib':			val_ifmib_fd,
+ 	'fence_ilo_mp':			val_ilo_mp_fd,
+ 	'fence_ilo':			val_ilo_fd,
++	'fence_ilo2':			val_ilo_fd,
++	'fence_ilo3':			val_ipmilan_fd,
++	'fence_ilo4':			val_ipmilan_fd,
+ 	'fence_intelmodular':	val_intelmodular_fd,
+ 	'fence_ipdu':			val_ipdu_fd,
+ 	'fence_ipmilan':		val_ipmilan_fd,
++	'fence_idrac':			val_ipmilan_fd,
++	'fence_imm':			val_ipmilan_fd,
+ 	'fence_ldom':			val_ldom_fd,
+ 	'fence_lpar':			val_lpar_fd,
+ 	'fence_manual':			val_noop_fd,
+@@ -1259,8 +1264,13 @@
+ 	'fence_ifmib':			val_ifmib_fi,
+ 	'fence_ilo_mp':			val_noop_fi,
+ 	'fence_ilo':			val_noop_fi,
++	'fence_ilo2':			val_noop_fi,
++	'fence_ilo3':			val_noop_fi,
++	'fence_ilo4':			val_noop_fi,
+ 	'fence_intelmodular':	val_intelmodular_fi,
+ 	'fence_ipmilan':		val_noop_fi,
++	'fence_idrac':			val_noop_fi,
++	'fence_imm':			val_noop_fi,
+ 	'fence_ldom':			val_ldom_fi,
+ 	'fence_lpar':			val_lpar_fi,
+ 	'fence_ipdu':			val_ipdu_fi,

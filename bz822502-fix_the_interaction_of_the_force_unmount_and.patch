@@ -1,0 +1,130 @@
+From 64280cdd482da07eaa2d43b9950eb76ca721c935 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Thu, 29 Nov 2012 15:40:55 -0500
+Subject: [PATCH] luci: Fix the interaction of the force_unmount and
+ nfsrestart checkboxes
+
+Fix the interaction of the force_unmount and nfsrestart checkboxes
+on the service creation and edit forms.
+
+Resolves: rhbz#822502
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/js/resource.js        | 30 ++++++++++++++++++++++--------
+ luci/public/js/service.js         |  9 +++++++++
+ luci/templates/resource_list.html | 12 ++++++------
+ 3 files changed, 37 insertions(+), 14 deletions(-)
+
+diff --git a/luci/public/js/resource.js b/luci/public/js/resource.js
+index a839875..00bf5ff 100644
+--- a/luci/public/js/resource.js
++++ b/luci/public/js/resource.js
+@@ -16,19 +16,33 @@ $(function() {
+ function swap_resource_form(resource_form_id) {
+     var form_jelem = $(document.getElementById(resource_form_id));
+     $('#resource_form_area').empty();
+-    form_jelem.clone().appendTo('#resource_form_area');
++    var form_clone = form_jelem.clone();
++    var cur_force_unmount = $('input[name="force_unmount"]', form_clone);
++    if ($(cur_force_unmount).length) {
++        $(cur_force_unmount).attr('id', 'force_unmount_global');
++        var cur_nfsrestart = $('input[name="nfsrestart"]', form_clone);
++        if ($(cur_nfsrestart).length) {
++            $(cur_nfsrestart).attr('id', 'nfsrestart_global');
++        }
++    }
++    $(form_clone).appendTo('#resource_form_area');
+ }
+ 
+-function forceunmount_update(form) {
+-    var nfsrestart_cb = form.nfsrestart;
+-    if (!nfsrestart_cb) {
++function forceunmount_update(res_id) {
++    var force_unmount = document.getElementById(res_id);
++    if (!force_unmount) {
++        return;
++    }
++
++    var nfsr_cb = document.getElementById(res_id.replace("force_unmount", "nfsrestart"));
++    if (!nfsr_cb) {
+         return;
+     }
+ 
+-    if (form.force_unmount.checked) {
+-        nfsrestart_cb.disabled = false;
++    if (force_unmount.checked) {
++        nfsr_cb.disabled = false;
+     } else {
+-        nfsrestart_cb.checked = false;
+-        nfsrestart_cb.disabled = true;
++        nfsr_cb.checked = false;
++        nfsr_cb.disabled = true;
+     }
+ }
+diff --git a/luci/public/js/service.js b/luci/public/js/service.js
+index 8331fdb..e7da75d 100644
+--- a/luci/public/js/service.js
++++ b/luci/public/js/service.js
+@@ -170,6 +170,15 @@ function insert_resource(res_id, container_id, form, parent_id) {
+     var cur_resid_elem = $('input[name="form_id"]', form_jelem);
+     $(cur_resid_elem).val(cur_id_str);
+ 
++    var cur_force_unmount = $('input[name="force_unmount"]', form_jelem);
++    if ($(cur_force_unmount).length) {
++        $(cur_force_unmount).attr('id', 'force_unmount_' + cur_id_str);
++        var cur_nfsrestart = $('input[name="nfsrestart"]', form_jelem);
++        if ($(cur_nfsrestart).length) {
++            $(cur_nfsrestart).attr('id', 'nfsrestart_' + cur_id_str);
++        }
++    }
++
+     var parent_resid_elem = $('input[name="parent_id"]', form_jelem);
+     $(parent_resid_elem).val(parent_id);
+ 
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index d914922..1d2f5c6 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -201,8 +201,8 @@
+       <td>Force Unmount</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="force_unmount"
+-          onchange="forceunmount_update(this.form)"
+-          py:attrs="{'checked':(res and res.getBinaryAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          onchange="forceunmount_update(this.getAttribute('id'))"
++          py:attrs="{'id': defined('cur_id_str') and 'force_unmount_' + cur_id_str or (res and 'force_unmount_' + res.getAttribute('name') or None), 'checked':(res and res.getBinaryAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+@@ -216,7 +216,7 @@
+       <td>Enable NFS daemon and lockd workaround</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="nfsrestart"   
+-          py:attrs="{'checked':(res and res.getBinaryAttribute('nfsrestart')) and 'checked' or None, 'disabled':(global_resource or not res or not res.getBinaryAttribute('force_unmount')) and 'disabled' or None}" />
++          py:attrs="{'id': defined('cur_id_str') and 'nfsrestart_' + cur_id_str or (res and 'nfsrestart_' + res.getAttribute('name') or None),'checked':(res and res.getBinaryAttribute('nfsrestart')) and 'checked' or None, 'disabled':(global_resource or not res or not res.getBinaryAttribute('force_unmount')) and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+@@ -317,15 +317,15 @@
+       <td>Force Unmount</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="force_unmount"
+-          onchange="forceunmount_update(this.form)"
+-          py:attrs="{'checked':(res and res.getBinaryAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          onchange="forceunmount_update(this.getAttribute('id'))"
++          py:attrs="{'id': defined('cur_id_str') and 'force_unmount_' + cur_id_str or (res and 'force_unmount_' + res.getAttribute('name') or None), 'checked':(res and res.getBinaryAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Enable NFS daemon and lockd workaround</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="nfsrestart"   
+-          py:attrs="{'checked':(res and res.getBinaryAttribute('nfsrestart')) and 'checked' or None, 'disabled':(global_resource or not res or not res.getBinaryAttribute('force_unmount')) and 'disabled' or None}" />
++          py:attrs="{'id': defined('cur_id_str') and 'nfsrestart_' + cur_id_str or (res and 'nfsrestart_' + res.getAttribute('name') or None),'checked':(res and res.getBinaryAttribute('nfsrestart')) and 'checked' or None, 'disabled':(global_resource or not res or not res.getBinaryAttribute('force_unmount')) and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+-- 
+1.7.11.7
+

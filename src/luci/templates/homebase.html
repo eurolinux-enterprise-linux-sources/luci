@@ -1,0 +1,80 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<xi:include href="master.html"/>
+<head>
+  <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+  <title>Luci Homebase</title>
+</head>
+
+<?python
+    from luci.lib import db_helpers
+?>
+
+<body py:with="clusters = db_helpers.get_cluster_list_full()">
+  <div class="mainpage">
+   <div py:if="homebasepage == 'homebasepage'">
+    <h2><a href="${tg.url('/cluster')}" class="${('', 'active')[defined('page') and page=='clusters']}">Cluster Summary</a></h2>
+    <div id="overview">
+      <table id="clusters_tlist" class="maintable">
+        <thead>
+          <tr>
+            <th class="main_id">Name</th>
+            <th class="cluster_tlist_status">Status</th>
+            <th class="cluster_tlist_votes">Nodes Joined</th>
+          </tr>
+       </thead>
+       <tbody>
+        <tr py:for="i, (entity_name, cluster_data) in enumerate(clusters.iteritems())"
+          py:attrs="not i%2 and {'class': 'even'} or None">
+          <py:if test="hasattr(cluster_data['status'],'quorate')">
+            <!--! Branch according to the status of the cluster. -->
+            <py:choose test="cluster_data['status'].quorate">
+              <!--! 1) Cluster is OK. -->
+              <py:when test="'true'">
+                <td class="main_id">
+                  <a href="${tg.url(base_url + '/' + entity_name) + '/'}">
+                    <span class="entity_ok">${entity_name}</span>
+                  </a>
+                </td>
+                <td class="cluster_tlist_status">Quorate</td>
+              </py:when>
+              <!--! 2) Cluster is not OK. -->
+              <py:when test="'false'">
+                <td class="main_id">
+                  <a href="${tg.url(base_url + '/' + entity_name)}">
+                    <span class="entity_fail">${entity_name}</span>
+                  </a>
+                </td>
+                <td class="cluster_tlist_status">Not Quorate</td>
+              </py:when>
+              <!--! 3) Status of the cluster is unknown. -->
+              <py:when test="">
+                <td class="main_id">
+                  <a href="${tg.url(base_url + '/' + entity_name)}">
+                    <span class="entity_unknown">${entity_name}</span>
+                  </a>
+                </td>
+                <td class="cluster_tlist_status">Status unknown</td>
+              </py:when>
+            </py:choose>
+            <py:choose test="cluster_data and cluster_data.get('model') and cluster_data.get('status') and True">
+              <py:when test="True">
+                <td class="cluster_tlist_votes">${cluster_data['status'].nodesClustered} of ${len(cluster_data['model'].getNodes())}</td>
+              </py:when>
+              <py:otherwise>
+                <td class="cluster_tlist_votes">-</td>
+              </py:otherwise>
+            </py:choose>
+          </py:if>
+        </tr>
+       </tbody>
+      </table>
+     </div>
+    </div>
+  </div>
+</body>
+</html>

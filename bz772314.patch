@@ -1,0 +1,57 @@
+diff --git a/luci/controllers/root.py b/luci/controllers/root.py
+index 9bcc973..21b5f6f 100644
+--- a/luci/controllers/root.py
++++ b/luci/controllers/root.py
+@@ -90,6 +90,8 @@ class RootController(BaseController):
+             return dict(page='admin')
+ 
+         if command == 'create':
++            if name:
++                name = name.strip()
+             ret = vcp.validate_add_user(name, **args)
+             if ret[0] is False:
+                 if ret[1].has_key('errors'):
+diff --git a/luci/lib/db_helpers.py b/luci/lib/db_helpers.py
+index 115e9e4..6f79aa8 100644
+--- a/luci/lib/db_helpers.py
++++ b/luci/lib/db_helpers.py
+@@ -569,20 +569,34 @@ def get_user_names():
+     return ret
+ 
+ def create_user_db_obj(username):
+-    db_obj = User(user_name=unicode(username),
+-                  email_address=unicode(username))
++    if not username or username.isspace():
++        return _("Users with blank usernames cannot be created")
++    username = username.strip()
++
+     try:
++        orig_user = username
++        db_obj = User(user_name=unicode(username),
++                      email_address=unicode(username))
+         DBSession.add(db_obj)
+         DBSession.flush()
++        DBSession.refresh(db_obj)
++
++        if db_obj.user_name != orig_user:
++            try:
++                DBSession.delete(db_obj)
++                DBSession.flush()
++            except Exception, ein:
++                log.exception("Cleaning up failed add of long username")
++            return _('Username "%s" is too long and would be truncated by the database') % orig_user
+         return None
+     except IntegrityError, ie:
+         DBSession.rollback()
+-        log.exception('Error adding user %s' % username)
+-        return _("User %s already exists") % username
++        log.exception('Error adding user "%s"' % username)
++        return _('User "%s" already exists') % username
+     except Exception, e:
+         DBSession.rollback()
+         log.exception('Error adding user %s' % username)
+-    return _("Unable to create user %s") % username
++    return _('Unable to create user "%s"') % username
+ 
+ def get_user_roles(username):
+     db_user = User.by_user_name(username)

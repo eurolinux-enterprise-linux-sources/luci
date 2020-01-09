@@ -1,0 +1,32 @@
+From 2660e594f63e6077523dd2a5438fd20aaf07f779 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 28 Jul 2014 08:51:23 -0400
+Subject: [PATCH] luci: Move sort arrows for resources
+
+Move the sort arrows for the resource list form to the left.
+
+Resolves: rhbz#919225
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/css/style.css | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/luci/public/css/style.css b/luci/public/css/style.css
+index 0425734..9bcbaea 100644
+--- a/luci/public/css/style.css
++++ b/luci/public/css/style.css
+@@ -656,9 +656,9 @@ table.tablesorter thead tr .header {
+ }
+ 
+ table.tablesorter thead tr .headerSortUp {
+-	background-image: url(../images/asc.gif);
++	background: transparent url(../images/asc.gif) no-repeat +6em;
+ }
+ 
+ table.tablesorter thead tr .headerSortDown {
+-	background-image: url(../images/desc.gif);
++	background: transparent url(../images/desc.gif) no-repeat +6em;
+ }
+-- 
+1.9.3
+

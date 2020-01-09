@@ -1,0 +1,256 @@
+# Base (presumably not serviceable) configuration of various aspects of @PKGNAME@
+#
+# NOTE: Edit this file only if you really need to and know what you are doing.
+#       Note that it is recommended to edit configuration file coming with
+#       initscript and containing a subset of the most useful configuration
+#       items instead.
+#
+#
+# In general, the file follows format suitable for ConfigParser, which is then
+# on higher level specific for each components configuring itself on the basis
+# of this file (as ConfigParser does data fetching job for these).
+# For each such component only specific areas of this file are relevant. They
+# are distinguished with sections names (in square brackets) each component
+# recognizes.
+#
+# Currently, these components and sections are:
+#
+#   * PasteScript: [server:*] and [app:*] sections
+#     - uses Paste Deployment configuration file format and its purpose is to
+#       be an argument to ``paster'' script/tool in order to prepare and serve
+#       @PKGNAME@ (using ``make-config'', ``setup-app'' and ``serve'' commands
+#       respectively)
+#     - for more about the format, consult <http://pythonpaste.org/deploy>
+#     - [server:XYZ] section declares configuration for server named ``XYZ''
+#       whereas default server used by ``paster'' is ``main'' ([server:main]);
+#       the only server currently tested to work with @PKGNAME@ is (Python)
+#       Paste (``use = egg:Paste#http'')
+#     - [app:XYZ] is analogous to server sections; apparently, this should
+#       point directly to @PKGNAME@ (``use = egg:@PKGNAME@'')
+#
+#   * logging subsystem: [loggers], [handlers], [formatters] and instances
+#     - <http://docs.python.org/library/logging.html#logging-config-fileformat>
+#
+#   * repoze.who middleware: [general], [identifiers], [authenticators],
+#                            [challengers], [mdproviders] and [plugin:*]
+#     - <http://docs.repoze.org/who/1.0/narr.html
+#       #middleware-configuration-via-config-file>
+#
+# In addition, there is a special [DEFAULT] section as defined by ConfigParser
+#   - can contain values assigned to certain keys which are then referenced
+#     within other sections using ``%(key)s'' Python's interpolation syntax
+#   - can contain defaults that are/may be used if value for certain key
+#     (named item) haven't been found in the particular section while this
+#     value is queried (this depends on particular component's implementation)
+#
+# Sections with modified string interpolation using values from [DEFAULT]:
+#   - for sections handled by PasteScript, there is an extension of semantics
+#     applied in the case certain value is defined in both [DEFAULT] and
+#     application- or server-specific section: global value can be overriden
+#     using ``set'' in front of the "local" assignment (otherwise it takes
+#     preference)
+#   - for sections connected with repoze.who middleware, beside [DEFAULT],
+#     it is possible to use as a source values for interpolation also items
+#     beginning with ``who.'' that are within [app:*] section being used
+#
+# ===========================================================================
+
+[DEFAULT]
+# These values will appear in tg.config (if not consumed by middleware,
+# shadowed application's values etc.)
+# Note: Paste server will only try to look for ``error_email'' key here
+
+debug = false
+# Uncomment and replace with the address which should receive any error reports
+#email_to = you@yourdomain.com
+#smtp_server = localhost
+#error_email_from = paste@localhost
+
+# Values kept throughout the live of application
+# Convenient alias and value that can be safely propageted to other files
+base_config = %(__file__)s
+
+# Temporary values (only for string interpolation within certain sections)
+tmp.sysconfig = @SYSCONFIG@
+
+# Defaults (also temporary)
+def.port = @PORT@
+def.host = 0.0.0.0
+def.cert_pem = @CERTPEM@
+def.cache_dir = @CACHEDIR@
+def.sessions_dir = @SESSIONSDIR@
+def.db_file = @DBFILE@
+def.auth_tkt_timeout = 900
+
+
+# ===========================================================================
+# SERVER CONFIGURATIONS
+# ===========================================================================
+
+[server:main]
+use = egg:Paste#http
+
+# Items to be set only if this haven't been already done in other sections
+
+host = %(def.host)s
+port = %(def.port)s
+ssl_pem = %(def.cert_pem)s
+
+# ---------------------------------------------------------------------------
+
+[server:init]
+use = config:%(tmp.sysconfig)s
+
+# Items not to be overriden from within local ``use'' configuration target
+# ...
+
+
+# ===========================================================================
+# APPLICATION CONFIGURATIONS
+# ===========================================================================
+# Values regarding particular name of app used will appear in tg.config
+# (if not consumed by middleware etc.)
+
+[app:main]
+use = egg:@PKGNAME@
+
+# Items to be set only if this haven't been already done in other sections
+
+full_stack = false
+
+beaker.cache.data_dir = %(def.cache_dir)s
+beaker.session.data_dir = %(def.sessions_dir)s
+beaker.session.key = @PKGNAME@
+beaker.session.secret = ${app_instance_secret}
+
+sqlalchemy.url = sqlite:///%(def.db_file)s
+sqlalchemy.echo = false
+sqlalchemy.echo_pool = false
+sqlalchemy.pool_recycle = 3600
+
+# Unfortunately, this doesn't work [1], so repoze.who is added in middleware.py
+# using ``who.*'' values defined below
+# [1] http://trac.pythonpaste.org/pythonpaste/ticket/344
+#filter-with = repoze.who_main
+
+who.config_file = %(base_config)s
+who.log_file = stdout
+who.log_level = warning
+who.auth_tkt_timeout = %(def.auth_tkt_timeout)s
+
+ricci.cert_pem = %(def.cert_pem)s
+
+# Important as debug mode will enable the interactive debugging tool, allowing
+# anyone to execute malicious code after an exception is raised
+set debug = false
+
+# ---------------------------------------------------------------------------
+
+[app:init]
+
+use = config:%(tmp.sysconfig)s
+
+# Items not to be overriden from within local ``use'' configuration target
+# ...
+
+
+# ===========================================================================
+# REPOZE.WHO CONFIGURATION
+# ===========================================================================
+
+[general]
+request_classifier = repoze.who.classifiers:default_request_classifier
+challenge_decider = repoze.who.classifiers:default_challenge_decider
+
+[identifiers]
+plugins =
+    friendlyform;browser
+    auth_tkt
+
+[authenticators]
+plugins = @PKGNAME@_sasl2auth
+
+[challengers]
+plugins =
+    friendlyform;browser
+
+[mdproviders]
+plugins = @PKGNAME@_sasl2auth
+
+# ---------------------------------------------------------------------------
+
+[plugin:friendlyform]
+# Redirecting form which does login via a "post" from a regular /login form
+use = repoze.who.plugins.friendlyform:FriendlyFormPlugin
+login_form_url= /login
+login_handler_path = /login_handler
+logout_handler_path = /logout_handler
+rememberer_name = auth_tkt
+post_login_url = /post_login
+post_logout_url = /post_logout
+
+[plugin:auth_tkt]
+use = @PKGNAME@.initwrappers:auth_tkt_make_plugin
+secret = ${app_instance_secret}
+timeout = %(who.auth_tkt_timeout)s
+reissue_time = 60
+
+[plugin:@PKGNAME@_sasl2auth]
+use = @PKGNAME@.lib.plugin_sasl2auth:Sasl2AuthPlugin
+#server_fqdn = 'localhost'
+#user_realm = 'user_realm'
+#iplocalport = 'a.b.c.d;port'
+#ipremoteport = 'a.b.c.d;port'
+
+
+# ===========================================================================
+# LOGGING CONFIGURATION
+# ===========================================================================
+
+[loggers]
+keys = root, @PKGNAME@, sqlalchemy, tgi18n
+
+[handlers]
+keys = console
+
+[formatters]
+keys = generic
+
+# ---------------------------------------------------------------------------
+# Loggers (to be added as a key to [loggers])
+
+[logger_root]
+level = INFO
+handlers = console
+
+[logger_@PKGNAME@]
+level = INFO
+handlers =
+qualname = @PKGNAME@
+
+[logger_tgi18n]
+level = WARN
+handlers =
+qualname = tg.i18n
+
+[logger_sqlalchemy]
+# level: DEBUG -> log queries+results, INFO -> queries only, WARN -> neither
+level = WARN
+handlers =
+qualname = sqlalchemy.engine
+
+# ---------------------------------------------------------------------------
+# Log messages handlers (to be added as a key to [handlers])
+
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+level = NOTSET
+formatter = generic
+
+# ---------------------------------------------------------------------------
+# Log messages formatters (to be added as a key to [formatters])
+
+[formatter_generic]
+format = %(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s
+datefmt = %H:%M:%S

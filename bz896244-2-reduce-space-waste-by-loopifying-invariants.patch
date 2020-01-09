@@ -1,0 +1,1805 @@
+From dd419b8be93bc45cdda845f66e7daa10625bcb06 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jan=20Pokorn=C3=BD?= <jpokorny@redhat.com>
+Date: Thu, 17 Jan 2013 14:30:13 +0100
+Subject: [PATCH 2/2] bz896244 (2/2): reduce space waste by loopifying
+ invariants
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Related: rhbz#896244
+
+Signed-off-by: Jan Pokorný <jpokorny@redhat.com>
+---
+ luci/templates/configure.html | 1690 +----------------------------------------
+ 1 file changed, 36 insertions(+), 1654 deletions(-)
+
+diff --git a/luci/templates/configure.html b/luci/templates/configure.html
+index 9dfd3a7..af13329 100644
+--- a/luci/templates/configure.html
++++ b/luci/templates/configure.html
+@@ -574,24 +574,25 @@
+ 
+             <h3>Daemon-specific Logging Overrides</h3>
+             <div class="accordion">
+-            <h3><a href="#">rgmanager</a></h3>
++            <py:for each="daemon_i in ('rgmanager', 'qdiskd', 'fenced', 'groupd', 'dlm_controld', 'gfs_controld')">
++            <h3><a href="#">${daemon_i}</a></h3>
+             <div class="daemon_logconf_body"
+-                py:with="cur_log = (global_log and global_log.getDaemonConfig('rgmanager')) or default_log_obj">
++                py:with="cur_log = (global_log and global_log.getDaemonConfig(daemon_i)) or default_log_obj">
+                 <div class="row">
+-                    <label class="wide">Log rgmanager Debugging Messages</label>
+-                    <input name="rgmanager_debug" type="checkbox" class="checkbox"
++                    <label class="wide">Log ${daemon_i} Debugging Messages</label>
++                    <input name="${daemon_i}_debug" type="checkbox" class="checkbox"
+                         py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+                 </div>
+                 <div class="row"><fieldset>
+                     <legend>Syslog</legend>
+                     <div class="row">
+-                        <label class="wide">Log rgmanager Messages to Syslog</label>
+-                        <input name="rgmanager_to_syslog" type="checkbox" class="checkbox"
++                        <label class="wide">Log ${daemon_i} Messages to Syslog</label>
++                        <input name="${daemon_i}_to_syslog" type="checkbox" class="checkbox"
+                             py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+                     </div>
+                     <div class="row">
+-                        <label class="wide">rgmanager Syslog Message Facility</label>
+-                        <select name="rgmanager_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
++                        <label class="wide">${daemon_i} Syslog Message Facility</label>
++                        <select name="${daemon_i}_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+                           <option value="auth"
+                             py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+                           <option value="authpriv"
+@@ -633,8 +634,8 @@
+                         </select>
+                     </div>
+                     <div class="row">
+-                        <label class="wide">rgmanager Syslog Message Priority</label>
+-                        <select name="rgmanager_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
++                        <label class="wide">${daemon_i} Syslog Message Priority</label>
++                        <select name="${daemon_i}_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+                             <option value="emerg"
+                                 py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+                             <option value="alert"
+@@ -657,250 +658,18 @@
+                 <div class="row"><fieldset>
+                     <legend>Log File</legend>
+                     <div class="row">
+-                        <label class="wide">Log rgmanager Messages to Log File</label>
+-                        <input name="rgmanager_to_logfile" type="checkbox" class="checkbox"
++                        <label class="wide">Log ${daemon_i} Messages to Log File</label>
++                        <input name="${daemon_i}_to_logfile" type="checkbox" class="checkbox"
+                             py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+                     </div>
+                     <div class="row">
+-                        <label class="wide">rgmanager Log File Path</label>
+-                        <input name="rgmanager_logfile" type="text" class="text"
++                        <label class="wide">${daemon_i} Log File Path</label>
++                        <input name="${daemon_i}_logfile" type="text" class="text"
+                             py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+                     </div>
+                     <div class="row">
+-                        <label class="wide">rgmanager Log File Message Priority</label>
+-                        <select name="rgmanager_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                            <option value="emerg"
+-                                py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                            <option value="alert"
+-                                py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                            <option value="crit"
+-                                py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                            <option value="err"
+-                                py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                            <option value="warning"
+-                                py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                            <option value="notice"
+-                                py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                            <option value="info"
+-                                py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                            <option value="debug"
+-                                py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                        </select>
+-                    </div>
+-                 </fieldset></div>
+-            </div>
+-
+-            <h3><a href="#">qdiskd</a></h3>
+-            <div class="daemon_logconf_body"
+-                py:with="cur_log = (global_log and global_log.getDaemonConfig('qdiskd')) or default_log_obj">
+-                <div class="row">
+-                    <label class="wide">Log qdiskd Debugging Messages</label>
+-                    <input name="qdiskd_debug" type="checkbox" class="checkbox"
+-                        py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                </div>
+-                <div class="row"><fieldset>
+-                    <legend>Syslog</legend>
+-                    <div class="row">
+-                        <label class="wide">Log qdiskd Messages to Syslog</label>
+-                        <input name="qdiskd_to_syslog" type="checkbox" class="checkbox"
+-                            py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">qdiskd Syslog Message Facility</label>
+-                        <select name="qdiskd_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                          <option value="auth"
+-                            py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                          <option value="authpriv"
+-                            py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                          <option value="cron"
+-                            py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                          <option value="daemon"
+-                            py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                          <option value="kern"
+-                            py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                          <option value="lpr"
+-                            py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                          <option value="mail"
+-                            py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                          <option value="news"
+-                            py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                          <option value="syslog"
+-                            py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                          <option value="user"
+-                            py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                          <option value="uucp"
+-                            py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                          <option value="local0"
+-                            py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                          <option value="local1"
+-                            py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                          <option value="local2"
+-                            py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                          <option value="local3"
+-                            py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                          <option value="local4"
+-                            py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                          <option value="local5"
+-                            py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                          <option value="local6"
+-                            py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                          <option value="local7"
+-                            py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                        </select>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">qdiskd Syslog Message Priority</label>
+-                        <select name="qdiskd_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                            <option value="emerg"
+-                                py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                            <option value="alert"
+-                                py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                            <option value="crit"
+-                                py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                            <option value="err"
+-                                py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                            <option value="warning"
+-                                py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                            <option value="notice"
+-                                py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                            <option value="info"
+-                                py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                            <option value="debug"
+-                                py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                        </select>
+-                    </div>
+-                </fieldset></div>
+-                <div class="row"><fieldset>
+-                    <legend>Log File</legend>
+-                    <div class="row">
+-                        <label class="wide">Log qdiskd Messages to Log File</label>
+-                        <input name="qdiskd_to_logfile" type="checkbox" class="checkbox"
+-                            py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">qdiskd Log File Path</label>
+-                        <input name="qdiskd_logfile" type="text" class="text"
+-                            py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">qdiskd Log File Message Priority</label>
+-                        <select name="qdiskd_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                            <option value="emerg"
+-                                py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                            <option value="alert"
+-                                py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                            <option value="crit"
+-                                py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                            <option value="err"
+-                                py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                            <option value="warning"
+-                                py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                            <option value="notice"
+-                                py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                            <option value="info"
+-                                py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                            <option value="debug"
+-                                py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                        </select>
+-                    </div>
+-                 </fieldset></div>
+-            </div>
+-
+-            <h3><a href="#">fenced</a></h3>
+-            <div class="daemon_logconf_body"
+-                py:with="cur_log = (global_log and global_log.getDaemonConfig('fenced')) or default_log_obj">
+-                <div class="row">
+-                    <label class="wide">Log fenced Debugging Messages</label>
+-                    <input name="fenced_debug" type="checkbox" class="checkbox"
+-                        py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                </div>
+-                <div class="row"><fieldset>
+-                    <legend>Syslog</legend>
+-                    <div class="row">
+-                        <label class="wide">Log fenced Messages to Syslog</label>
+-                        <input name="fenced_to_syslog" type="checkbox" class="checkbox"
+-                            py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">fenced Syslog Message Facility</label>
+-                        <select name="fenced_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                          <option value="auth"
+-                            py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                          <option value="authpriv"
+-                            py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                          <option value="cron"
+-                            py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                          <option value="daemon"
+-                            py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                          <option value="kern"
+-                            py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                          <option value="lpr"
+-                            py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                          <option value="mail"
+-                            py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                          <option value="news"
+-                            py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                          <option value="syslog"
+-                            py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                          <option value="user"
+-                            py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                          <option value="uucp"
+-                            py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                          <option value="local0"
+-                            py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                          <option value="local1"
+-                            py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                          <option value="local2"
+-                            py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                          <option value="local3"
+-                            py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                          <option value="local4"
+-                            py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                          <option value="local5"
+-                            py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                          <option value="local6"
+-                            py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                          <option value="local7"
+-                            py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                        </select>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">fenced Syslog Message Priority</label>
+-                        <select name="fenced_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                            <option value="emerg"
+-                                py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                            <option value="alert"
+-                                py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                            <option value="crit"
+-                                py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                            <option value="err"
+-                                py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                            <option value="warning"
+-                                py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                            <option value="notice"
+-                                py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                            <option value="info"
+-                                py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                            <option value="debug"
+-                                py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                        </select>
+-                    </div>
+-                </fieldset></div>
+-                <div class="row"><fieldset>
+-                    <legend>Log File</legend>
+-                    <div class="row">
+-                        <label class="wide">Log fenced Messages to Log File</label>
+-                        <input name="fenced_to_logfile" type="checkbox" class="checkbox"
+-                            py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">fenced Log File Path</label>
+-                        <input name="fenced_logfile" type="text" class="text"
+-                            py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">fenced Log File Message Priority</label>
+-                        <select name="fenced_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
++                        <label class="wide">${daemon_i} Log File Message Priority</label>
++                        <select name="${daemon_i}_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+                             <option value="emerg"
+                                 py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+                             <option value="alert"
+@@ -921,6 +690,7 @@
+                     </div>
+                  </fieldset></div>
+             </div>
++            </py:for>
+ 
+             <h3><a href="#">corosync</a></h3>
+             <div class="daemon_logconf_body"
+@@ -1038,24 +808,25 @@
+                  </fieldset></div>
+                  <h4>Corosync Subsystem-specific Logging Overrides</h4>
+                  <div class="accordion">
+-                    <h3><a href="#">CLM</a></h3>
++                    <py:for each="subsystem in ('CLM', 'CPG', 'MAIN', 'SERV', 'CMAN', 'TOTEM', 'QUORUM', 'CONFDB', 'CKPT', 'EVT')">
++                    <h3><a href="#">${subsystem}</a></h3>
+                     <div class="row daemon_subsys_logconf"
+-                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig('CLM')) or default_log_obj">
++                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig(subsystem)) or default_log_obj">
+                         <div class="row">
+-                            <label class="wide">Log corosync CLM Debugging Messages</label>
+-                            <input name="corosync_CLM_debug" type="checkbox" class="checkbox"
++                            <label class="wide">Log corosync ${subsystem} Debugging Messages</label>
++                            <input name="corosync_${subsystem}_debug" type="checkbox" class="checkbox"
+                                 py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+                         </div>
+                         <div class="row"><fieldset>
+                             <legend>Syslog</legend>
+                             <div class="row">
+-                                <label class="wide">Log corosync CLM Messages to Syslog</label>
+-                                <input name="corosync_CLM_to_syslog" type="checkbox" class="checkbox"
++                                <label class="wide">Log corosync ${subsystem} Messages to Syslog</label>
++                                <input name="corosync_${subsystem}_to_syslog" type="checkbox" class="checkbox"
+                                     py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+                             </div>
+                             <div class="row">
+-                                <label class="wide">corosync CLM Syslog Message Facility</label>
+-                                <select name="corosync_CLM_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
++                                <label class="wide">corosync ${subsystem} Syslog Message Facility</label>
++                                <select name="corosync_${subsystem}_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+                                   <option value="auth"
+                                     py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+                                   <option value="authpriv"
+@@ -1097,8 +868,8 @@
+                                 </select>
+                             </div>
+                             <div class="row">
+-                                <label class="wide">corosync CLM Syslog Message Priority</label>
+-                                <select name="corosync_CLM_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
++                                <label class="wide">corosync ${subsystem} Syslog Message Priority</label>
++                                <select name="corosync_${subsystem}_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+                                     <option value="emerg"
+                                         py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+                                     <option value="alert"
+@@ -1121,18 +892,18 @@
+                         <div class="row"><fieldset>
+                             <legend>Log File</legend>
+                             <div class="row">
+-                                <label class="wide">Log corosync CLM Messages to Log File</label>
+-                                <input name="corosync_CLM_to_logfile" type="checkbox" class="checkbox"
++                                <label class="wide">Log corosync ${subsystem} Messages to Log File</label>
++                                <input name="corosync_${subsystem}_to_logfile" type="checkbox" class="checkbox"
+                                     py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+                             </div>
+                             <div class="row">
+-                                <label class="wide">corosync CLM Log File Path</label>
+-                                <input name="corosync_CLM_logfile" type="text" class="text"
++                                <label class="wide">corosync ${subsystem} Log File Path</label>
++                                <input name="corosync_${subsystem}_logfile" type="text" class="text"
+                                     py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+                             </div>
+                             <div class="row">
+-                                <label class="wide">corosync CLM Log File Message Priority</label>
+-                                <select name="corosync_CLM_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
++                                <label class="wide">corosync ${subsystem} Log File Message Priority</label>
++                                <select name="corosync_${subsystem}_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+                                     <option value="emerg"
+                                         py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+                                     <option value="alert"
+@@ -1153,1400 +924,11 @@
+                             </div>
+                         </fieldset></div>
+                     </div>
++                    </py:for>
+ 
+-                    <h3><a href="#">CPG</a></h3>
+-                    <div class="row daemon_subsys_logconf"
+-                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig('CPG')) or default_log_obj">
+-                        <div class="row">
+-                            <label class="wide">Log corosync CPG Debugging Messages</label>
+-                            <input name="corosync_CPG_debug" type="checkbox" class="checkbox"
+-                                py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                        </div>
+-                        <div class="row"><fieldset>
+-                            <legend>Syslog</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync CPG Messages to Syslog</label>
+-                                <input name="corosync_CPG_to_syslog" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CPG Syslog Message Facility</label>
+-                                <select name="corosync_CPG_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                                  <option value="auth"
+-                                    py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                                  <option value="authpriv"
+-                                    py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                                  <option value="cron"
+-                                    py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                                  <option value="daemon"
+-                                    py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                                  <option value="kern"
+-                                    py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                                  <option value="lpr"
+-                                    py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                                  <option value="mail"
+-                                    py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                                  <option value="news"
+-                                    py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                                  <option value="syslog"
+-                                    py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                                  <option value="user"
+-                                    py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                                  <option value="uucp"
+-                                    py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                                  <option value="local0"
+-                                    py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                                  <option value="local1"
+-                                    py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                                  <option value="local2"
+-                                    py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                                  <option value="local3"
+-                                    py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                                  <option value="local4"
+-                                    py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                                  <option value="local5"
+-                                    py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                                  <option value="local6"
+-                                    py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                                  <option value="local7"
+-                                    py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                                </select>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CPG Syslog Message Priority</label>
+-                                <select name="corosync_CPG_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                        <div class="row"><fieldset>
+-                            <legend>Log File</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync CPG Messages to Log File</label>
+-                                <input name="corosync_CPG_to_logfile" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CPG Log File Path</label>
+-                                <input name="corosync_CPG_logfile" type="text" class="text"
+-                                    py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CPG Log File Message Priority</label>
+-                                <select name="corosync_CPG_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                    </div>
+-
+-                    <h3><a href="#">MAIN</a></h3>
+-                    <div class="row daemon_subsys_logconf"
+-                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig('MAIN')) or default_log_obj">
+-                        <div class="row">
+-                            <label class="wide">Log corosync MAIN Debugging Messages</label>
+-                            <input name="corosync_MAIN_debug" type="checkbox" class="checkbox"
+-                                py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                        </div>
+-                        <div class="row"><fieldset>
+-                            <legend>Syslog</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync MAIN Messages to Syslog</label>
+-                                <input name="corosync_MAIN_to_syslog" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync MAIN Syslog Message Facility</label>
+-                                <select name="corosync_MAIN_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                                  <option value="auth"
+-                                    py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                                  <option value="authpriv"
+-                                    py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                                  <option value="cron"
+-                                    py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                                  <option value="daemon"
+-                                    py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                                  <option value="kern"
+-                                    py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                                  <option value="lpr"
+-                                    py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                                  <option value="mail"
+-                                    py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                                  <option value="news"
+-                                    py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                                  <option value="syslog"
+-                                    py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                                  <option value="user"
+-                                    py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                                  <option value="uucp"
+-                                    py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                                  <option value="local0"
+-                                    py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                                  <option value="local1"
+-                                    py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                                  <option value="local2"
+-                                    py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                                  <option value="local3"
+-                                    py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                                  <option value="local4"
+-                                    py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                                  <option value="local5"
+-                                    py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                                  <option value="local6"
+-                                    py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                                  <option value="local7"
+-                                    py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                                </select>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync MAIN Syslog Message Priority</label>
+-                                <select name="corosync_MAIN_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                        <div class="row"><fieldset>
+-                            <legend>Log File</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync MAIN Messages to Log File</label>
+-                                <input name="corosync_MAIN_to_logfile" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync MAIN Log File Path</label>
+-                                <input name="corosync_MAIN_logfile" type="text" class="text"
+-                                    py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync MAIN Log File Message Priority</label>
+-                                <select name="corosync_MAIN_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                    </div>
+-    
+-                    <h3><a href="#">SERV</a></h3>
+-                    <div class="row daemon_subsys_logconf"
+-                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig('SERV')) or default_log_obj">
+-                        <div class="row">
+-                            <label class="wide">Log corosync SERV Debugging Messages</label>
+-                            <input name="corosync_SERV_debug" type="checkbox" class="checkbox"
+-                                py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                        </div>
+-                        <div class="row"><fieldset>
+-                            <legend>Syslog</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync SERV Messages to Syslog</label>
+-                                <input name="corosync_SERV_to_syslog" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync SERV Syslog Message Facility</label>
+-                                <select name="corosync_SERV_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                                  <option value="auth"
+-                                    py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                                  <option value="authpriv"
+-                                    py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                                  <option value="cron"
+-                                    py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                                  <option value="daemon"
+-                                    py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                                  <option value="kern"
+-                                    py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                                  <option value="lpr"
+-                                    py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                                  <option value="mail"
+-                                    py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                                  <option value="news"
+-                                    py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                                  <option value="syslog"
+-                                    py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                                  <option value="user"
+-                                    py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                                  <option value="uucp"
+-                                    py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                                  <option value="local0"
+-                                    py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                                  <option value="local1"
+-                                    py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                                  <option value="local2"
+-                                    py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                                  <option value="local3"
+-                                    py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                                  <option value="local4"
+-                                    py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                                  <option value="local5"
+-                                    py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                                  <option value="local6"
+-                                    py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                                  <option value="local7"
+-                                    py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                                </select>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync SERV Syslog Message Priority</label>
+-                                <select name="corosync_SERV_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                        <div class="row"><fieldset>
+-                            <legend>Log File</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync SERV Messages to Log File</label>
+-                                <input name="corosync_SERV_to_logfile" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync SERV Log File Path</label>
+-                                <input name="corosync_SERV_logfile" type="text" class="text"
+-                                    py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync SERV Log File Message Priority</label>
+-                                <select name="corosync_SERV_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                    </div>
+-    
+-                    <h3><a href="#">CMAN</a></h3>
+-                    <div class="row daemon_subsys_logconf"
+-                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig('CMAN')) or default_log_obj">
+-                        <div class="row">
+-                            <label class="wide">Log corosync CMAN Debugging Messages</label>
+-                            <input name="corosync_CMAN_debug" type="checkbox" class="checkbox"
+-                                py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                        </div>
+-                        <div class="row"><fieldset>
+-                            <legend>Syslog</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync CMAN Messages to Syslog</label>
+-                                <input name="corosync_CMAN_to_syslog" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CMAN Syslog Message Facility</label>
+-                                <select name="corosync_CMAN_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                                  <option value="auth"
+-                                    py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                                  <option value="authpriv"
+-                                    py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                                  <option value="cron"
+-                                    py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                                  <option value="daemon"
+-                                    py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                                  <option value="kern"
+-                                    py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                                  <option value="lpr"
+-                                    py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                                  <option value="mail"
+-                                    py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                                  <option value="news"
+-                                    py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                                  <option value="syslog"
+-                                    py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                                  <option value="user"
+-                                    py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                                  <option value="uucp"
+-                                    py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                                  <option value="local0"
+-                                    py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                                  <option value="local1"
+-                                    py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                                  <option value="local2"
+-                                    py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                                  <option value="local3"
+-                                    py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                                  <option value="local4"
+-                                    py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                                  <option value="local5"
+-                                    py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                                  <option value="local6"
+-                                    py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                                  <option value="local7"
+-                                    py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                                </select>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CMAN Syslog Message Priority</label>
+-                                <select name="corosync_CMAN_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                        <div class="row"><fieldset>
+-                            <legend>Log File</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync CMAN Messages to Log File</label>
+-                                <input name="corosync_CMAN_to_logfile" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CMAN Log File Path</label>
+-                                <input name="corosync_CMAN_logfile" type="text" class="text"
+-                                    py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CMAN Log File Message Priority</label>
+-                                <select name="corosync_CMAN_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                    </div>
+-    
+-                    <h3><a href="#">TOTEM</a></h3> 
+-                    <div class="row daemon_subsys_logconf"
+-                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig('TOTEM')) or default_log_obj">
+-                        <div class="row">
+-                            <label class="wide">Log corosync TOTEM Debugging Messages</label>
+-                            <input name="corosync_TOTEM_debug" type="checkbox" class="checkbox"
+-                                py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                        </div>
+-                        <div class="row"><fieldset>
+-                            <legend>Syslog</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync TOTEM Messages to Syslog</label>
+-                                <input name="corosync_TOTEM_to_syslog" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync TOTEM Syslog Message Facility</label>
+-                                <select name="corosync_TOTEM_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                                  <option value="auth"
+-                                    py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                                  <option value="authpriv"
+-                                    py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                                  <option value="cron"
+-                                    py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                                  <option value="daemon"
+-                                    py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                                  <option value="kern"
+-                                    py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                                  <option value="lpr"
+-                                    py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                                  <option value="mail"
+-                                    py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                                  <option value="news"
+-                                    py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                                  <option value="syslog"
+-                                    py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                                  <option value="user"
+-                                    py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                                  <option value="uucp"
+-                                    py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                                  <option value="local0"
+-                                    py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                                  <option value="local1"
+-                                    py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                                  <option value="local2"
+-                                    py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                                  <option value="local3"
+-                                    py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                                  <option value="local4"
+-                                    py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                                  <option value="local5"
+-                                    py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                                  <option value="local6"
+-                                    py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                                  <option value="local7"
+-                                    py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                                </select>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync TOTEM Syslog Message Priority</label>
+-                                <select name="corosync_TOTEM_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                        <div class="row"><fieldset>
+-                            <legend>Log File</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync TOTEM Messages to Log File</label>
+-                                <input name="corosync_TOTEM_to_logfile" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync TOTEM Log File Path</label>
+-                                <input name="corosync_TOTEM_logfile" type="text" class="text"
+-                                    py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync TOTEM Log File Message Priority</label>
+-                                <select name="corosync_TOTEM_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                    </div>
+-    
+-                    <h3><a href="#">QUORUM</a></h3>
+-                    <div class="row daemon_subsys_logconf"
+-                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig('QUORUM')) or default_log_obj">
+-                        <div class="row">
+-                            <label class="wide">Log corosync QUORUM Debugging Messages</label>
+-                            <input name="corosync_QUORUM_debug" type="checkbox" class="checkbox"
+-                                py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                        </div>
+-                        <div class="row"><fieldset>
+-                            <legend>Syslog</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync QUORUM Messages to Syslog</label>
+-                                <input name="corosync_QUORUM_to_syslog" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync QUORUM Syslog Message Facility</label>
+-                                <select name="corosync_QUORUM_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                                  <option value="auth"
+-                                    py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                                  <option value="authpriv"
+-                                    py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                                  <option value="cron"
+-                                    py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                                  <option value="daemon"
+-                                    py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                                  <option value="kern"
+-                                    py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                                  <option value="lpr"
+-                                    py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                                  <option value="mail"
+-                                    py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                                  <option value="news"
+-                                    py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                                  <option value="syslog"
+-                                    py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                                  <option value="user"
+-                                    py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                                  <option value="uucp"
+-                                    py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                                  <option value="local0"
+-                                    py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                                  <option value="local1"
+-                                    py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                                  <option value="local2"
+-                                    py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                                  <option value="local3"
+-                                    py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                                  <option value="local4"
+-                                    py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                                  <option value="local5"
+-                                    py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                                  <option value="local6"
+-                                    py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                                  <option value="local7"
+-                                    py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                                </select>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync QUORUM Syslog Message Priority</label>
+-                                <select name="corosync_QUORUM_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                        <div class="row"><fieldset>
+-                            <legend>Log File</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync QUORUM Messages to Log File</label>
+-                                <input name="corosync_QUORUM_to_logfile" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync QUORUM Log File Path</label>
+-                                <input name="corosync_QUORUM_logfile" type="text" class="text"
+-                                    py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync QUORUM Log File Message Priority</label>
+-                                <select name="corosync_QUORUM_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                    </div>
+-    
+-                    <h3><a href="#">CONFDB</a></h3>
+-                    <div class="row daemon_subsys_logconf"
+-                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig('CONFDB')) or default_log_obj">
+-                        <div class="row">
+-                            <label class="wide">Log corosync CONFDB Debugging Messages</label>
+-                            <input name="corosync_CONFDB_debug" type="checkbox" class="checkbox"
+-                                py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                        </div>
+-                        <div class="row"><fieldset>
+-                            <legend>Syslog</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync CONFDB Messages to Syslog</label>
+-                                <input name="corosync_CONFDB_to_syslog" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CONFDB Syslog Message Facility</label>
+-                                <select name="corosync_CONFDB_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                                  <option value="auth"
+-                                    py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                                  <option value="authpriv"
+-                                    py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                                  <option value="cron"
+-                                    py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                                  <option value="daemon"
+-                                    py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                                  <option value="kern"
+-                                    py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                                  <option value="lpr"
+-                                    py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                                  <option value="mail"
+-                                    py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                                  <option value="news"
+-                                    py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                                  <option value="syslog"
+-                                    py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                                  <option value="user"
+-                                    py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                                  <option value="uucp"
+-                                    py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                                  <option value="local0"
+-                                    py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                                  <option value="local1"
+-                                    py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                                  <option value="local2"
+-                                    py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                                  <option value="local3"
+-                                    py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                                  <option value="local4"
+-                                    py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                                  <option value="local5"
+-                                    py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                                  <option value="local6"
+-                                    py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                                  <option value="local7"
+-                                    py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                                </select>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CONFDB Syslog Message Priority</label>
+-                                <select name="corosync_CONFDB_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                        <div class="row"><fieldset>
+-                            <legend>Log File</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync CONFDB Messages to Log File</label>
+-                                <input name="corosync_CONFDB_to_logfile" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CONFDB Log File Path</label>
+-                                <input name="corosync_CONFDB_logfile" type="text" class="text"
+-                                    py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CONFDB Log File Message Priority</label>
+-                                <select name="corosync_CONFDB_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                    </div>
+-    
+-                    <h3><a href="#">CKPT</a></h3>
+-                    <div class="row daemon_subsys_logconf"
+-                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig('CKPT')) or default_log_obj">
+-                        <div class="row">
+-                            <label class="wide">Log corosync CKPT Debugging Messages</label>
+-                            <input name="corosync_CKPT_debug" type="checkbox" class="checkbox"
+-                                py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                        </div>
+-                        <div class="row"><fieldset>
+-                            <legend>Syslog</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync CKPT Messages to Syslog</label>
+-                                <input name="corosync_CKPT_to_syslog" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CKPT Syslog Message Facility</label>
+-                                <select name="corosync_CKPT_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                                  <option value="auth"
+-                                    py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                                  <option value="authpriv"
+-                                    py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                                  <option value="cron"
+-                                    py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                                  <option value="daemon"
+-                                    py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                                  <option value="kern"
+-                                    py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                                  <option value="lpr"
+-                                    py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                                  <option value="mail"
+-                                    py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                                  <option value="news"
+-                                    py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                                  <option value="syslog"
+-                                    py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                                  <option value="user"
+-                                    py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                                  <option value="uucp"
+-                                    py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                                  <option value="local0"
+-                                    py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                                  <option value="local1"
+-                                    py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                                  <option value="local2"
+-                                    py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                                  <option value="local3"
+-                                    py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                                  <option value="local4"
+-                                    py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                                  <option value="local5"
+-                                    py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                                  <option value="local6"
+-                                    py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                                  <option value="local7"
+-                                    py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                                </select>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CKPT Syslog Message Priority</label>
+-                                <select name="corosync_CKPT_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                        <div class="row"><fieldset>
+-                            <legend>Log File</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync CKPT Messages to Log File</label>
+-                                <input name="corosync_CKPT_to_logfile" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CKPT Log File Path</label>
+-                                <input name="corosync_CKPT_logfile" type="text" class="text"
+-                                    py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync CKPT Log File Message Priority</label>
+-                                <select name="corosync_CKPT_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                    </div>
+-    
+-                    <h3><a href="#">EVT</a></h3>
+-                    <div class="row daemon_subsys_logconf"
+-                        py:with="cur_log = (global_log and global_log.getCorosyncSubsysConfig('EVT')) or default_log_obj">
+-                        <div class="row">
+-                            <label class="wide">Log corosync EVT Debugging Messages</label>
+-                            <input name="corosync_EVT_debug" type="checkbox" class="checkbox"
+-                                py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                        </div>
+-                        <div class="row"><fieldset>
+-                            <legend>Syslog</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync EVT Messages to Syslog</label>
+-                                <input name="corosync_EVT_to_syslog" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync EVT Syslog Message Facility</label>
+-                                <select name="corosync_EVT_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                                  <option value="auth"
+-                                    py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                                  <option value="authpriv"
+-                                    py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                                  <option value="cron"
+-                                    py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                                  <option value="daemon"
+-                                    py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                                  <option value="kern"
+-                                    py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                                  <option value="lpr"
+-                                    py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                                  <option value="mail"
+-                                    py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                                  <option value="news"
+-                                    py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                                  <option value="syslog"
+-                                    py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                                  <option value="user"
+-                                    py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                                  <option value="uucp"
+-                                    py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                                  <option value="local0"
+-                                    py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                                  <option value="local1"
+-                                    py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                                  <option value="local2"
+-                                    py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                                  <option value="local3"
+-                                    py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                                  <option value="local4"
+-                                    py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                                  <option value="local5"
+-                                    py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                                  <option value="local6"
+-                                    py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                                  <option value="local7"
+-                                    py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                                </select>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync EVT Syslog Message Priority</label>
+-                                <select name="corosync_EVT_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                        <div class="row"><fieldset>
+-                            <legend>Log File</legend>
+-                            <div class="row">
+-                                <label class="wide">Log corosync EVT Messages to Log File</label>
+-                                <input name="corosync_EVT_to_logfile" type="checkbox" class="checkbox"
+-                                    py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync EVT Log File Path</label>
+-                                <input name="corosync_EVT_logfile" type="text" class="text"
+-                                    py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                            </div>
+-                            <div class="row">
+-                                <label class="wide">corosync EVT Log File Message Priority</label>
+-                                <select name="corosync_EVT_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                                    <option value="emerg"
+-                                        py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                                    <option value="alert"
+-                                        py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                                    <option value="crit"
+-                                        py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                                    <option value="err"
+-                                        py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                                    <option value="warning"
+-                                        py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                                    <option value="notice"
+-                                        py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                                    <option value="info"
+-                                        py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                                    <option value="debug"
+-                                        py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                                </select>
+-                            </div>
+-                        </fieldset></div>
+-                    </div>
+-                </div>
+-            </div>
+-
+-            <h3><a href="#">groupd</a></h3>
+-            <div class="daemon_logconf_body"
+-                py:with="cur_log = (global_log and global_log.getDaemonConfig('groupd')) or default_log_obj">
+-                <div class="row">
+-                    <label class="wide">Log groupd Debugging Messages</label>
+-                    <input name="groupd_debug" type="checkbox" class="checkbox"
+-                        py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                </div>
+-                <div class="row"><fieldset>
+-                    <legend>Syslog</legend>
+-                    <div class="row">
+-                        <label class="wide">Log groupd Messages to Syslog</label>
+-                        <input name="groupd_to_syslog" type="checkbox" class="checkbox"
+-                            py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">groupd Syslog Message Facility</label>
+-                        <select name="groupd_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                          <option value="auth"
+-                            py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                          <option value="authpriv"
+-                            py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                          <option value="cron"
+-                            py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                          <option value="daemon"
+-                            py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                          <option value="kern"
+-                            py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                          <option value="lpr"
+-                            py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                          <option value="mail"
+-                            py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                          <option value="news"
+-                            py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                          <option value="syslog"
+-                            py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                          <option value="user"
+-                            py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                          <option value="uucp"
+-                            py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                          <option value="local0"
+-                            py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                          <option value="local1"
+-                            py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                          <option value="local2"
+-                            py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                          <option value="local3"
+-                            py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                          <option value="local4"
+-                            py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                          <option value="local5"
+-                            py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                          <option value="local6"
+-                            py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                          <option value="local7"
+-                            py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                        </select>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">groupd Syslog Message Priority</label>
+-                        <select name="groupd_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                            <option value="emerg"
+-                                py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                            <option value="alert"
+-                                py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                            <option value="crit"
+-                                py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                            <option value="err"
+-                                py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                            <option value="warning"
+-                                py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                            <option value="notice"
+-                                py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                            <option value="info"
+-                                py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                            <option value="debug"
+-                                py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                        </select>
+-                    </div>
+-                </fieldset></div>
+-                <div class="row"><fieldset>
+-                    <legend>Log File</legend>
+-                    <div class="row">
+-                        <label class="wide">Log groupd Messages to Log File</label>
+-                        <input name="groupd_to_logfile" type="checkbox" class="checkbox"
+-                            py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">groupd Log File Path</label>
+-                        <input name="groupd_logfile" type="text" class="text"
+-                            py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">groupd Log File Message Priority</label>
+-                        <select name="groupd_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                            <option value="emerg"
+-                                py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                            <option value="alert"
+-                                py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                            <option value="crit"
+-                                py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                            <option value="err"
+-                                py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                            <option value="warning"
+-                                py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                            <option value="notice"
+-                                py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                            <option value="info"
+-                                py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                            <option value="debug"
+-                                py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                        </select>
+-                    </div>
+-                 </fieldset></div>
+-            </div>
+-
+-            <h3><a href="#">dlm_controld</a></h3>
+-            <div class="daemon_logconf_body"
+-                py:with="cur_log = (global_log and global_log.getDaemonConfig('dlm_controld')) or default_log_obj">
+-                <div class="row">
+-                    <label class="wide">Log dlm_controld Debugging Messages</label>
+-                    <input name="dlm_controld_debug" type="checkbox" class="checkbox"
+-                        py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+                 </div>
+-                <div class="row"><fieldset>
+-                    <legend>Syslog</legend>
+-                    <div class="row">
+-                        <label class="wide">Log dlm_controld Messages to Syslog</label>
+-                        <input name="dlm_controld_to_syslog" type="checkbox" class="checkbox"
+-                            py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">dlm_controld Syslog Message Facility</label>
+-                        <select name="dlm_controld_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                          <option value="auth"
+-                            py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                          <option value="authpriv"
+-                            py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                          <option value="cron"
+-                            py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                          <option value="daemon"
+-                            py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                          <option value="kern"
+-                            py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                          <option value="lpr"
+-                            py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                          <option value="mail"
+-                            py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                          <option value="news"
+-                            py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                          <option value="syslog"
+-                            py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                          <option value="user"
+-                            py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                          <option value="uucp"
+-                            py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                          <option value="local0"
+-                            py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                          <option value="local1"
+-                            py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                          <option value="local2"
+-                            py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                          <option value="local3"
+-                            py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                          <option value="local4"
+-                            py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                          <option value="local5"
+-                            py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                          <option value="local6"
+-                            py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                          <option value="local7"
+-                            py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                        </select>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">dlm_controld Syslog Message Priority</label>
+-                        <select name="dlm_controld_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                            <option value="emerg"
+-                                py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                            <option value="alert"
+-                                py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                            <option value="crit"
+-                                py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                            <option value="err"
+-                                py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                            <option value="warning"
+-                                py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                            <option value="notice"
+-                                py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                            <option value="info"
+-                                py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                            <option value="debug"
+-                                py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                        </select>
+-                    </div>
+-                </fieldset></div>
+-                <div class="row"><fieldset>
+-                    <legend>Log File</legend>
+-                    <div class="row">
+-                        <label class="wide">Log dlm_controld Messages to Log File</label>
+-                        <input name="dlm_controld_to_logfile" type="checkbox" class="checkbox"
+-                            py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">dlm_controld Log File Path</label>
+-                        <input name="dlm_controld_logfile" type="text" class="text"
+-                            py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">dlm_controld Log File Message Priority</label>
+-                        <select name="dlm_controld_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                            <option value="emerg"
+-                                py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                            <option value="alert"
+-                                py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                            <option value="crit"
+-                                py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                            <option value="err"
+-                                py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                            <option value="warning"
+-                                py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                            <option value="notice"
+-                                py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                            <option value="info"
+-                                py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                            <option value="debug"
+-                                py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                        </select>
+-                    </div>
+-                 </fieldset></div>
+             </div>
+ 
+-            <h3><a href="#">gfs_controld</a></h3>
+-            <div class="daemon_logconf_body"
+-                py:with="cur_log = (global_log and global_log.getDaemonConfig('gfs_controld')) or default_log_obj">
+-                <div class="row">
+-                    <label class="wide">Log gfs_controld Debugging Messages</label>
+-                    <input name="gfs_controld_debug" type="checkbox" class="checkbox"
+-                        py:attrs="(cur_log and cur_log.getDebug()) and {'checked':'checked'} or {}"/>
+-                </div>
+-                <div class="row"><fieldset>
+-                    <legend>Syslog</legend>
+-                    <div class="row">
+-                        <label class="wide">Log gfs_controld Messages to Syslog</label>
+-                        <input name="gfs_controld_to_syslog" type="checkbox" class="checkbox"
+-                            py:attrs="(cur_log and cur_log.getSyslog()) and {'checked':'checked'} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">gfs_controld Syslog Message Facility</label>
+-                        <select name="gfs_controld_syslog_facility" py:with="cur_facility = cur_log and cur_log.getSyslogFacility()">
+-                          <option value="auth"
+-                            py:attrs="cur_facility == 'auth' and {'selected':'selected'} or {}">auth</option>
+-                          <option value="authpriv"
+-                            py:attrs="cur_facility == 'authpriv' and {'selected':'selected'} or {}">authpriv</option>
+-                          <option value="cron"
+-                            py:attrs="cur_facility == 'cron' and {'selected':'selected'} or {}">cron</option>
+-                          <option value="daemon"
+-                            py:attrs="cur_facility == 'daemon' and {'selected':'selected'} or {}">daemon</option>
+-                          <option value="kern"
+-                            py:attrs="cur_facility == 'kern' and {'selected':'selected'} or {}">kern</option>
+-                          <option value="lpr"
+-                            py:attrs="cur_facility == 'lpr' and {'selected':'selected'} or {}">lpr</option>
+-                          <option value="mail"
+-                            py:attrs="cur_facility == 'mail' and {'selected':'selected'} or {}">mail</option>
+-                          <option value="news"
+-                            py:attrs="cur_facility == 'news' and {'selected':'selected'} or {}">news</option>
+-                          <option value="syslog"
+-                            py:attrs="cur_facility == 'syslog' and {'selected':'selected'} or {}">syslog</option>
+-                          <option value="user"
+-                            py:attrs="cur_facility == 'user' and {'selected':'selected'} or {}">user</option>
+-                          <option value="uucp"
+-                            py:attrs="cur_facility == 'uucp' and {'selected':'selected'} or {}">uucp</option>
+-                          <option value="local0"
+-                            py:attrs="cur_facility == 'local0' and {'selected':'selected'} or {}">local0</option>
+-                          <option value="local1"
+-                            py:attrs="cur_facility == 'local1' and {'selected':'selected'} or {}">local1</option>
+-                          <option value="local2"
+-                            py:attrs="cur_facility == 'local2' and {'selected':'selected'} or {}">local2</option>
+-                          <option value="local3"
+-                            py:attrs="cur_facility == 'local3' and {'selected':'selected'} or {}">local3</option>
+-                          <option value="local4"
+-                            py:attrs="(not cur_facility or cur_facility == 'local4') and {'selected':'selected'} or {}">local4</option>
+-                          <option value="local5"
+-                            py:attrs="cur_facility == 'local5' and {'selected':'selected'} or {}">local5</option>
+-                          <option value="local6"
+-                            py:attrs="cur_facility == 'local6' and {'selected':'selected'} or {}">local6</option>
+-                          <option value="local7"
+-                            py:attrs="cur_facility == 'local7' and {'selected':'selected'} or {}">local7</option>
+-                        </select>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">gfs_controld Syslog Message Priority</label>
+-                        <select name="gfs_controld_syslog_priority" py:with="cur_priority = cur_log and cur_log.getSyslogPriority()">
+-                            <option value="emerg"
+-                                py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                            <option value="alert"
+-                                py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                            <option value="crit"
+-                                py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                            <option value="err"
+-                                py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                            <option value="warning"
+-                                py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                            <option value="notice"
+-                                py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                            <option value="info"
+-                                py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                            <option value="debug"
+-                                py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                        </select>
+-                    </div>
+-                </fieldset></div>
+-                <div class="row"><fieldset>
+-                    <legend>Log File</legend>
+-                    <div class="row">
+-                        <label class="wide">Log gfs_controld Messages to Log File</label>
+-                        <input name="gfs_controld_to_logfile" type="checkbox" class="checkbox"
+-                            py:attrs="(cur_log and cur_log.getLogfile()) and {'checked':'checked'} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">gfs_controld Log File Path</label>
+-                        <input name="gfs_controld_logfile" type="text" class="text"
+-                            py:attrs="cur_log and {'value':cur_log.getLogfilePath()} or {}"/>
+-                    </div>
+-                    <div class="row">
+-                        <label class="wide">gfs_controld Log File Message Priority</label>
+-                        <select name="gfs_controld_logfile_priority" py:with="cur_priority = cur_log and cur_log.getLogfilePriority()">
+-                            <option value="emerg"
+-                                py:attrs="cur_priority == 'emerg' and {'selected':'selected'} or {}">emerg</option>
+-                            <option value="alert"
+-                                py:attrs="cur_priority == 'alert' and {'selected':'selected'} or {}">alert</option>
+-                            <option value="crit"
+-                                py:attrs="cur_priority == 'crit' and {'selected':'selected'} or {}">crit</option>
+-                            <option value="err"
+-                                py:attrs="cur_priority == 'err' and {'selected':'selected'} or {}">err</option>
+-                            <option value="warning"
+-                                py:attrs="cur_priority == 'warning' and {'selected':'selected'} or {}">warning</option>
+-                            <option value="notice"
+-                                py:attrs="cur_priority == 'notice' and {'selected':'selected'} or {}">notice</option>
+-                            <option value="info"
+-                                py:attrs="(not cur_priority or cur_priority == 'info') and {'selected':'selected'} or {}">info</option>
+-                            <option value="debug"
+-                                py:attrs="cur_priority == 'debug' and {'selected':'selected'} or {}">debug</option>
+-                        </select>
+-                    </div>
+-                 </fieldset></div>
+-            </div>
+             </div>
+             <div class="row">
+                 <input type="submit" class="button formsubmit blue" value="Apply"/>
+-- 
+1.7.11.7
+

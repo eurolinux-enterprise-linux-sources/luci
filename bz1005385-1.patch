@@ -1,0 +1,65 @@
+--- a/input_files/initscript/initscript.in
++++ b/input_files/initscript/initscript.in
+@@ -78,6 +78,9 @@
+ CERT_CONFIG="@CERTCONFIG@"
+ CERT_PEM="@CERTPEM@"
+ 
++# Run $exec in a subshell with changed umask
++do_exec() { (umask 027 && $exec "$@"); }
++
+ 
+ # Check some conditions and return respective return code
+ entry_check() {
+@@ -89,7 +92,6 @@
+     fi
+ }
+ 
+-
+ # Automatically adds subjectAltName values for hostname domain names and/or IP
+ # addresses to the configuration of self-managed self-signed certificate
+ certconfig_complete() {
+@@ -146,7 +148,7 @@
+ prepare_config() {
+     # Touching $config first and then using ``.. make-config .. --overwrite''
+     # does not work now (see http://trac.pythonpaste.org/pythonpaste/ticket/450)
+-    $exec make-config $PKG_NAME "$config" --no-default-sysconfig --no-install &>/dev/null
++    do_exec make-config $PKG_NAME "$config" --no-default-sysconfig --no-install &>/dev/null
+     if [ $? -ne 0 ]; then
+         rm -f -- "$config" &>/dev/null
+         $ECHOFUNC "Unable to create the $PKG_NAME base configuration file (\`$config')." >&2
+@@ -170,7 +172,7 @@
+         $ECHOFUNC "Unable to change ownership/attributes of the $PKG_NAME database file (\`$DB_FILE')." >&2
+         return 1
+     fi
+-    $exec setup-app "$config" --no-default-sysconfig &>/dev/null
++    do_exec setup-app "$config" --no-default-sysconfig &>/dev/null
+     if [ $? -ne 0 ]; then
+         rm -f -- "$DB_FILE" &>/dev/null
+         $ECHOFUNC "Unable to create the $PKG_NAME database file (\`$DB_FILE')." >&2
+@@ -377,7 +377,7 @@
+     #       LSB header doesn't seem to help there.
+     /sbin/service saslauthd start || return 1
+ 
+-    $exec serve --daemon --user "$DAEMON_USER" --group "$DAEMON_GROUP" \
++    do_exec serve --daemon --user "$DAEMON_USER" --group "$DAEMON_GROUP" \
+                 --log-file="$LOG_FILE" --pid-file="$PID_FILE"          \
+                 --server-name=init --app-name=init "$config" @RELOAD@ >/dev/null
+ }
+@@ -420,7 +422,7 @@
+     step=$"Stop $prog..."
+ 
+     # If PID file does not exist, paster returns 1 otherwise 0
+-    $exec serve --stop-daemon --pid-file="$PID_FILE" >/dev/null
++    do_exec serve --stop-daemon --pid-file="$PID_FILE" >/dev/null
+     ret=$?
+     if [ $ret -eq 0 ]; then
+         if [ "$KEEP_RUNTIME_DATA" -eq "0" ]; then
+@@ -440,7 +442,7 @@
+ 
+ status() {
+     # If PID file exists and contains valid PID, paster returns 0 otherwise 1
+-    out=$($exec serve --status --pid-file="$PID_FILE" "$config" 2>&1)
++    out=$(do_exec serve --status --pid-file="$PID_FILE" "$config" 2>&1)
+     ret=$?
+     echo "$out" | tail -1
+     if [ $ret -ne 0 ]; then

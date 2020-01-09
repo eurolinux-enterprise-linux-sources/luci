@@ -1,0 +1,58 @@
+From 1d18e79393b9844ce321bef919cf2655ca39563a Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 15:07:57 -0400
+Subject: [PATCH] luci: Support configuring "self_fence" attribute for
+ netfs resource
+
+Add support for configuring the "self_fence" attribute for netfs
+resources.
+
+Resolves: rhbz#bz1019853
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html    | 7 +++++++
+ luci/validation/validate_resource.py | 3 ++-
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 18606fd..0737726 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -409,6 +409,13 @@
+       </td>
+     </tr>
+     <tr>
++      <td>Self-Fence If Unmount Fails</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="self_fence"
++          py:attrs="{'checked':(res and res.getBinaryAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++      </td>
++    </tr>
++    <tr>
+       <td>Options</td>
+       <td>
+         <input type="text" class="text" name="options"
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index dfaa264..4ac129e 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -192,13 +192,14 @@ def addNetfs(res, rname, model, **kw):
+ 		('host', _('NFS/CIFS server host'), True, None),
+ 		('export', _('Export name'), True, None),
+ 		('options', '', False, None),
++		('self_fence', '', False, None),
+ 		('no_unmount', '', False, None),
+ 		('force_unmount', '', False, None),
+ 		('fstype', '', False, None)
+ 	)
+ 
+ 	errors = config_resource(params, res, rname, **kw)
+-	for a in ('force_unmount', 'no_unmount'):
++	for a in ('force_unmount', 'no_unmount', 'self_fence'):
+ 		if res.getAttribute(a) == 'on':
+ 			res.addAttribute(a, '1')
+ 	return errors
+-- 
+1.9.3
+

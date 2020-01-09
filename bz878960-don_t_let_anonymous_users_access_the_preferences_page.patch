@@ -1,0 +1,31 @@
+From f82cb83ba20c1f8eef5b7fd0a087741e4a40f718 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 3 Dec 2012 20:59:20 -0500
+Subject: [PATCH] luci: Don't let anonymous users access the preferences page
+
+Require that users be logged in before being allowed to access the
+user preferences page. Currently, it's harmless if an anonymous
+user is able to access it, but login should be forced first, anyway.
+
+Resolves: rhbz#878960
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/root.py | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/luci/controllers/root.py b/luci/controllers/root.py
+index a2c6cd3..bb8b736 100644
+--- a/luci/controllers/root.py
++++ b/luci/controllers/root.py
+@@ -69,6 +69,7 @@ class RootController(BaseController):
+         return dict(page='about')
+ 
+     @expose('luci.templates.prefs')
++    @require(not_anonymous())
+     def prefs(self):
+         """Handle the user preferences page."""
+         return dict(page='prefs')
+-- 
+1.8.3.1
+

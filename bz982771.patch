@@ -1,0 +1,36 @@
+From e0c3a60bae38029023cfe857a0caefd9f3cad8fc Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jan=20Pokorn=C3=BD?= <jpokorny@redhat.com>
+Date: Mon, 23 Jun 2014 17:41:14 +0200
+Subject: [PATCH] Check length of secret (beaker.session.secret) on startup
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Jan Pokorný <jpokorny@redhat.com>
+---
+ luci-0.26.0/luci/config/environment.py | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/luci-0.26.0/luci/config/environment.py b/luci-0.26.0/luci/config/environment.py
+index 5bcda70..48a9655 100644
+--- a/luci-0.26.0/luci/config/environment.py
++++ b/luci-0.26.0/luci/config/environment.py
+@@ -12,6 +12,15 @@ __all__ = ['load_environment']
+ def make_load_environment(wrapped_f):
+ 
+     def load_environment(global_conf, app_conf):
++        # rhbz#982771
++        secret_length = len(app_conf.get('beaker.session.secret', '').strip())
++        if secret_length < 20:
++            msg = ("Insufficient length of 'beaker.session.secret': {0}"
++                   .format(secret_length))
++            with open('/var/log/luci/luci.log', 'a') as f:
++                f.write(msg.join(('\n', '\n')))
++            raise RuntimeError(msg)
++
+         del_global = filter(
+                          lambda o: o.startswith("tmp.")
+                                    or o.startswith("def."),
+-- 
+1.9.3
+

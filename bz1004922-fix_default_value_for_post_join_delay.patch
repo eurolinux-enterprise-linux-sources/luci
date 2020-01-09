@@ -1,0 +1,36 @@
+From 2308056f07d63ec8e6b017211963ab07c6e64953 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 14:56:49 -0400
+Subject: [PATCH] luci: Fix default value for post_join_delay
+
+The default value for post_join_delay is 6, not 3.
+
+Resolves: rhbz#1004922
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/FenceDaemon.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/FenceDaemon.py b/luci/lib/ClusterConf/FenceDaemon.py
+index 9de979e..fff26ca 100644
+--- a/luci/lib/ClusterConf/FenceDaemon.py
++++ b/luci/lib/ClusterConf/FenceDaemon.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2011 Red Hat, Inc.
++# Copyright (C) 2006-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -11,7 +11,7 @@ TAG_NAME = "fence_daemon"
+ 
+ class FenceDaemon(TagObject):
+   DEFAULTS = {
+-    'post_join_delay':      '3',
++    'post_join_delay':      '6',
+     'post_fail_delay':      '0',
+     'override_path':        '/var/run/cluster/fenced_override',
+     'override_time':        '3',
+-- 
+1.9.3
+

@@ -1,0 +1,155 @@
+/*================================= N O D E S =============================== */
+
+/* -------------------------------- overview -------------------------------- */
+
+.node_tlist_status, .node_tlist_ip {
+}
+
+.node_tlist_id {
+}
+
+.node_tlist_votes {
+}
+
+.node_tlist_load {
+}
+
+
+/* --------------------------------- details -------------------------------- */
+
+/* details */
+
+/* attributes setting */
+
+#node_tattr {
+  margin: 0 15em 0 0;
+}
+
+.node_tattr_input {
+  padding: 8px 0 8px 5px;
+}
+
+/* list of services */
+
+#node_tservices tr {
+  background-color: #f4f4f4;
+  border-bottom: 2px solid white;
+}
+
+td.node_tservices_service {
+/*   padding-left: 0; */
+  width: 20%;
+  min-width: 20%;
+}
+
+/* list of failover domains */
+
+#node_tfdoms {
+  margin-top: -20px;
+}
+
+#node_tfdoms thead tr {
+  background-color: inherit;
+}
+
+#node_tfdoms tr {
+  background-color: #f4f4f4;
+  border-bottom: 2px solid white;
+}
+
+td.node_tfdoms_name {
+  text-align: left;
+}
+
+th.node_tfdoms_name {
+  width: 20%;
+  min-width: 20%;
+}
+
+.node_tfdoms_priority {
+  text-align: left;
+}
+
+th.node_tfdoms_priority {
+  width: 20%;
+  min-width: 20%;
+}
+
+/* list of fence devices */
+
+#node_tfences {
+  margin-top: -20px;
+}
+
+#node_tfences thead tr {
+  background-color: inherit;
+}
+
+#node_tfences tr {
+  background-color: #f4f4f4;
+  border-bottom: 2px solid white;
+}
+
+td.node_tfences_name {
+  text-align: left;
+}
+
+th.node_tfences_name {
+  width: 20%;
+  min-width: 20%;
+}
+
+.node_tfences_type {
+  text-align: left;
+}
+
+th.node_tfences_type {
+  width: 20%;
+  min-width: 20%;
+}
+
+/* list of cluster daemons */
+
+#node_tdaemons {
+  margin-top: -20px;
+}
+
+#node_tdaemons thead tr {
+  background-color: inherit;
+}
+
+#node_tdaemons tr {
+  background-color: #f4f4f4;
+  border-bottom: 2px solid white;
+}
+
+td.node_tdaemons_name {
+  text-align: left;
+}
+
+th.node_tdaemons_name {
+  width: 20%;
+  min-width: 20%;
+}
+
+.node_tdaemons_status {
+  text-align: left;
+}
+
+th.node_tdaemons_status {
+  width: 20%;
+  min-width: 20%;
+}
+
+div.fencedev {
+    border: 2px groove gray;
+}
+
+.fence_instances td, .fence_instances th, .fence_instances {
+  border: 1px;
+  background-color: #FFFFFF;
+}
+
+.fence_instances td {
+  border-bottom: 1px solid #e0e7eb;
+}

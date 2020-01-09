@@ -1,0 +1,155 @@
+From a8406d2f9e0fa14561b0ca58604cf102fdfa4f2d Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 14:01:14 -0400
+Subject: [PATCH] luci: Don't allow nfsclient without nfsexport
+
+nfsclient resources must be children of nfsexport resources. If
+a user attempts to create a service group containing an nfsclient
+resource that is not a child of a nfsexport resource, error out.
+
+Resolves: rhbz#bz919243
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/BaseResource.py | 19 ++++++++++++-------
+ luci/lib/ClusterConf/NFSClient.py    | 18 +++++++++++++++++-
+ luci/lib/ClusterConf/RefObject.py    |  9 ++++++++-
+ luci/lib/ClusterConf/TagObject.py    | 11 +++++++++++
+ luci/validation/validate_resource.py |  4 ++++
+ 5 files changed, 52 insertions(+), 9 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/BaseResource.py b/luci/lib/ClusterConf/BaseResource.py
+index 75aca05..09c567e 100644
+--- a/luci/lib/ClusterConf/BaseResource.py
++++ b/luci/lib/ClusterConf/BaseResource.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2012 Red Hat, Inc.
++# Copyright (C) 2006-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -123,9 +123,14 @@ class BaseResource(TagObject):
+     return ret
+ 
+   def delSubtreeProperties(self):
+-	self.delIndependentSubtree()
+-	self.delEnforceTimeouts()
+-	self.delMaxFailures()
+-	self.delFailureExpireTime()
+-	self.delResMaxRestarts()
+-	self.delResRestartExpireTime()
++    self.delIndependentSubtree()
++    self.delEnforceTimeouts()
++    self.delMaxFailures()
++    self.delFailureExpireTime()
++    self.delResMaxRestarts()
++    self.delResRestartExpireTime()
++
++  def SanityCheck(self):
++    if self.isDenyAll() and self.getChildren():
++      raise Exception, '%s resources may not have children' % self.getTagName()
++    super(BaseResource, self).SanityCheck()
+diff --git a/luci/lib/ClusterConf/NFSClient.py b/luci/lib/ClusterConf/NFSClient.py
+index 746fcff..1c8e333 100644
+--- a/luci/lib/ClusterConf/NFSClient.py
++++ b/luci/lib/ClusterConf/NFSClient.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2010 Red Hat, Inc.
++# Copyright (C) 2006-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -19,3 +19,19 @@ class NFSClient(BaseResource):
+     self.TAG_NAME = TAG_NAME
+     self.resource_type = RESOURCE_TYPE
+     self.deny_all_children = DENY_ALL_CHILDREN
++
++  def SanityCheck(self):
++    # Must be a child of some nfsexport
++    found_export = False
++    parent = self
++    while True:
++        parent = parent.getParent()
++        if not parent:
++            break
++
++        if parent.getTagName() == 'nfsexport':
++            found_export = True
++            break
++
++    if not found_export:
++        raise Exception, '%s resources must have a parent nfsexport resource' % self.getTagName()
+diff --git a/luci/lib/ClusterConf/RefObject.py b/luci/lib/ClusterConf/RefObject.py
+index e8001c6..8e0a98d 100644
+--- a/luci/lib/ClusterConf/RefObject.py
++++ b/luci/lib/ClusterConf/RefObject.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2011 Red Hat, Inc.
++# Copyright (C) 2006-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -50,3 +50,10 @@ class RefObject(BaseResource):
+ 
+   def isDenyAll(self):
+     return self.obj_ptr.isDenyAll()
++
++  def SanityCheck(self):
++    robj = self.getObj()
++    c = robj.clone()
++    c.parent = self.parent
++    c.SanityCheck()
++    super(RefObject, self).SanityCheck()
+diff --git a/luci/lib/ClusterConf/TagObject.py b/luci/lib/ClusterConf/TagObject.py
+index 2d61caa..dbd9b82 100644
+--- a/luci/lib/ClusterConf/TagObject.py
++++ b/luci/lib/ClusterConf/TagObject.py
+@@ -16,8 +16,13 @@ class TagObject(object):
+     self.trailing_comments = list()
+     self.element_text = None
+     self.errors = False
++    self.parent = None
++
++  def getParent(self):
++    return self.parent
+ 
+   def addChild(self, child):
++    child.parent = self
+     self.children.append(child)
+ 
+   def removeChild(self, child):
+@@ -179,6 +184,8 @@ class TagObject(object):
+     """Looks up oldchild and replace it with newchild."""
+     idx = self.children.index(oldchild)
+     self.children[idx] = newchild
++    newchild.parent = self
++    oldchild.parent = None
+ 
+   def clone(self):
+     """Creates a shallow copy of itself."""
+@@ -190,3 +197,7 @@ class TagObject(object):
+ 
+   def removeDefaults(self):
+     pass
++
++  def SanityCheck(self):
++    for i in self.getChildren():
++      i.SanityCheck()
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 2c67d62..9c06e25 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -943,6 +943,10 @@ def validate_clusvc_form(model, **kw):
+ 			model.resourcemanager_ptr.addChild(new_vm)
+ 	else:
+ 		model.resourcemanager_ptr.addChild(new_service)
++		try:
++			new_service.SanityCheck()
++		except Exception, e:
++			errors.append(str(e))
+ 	return (len(errors) == 0, {'errors': errors})
+ 
+ def validate_resource_form(model, **kw):
+-- 
+1.9.3
+

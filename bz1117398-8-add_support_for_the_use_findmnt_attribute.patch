@@ -1,0 +1,154 @@
+From 73298497a24212ec7a651143ddb62ef006297aaa Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 28 Jul 2014 08:46:52 -0400
+Subject: [PATCH] luci: Add support for the use_findmnt attribute
+
+Add support for the use_findmnt attribute for fs, clusterfs, and
+netfs resources.
+
+Resolves: rhbz#1117398
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html    | 21 ++++++++++++++++++++
+ luci/validation/validate_resource.py | 37 +++++++++++++++++++++++++++++-------
+ 2 files changed, 51 insertions(+), 7 deletions(-)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 9fbaaca..8624bac 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -240,6 +240,13 @@
+           py:attrs="{'checked':(res and res.getBinaryAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
++    <tr py:if="expertMode">
++      <td>Use the findmnt Utility When Available</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="use_findmnt"
++          py:attrs="res and {'checked': res.getBinaryAttribute('use_findmnt') in (None, True) and 'checked' or None, 'disabled':global_resource and 'disabled' or None} or {'checked':'checked'}" />
++      </td>
++    </tr>
+     ${res_footer(res)}
+   </table>
+ </div>
+@@ -342,6 +349,13 @@
+           py:attrs="{'checked':(res and res.getBinaryAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
++    <tr py:if="expertMode">
++      <td>Use the findmnt Utility When Available</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="use_findmnt"
++          py:attrs="res and {'checked': res.getBinaryAttribute('use_findmnt') in (None, True) and 'checked' or None, 'disabled':global_resource and 'disabled' or None} or {'checked':'checked'}" />
++      </td>
++    </tr>
+     ${res_footer(res)}
+   </table>
+ </div>
+@@ -422,6 +436,13 @@
+           py:attrs="{'checked':(res and res.getBinaryAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
++    <tr py:if="expertMode">
++      <td>Use the findmnt Utility When Available</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="use_findmnt"
++          py:attrs="res and {'checked': res.getBinaryAttribute('use_findmnt') in (None, True) and 'checked' or None, 'disabled':global_resource and 'disabled' or None} or {'checked':'checked'}" />
++      </td>
++    </tr>
+     <tr>
+       <td>Options</td>
+       <td>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index e95356e..317fe9a 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -139,7 +139,7 @@ def addIp(res, rname, model, **kw):
+ 	return errors
+ 
+ def addFs(res, rname, model, **kw):
+-	params = (
++	params = [
+ 		('mountpoint', _('Mountpoint'), True, None),
+ 		('device', _('Device, label, or UUID'), True, None),
+ 		('fstype', '', False, None),
+@@ -150,7 +150,15 @@ def addFs(res, rname, model, **kw):
+ 		('force_fsck', '', False, None),
+ 		('nfsrestart', '', False, None),
+ 		('options', '', False, None)
+-	)
++	]
++
++	if kw.get('expert_mode'):
++		params.append(('use_findmnt', '', False, None))
++		if not kw.get('use_findmnt'):
++			kw['use_findmnt'] = '0'
++		else:
++			del kw['use_findmnt']
++
+ 	errors = config_resource(params, res, rname, **kw)
+ 	fsid = res.getAttribute('fsid')
+ 	if not fsid:
+@@ -169,7 +177,7 @@ def addFs(res, rname, model, **kw):
+ 	return errors
+ 
+ def addClusterfs(res, rname, model, **kw):
+-	params = (
++	params = [
+ 		('mountpoint', '', True, None),
+ 		('device', '', True, None),
+ 		('fstype', '', False, None),
+@@ -178,7 +186,15 @@ def addClusterfs(res, rname, model, **kw):
+ 		('self_fence', '', False, None),
+ 		('fsid', '', False, None),
+ 		('options', '', False, None)
+-	)
++	]
++
++	if kw.get('expert_mode'):
++		params.append(('use_findmnt', '', False, None))
++		if not kw.get('use_findmnt'):
++			kw['use_findmnt'] = '0'
++		else:
++			del kw['use_findmnt']
++
+ 	errors = config_resource(params, res, rname, **kw)
+ 	fsid = res.getAttribute('fsid')
+ 	if not fsid:
+@@ -196,7 +212,7 @@ def addClusterfs(res, rname, model, **kw):
+ 	return errors
+ 
+ def addNetfs(res, rname, model, **kw):
+-	params = (
++	params = [
+ 		('mountpoint', _('Mountpoint'), True, None),
+ 		('host', _('NFS/CIFS server host'), True, None),
+ 		('export', _('Export name'), True, None),
+@@ -205,7 +221,14 @@ def addNetfs(res, rname, model, **kw):
+ 		('no_unmount', '', False, None),
+ 		('force_unmount', '', False, None),
+ 		('fstype', '', False, None)
+-	)
++	]
++
++	if kw.get('expert_mode'):
++		params.append(('use_findmnt', '', False, None))
++		if not kw.get('use_findmnt'):
++			kw['use_findmnt'] = '0'
++		else:
++			del kw['use_findmnt']
+ 
+ 	errors = config_resource(params, res, rname, **kw)
+ 	for a in ('force_unmount', 'no_unmount', 'self_fence'):
+@@ -748,7 +771,7 @@ def validate_clusvc_form(model, **kw):
+ 				test_name = test_name[3:]
+ 			else:
+ 				svc_depend = 'service:%s' % svc_depend
+-			
++
+ 			try:
+ 				test_svc = model.retrieveServiceByName(test_name)
+ 				if not test_svc:
+-- 
+1.9.3
+

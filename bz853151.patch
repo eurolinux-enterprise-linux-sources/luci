@@ -1,0 +1,75 @@
+From 0363e2c12d6eee1152b7cd94367d3a9f7121153c Mon Sep 17 00:00:00 2001
+From: Jan Pokorny <jpokorny@redhat.com>
+Date: Thu, 30 Aug 2012 17:56:00 +0200
+Subject: [PATCH] bz853151:  "No object (name: translator) ..." due to private
+ threading
+
+Possible alternative would be to use lazy_gettext to ensure real
+evaluate-on-demand behavior (presumably back in the per-request
+thread that comprises translator object by default).
+
+Also, ricci_helpers.py: PWorker: fix a comment typo.
+
+Signed-off-by: Jan Pokorny <jpokorny@redhat.com>
+---
+ luci/lib/ricci_helpers.py | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/luci/lib/ricci_helpers.py b/luci/lib/ricci_helpers.py
+index 03ebc43..23be6d3 100644
+--- a/luci/lib/ricci_helpers.py
++++ b/luci/lib/ricci_helpers.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2011 Red Hat, Inc.
++# Copyright (C) 2006-2012 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -7,6 +7,9 @@
+ 
+ import threading
+ 
++import pylons
++from pylons.i18n.translation import _get_translator
++
+ from luci.lib.helpers import ugettext as _
+ 
+ from luci.model import DBSession
+@@ -19,8 +22,9 @@ from luci.lib.ricci_communicator import RicciCommunicator
+ import logging
+ log = logging.getLogger(__name__)
+ 
++
+ class PWorker(threading.Thread):
+-    # triple := [ (host, port) function, *args ]
++    # triple := [ (host, port), function, *args ]
+     def __init__(self, mutex, ret, host_triples, cluster_members_only=False):
+         threading.Thread.__init__(self)
+         self.mutex = mutex
+@@ -29,6 +33,14 @@ class PWorker(threading.Thread):
+         self.cluster_members_only = cluster_members_only
+ 
+     def run(self):
++        # see http://comments.gmane.org/gmane.comp.web.turbogears/46896
++        # this is stolen from the pylons test setup;
++        # it will make sure the gettext-stuff is working, that is
++        # we inject translator object to this private thread similarly
++        # as it is done by the framework in per-request threads
++        translator = _get_translator(None)
++        pylons.translator._push_object(translator)
++
+         while True:
+             self.mutex.acquire()
+             if len(self.triples) == 0:
+@@ -67,6 +79,8 @@ class PWorker(threading.Thread):
+             self.ret[triple[0][0]] = r
+             self.mutex.release()
+ 
++        pylons.translator._pop_object()
++
+ def send_batch_parallel(triples, max_threads, cluster_members_only=False):
+     mutex = threading.RLock()
+     threads = list()
+-- 
+1.7.11.4
+

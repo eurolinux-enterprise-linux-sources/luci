@@ -1,0 +1,105 @@
+From 0b702f2ae3625cb5117bbbb68b71c0eac381c370 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 2 Sep 2014 22:12:41 -0400
+Subject: [PATCH] luci: Fix editing services that VM references
+
+Fix editing services that VM references
+
+Resolves: rhbz#1100817
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/ModelBuilder.py |  5 +++++
+ luci/lib/ClusterConf/Vm.py           |  3 +++
+ luci/validation/validate_resource.py | 26 ++++++++++++--------------
+ 3 files changed, 20 insertions(+), 14 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+index ca3599b..a73dfd0 100644
+--- a/luci/lib/ClusterConf/ModelBuilder.py
++++ b/luci/lib/ClusterConf/ModelBuilder.py
+@@ -395,6 +395,11 @@ class ModelBuilder:
+       return result
+ 
+     try:
++      entity.removeDefaults()
++    except:
++      pass
++
++    try:
+       entity_attr = entity.getAttributes()
+       if entity_attr is not None:
+         for i in entity_attr.iterkeys():
+diff --git a/luci/lib/ClusterConf/Vm.py b/luci/lib/ClusterConf/Vm.py
+index 25c3003..3d4959f 100644
+--- a/luci/lib/ClusterConf/Vm.py
++++ b/luci/lib/ClusterConf/Vm.py
+@@ -38,3 +38,6 @@ class Vm(Service, BaseResource):
+     for i in vm_attributes:
+         self.removeAttribute(i)
+     self.delSubtreeProperties()
++
++  def removeDefaults(self):
++    Service.removeDefaults(self)
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 6384549..24ede08 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -628,13 +628,6 @@ def create_resource(res_type, model, **kw):
+ 
+ 	if res_type == 'ip':
+ 		rname = kw.get('address')
+-	elif res_type == 'vm':
+-		if not resource_edit and not kw.get('svc_create'):
+-			rname = ''
+-			res = BaseResource()
+-		else:
+-			if not kw.has_key('resourcename'):
+-				rname = ''
+ 	else:
+ 		if not kw.has_key('resourcename') or not kw['resourcename'].strip():
+ 			raise Exception, _('All resources must have a unique name.')
+@@ -810,8 +803,8 @@ def validate_clusvc_form(model, **kw):
+ 			log.exception('Error parsing service XML: "%s"' % form_xml)
+ 			return (False, { 'errors': [ _('The resource data submitted for this service is not properly formed') ]})
+ 
+-	is_vm = False
+-	is_global_vm = False
++	has_vm_res = False
++	has_global_vm = False
+ 	form_hash = {}
+ 	form_hash[root_elem] = { 'form': None, 'kids': [] }
+ 	existing_res_names = []
+@@ -852,11 +845,16 @@ def validate_clusvc_form(model, **kw):
+ 			if not res_type:
+ 				raise Exception, 'no resource type'
+ 			if res_type == 'vm':
+-				is_vm = True
+-				if action == 'edit':
+-					dummy_form['svc_create'] = 1
++				has_vm_res = True
++
++				# There can be no resource name in the VM form in the
++				# case that the service consists of exactly 1 child that is
++				# a local VM resource. In this case, set the resource name to
++				# the service name.
++				if not 'resourcename' in dummy_form:
++					dummy_form['resourcename'] = service_name
+ 				if dummy_form.has_key('global'):
+-					is_global_vm = True
++					has_global_vm = True
+ 		except Exception, e:
+ 			log.exception('no resource type')
+ 			return (False, { 'errors': [ _('No resource type was specified') ]})
+@@ -986,7 +984,7 @@ def validate_clusvc_form(model, **kw):
+ 	buildSvcTree(new_service, form_hash[root_elem]['kids'])
+ 
+ 	svc_children = new_service.getChildren()
+-	if is_vm and not is_global_vm and len(svc_children) == 1:
++	if has_vm_res and not has_global_vm and len(svc_children) == 1 and len(svc_children[0].getChildren()) == 0:
+ 		# Because we're treating vm like a resource from the point of
+ 		# view of the user, we need to use the service level attributes
+ 		# from "new_service" and the resource level attributes from its
+-- 
+1.9.3
+

@@ -1,0 +1,63 @@
+From 702c9aab50eab5eb8a6cba4c0028517d5785acfc Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 26 Aug 2014 23:37:49 -0400
+Subject: [PATCH] luci: Fix editing services that VM references
+
+Fix an error that occurred in the case that a service tag contained
+exactly one child that is a reference to a vm.
+
+Resolves: rhbz#1100817
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/validation/validate_resource.py | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 0739495..6384549 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -628,9 +628,13 @@ def create_resource(res_type, model, **kw):
+ 
+ 	if res_type == 'ip':
+ 		rname = kw.get('address')
+-	elif res_type == 'vm' and not resource_edit and not kw.get('svc_create'):
++	elif res_type == 'vm':
++		if not resource_edit and not kw.get('svc_create'):
+ 			rname = ''
+ 			res = BaseResource()
++		else:
++			if not kw.has_key('resourcename'):
++				rname = ''
+ 	else:
+ 		if not kw.has_key('resourcename') or not kw['resourcename'].strip():
+ 			raise Exception, _('All resources must have a unique name.')
+@@ -807,6 +811,7 @@ def validate_clusvc_form(model, **kw):
+ 			return (False, { 'errors': [ _('The resource data submitted for this service is not properly formed') ]})
+ 
+ 	is_vm = False
++	is_global_vm = False
+ 	form_hash = {}
+ 	form_hash[root_elem] = { 'form': None, 'kids': [] }
+ 	existing_res_names = []
+@@ -850,6 +855,8 @@ def validate_clusvc_form(model, **kw):
+ 				is_vm = True
+ 				if action == 'edit':
+ 					dummy_form['svc_create'] = 1
++				if dummy_form.has_key('global'):
++					is_global_vm = True
+ 		except Exception, e:
+ 			log.exception('no resource type')
+ 			return (False, { 'errors': [ _('No resource type was specified') ]})
+@@ -979,7 +986,7 @@ def validate_clusvc_form(model, **kw):
+ 	buildSvcTree(new_service, form_hash[root_elem]['kids'])
+ 
+ 	svc_children = new_service.getChildren()
+-	if is_vm is True and len(svc_children) == 1:
++	if is_vm and not is_global_vm and len(svc_children) == 1:
+ 		# Because we're treating vm like a resource from the point of
+ 		# view of the user, we need to use the service level attributes
+ 		# from "new_service" and the resource level attributes from its
+-- 
+1.9.3
+

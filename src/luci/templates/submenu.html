@@ -1,0 +1,15 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude"
+  py:strip="">
+<py:if test="'cluster_url' in dir(tmpl_context)">
+  <ul class="submenu">
+    <li><a href="${tg.url(tmpl_context.cluster_url + 'nodes')}" class="${('', 'active')[base_url.endswith('/nodes')]}">Nodes</a></li>
+    <li><a href="${tg.url(tmpl_context.cluster_url +'fences')}" class="${('', 'active')[base_url.endswith('/fences')]}">Fence Devices</a></li>
+    <li><a href="${tg.url(tmpl_context.cluster_url + 'failovers')}" class="${('', 'active')[base_url.endswith('/failovers')]}">Failover Domains</a></li>
+    <li><a href="${tg.url(tmpl_context.cluster_url + 'resources')}" class="${('', 'active')[base_url.endswith('/resources')]}">Resources</a></li>
+    <li><a href="${tg.url(tmpl_context.cluster_url + 'services')}" class="${('', 'active')[base_url.endswith('/services')]}">Service Groups</a></li>
+    <li><a href="${tg.url(tmpl_context.cluster_url +'configure')}" class="${('', 'active')[base_url.endswith('/configure')]}">Configure</a></li>
+  </ul>
+</py:if>
+</html>

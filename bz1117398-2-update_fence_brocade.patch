@@ -1,0 +1,166 @@
+From 29d21611f213043032d7374ff903c7969cd64226 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 28 Jul 2014 08:41:19 -0400
+Subject: [PATCH] luci: Update fence_brocade
+
+Bring the fence_brocade forms up-to-date with the current
+fence agent.
+
+Resolves: rhbz#1117398
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/fence_devices.html   | 77 +++++++++++++++++++++++++++++++++++++
+ luci/templates/fence_instances.html |  7 ++++
+ luci/validation/validate_fence.py   | 20 ++++++++++
+ 3 files changed, 104 insertions(+)
+
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index dcf15c3..20dc555 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -490,6 +490,83 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Force IP Family</td>
++      <td>
++        <select name="force_ip_family" class="fencedevformselect">
++          <option value=""
++            py:attrs="(not cur_fencedev or (not cur_fencedev.getAttribute('inet4_only') and not cur_fencedev.getAttribute('inet6_only'))) and {'selected':'selected'} or {}">Default</option>
++          <option value="ipv4"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('inet4_only') and {'selected':'selected'} or {}">IPv4 Only</option>
++          <option value="ipv6"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('inet6_only') and {'selected':'selected'} or {}">IPv6 Only</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>SSH</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="secure"
++          py:attrs="cur_fencedev and cur_fencedev.getAttribute('secure') and {'checked': 'checked'}"/>
++        <label class="choice">Use SSH</label>
++      </td>
++    </tr>
++    <tr>
++      <td>Path to SSH Identity File</td>
++      <td>
++        <input type="text" class="text" name="identity_file"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('identity_file')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>SSH Options</td>
++      <td>
++        <input type="text" class="text" name="ssh_options"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ssh_options')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Force Command Prompt</td>
++      <td>
++        <input type="text" class="text" name="cmd_prompt"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index d8b9684..a82e830 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -368,6 +368,13 @@
+       </td>
+     </tr>
+     <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
+       <td>Unfencing</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="unfencing"
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index d102c51..0b0fbd0 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -198,9 +198,28 @@ def val_brocade_fd(fencedev, fence_name, **kw):
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
++		('secure', False),
++		('identity_file', False),
++		('ssh_options', False),
++		('force_ip_family', False),
++		('cmd_prompt', False),
++		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
++	force_family = fencedev.getAttribute('force_ip_family')
++	fencedev.removeAttribute('force_ip_family')
++	fencedev.removeAttribute('inet6_only')
++	fencedev.removeAttribute('inet4_only')
++	if force_family == 'ipv4':
++		fencedev.addAttribute('inet4_only', '1')
++	elif force_family == 'ipv6':
++		fencedev.addAttribute('inet6_only', '1')
++
+ 	return errors
+ 
+ def val_vixel_fd(fencedev, fence_name, **kw):
+@@ -1010,6 +1029,7 @@ def val_virsh_fi(fenceinst, parent_name, **kw):
+ def val_brocade_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+-- 
+1.9.3
+

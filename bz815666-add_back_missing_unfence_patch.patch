@@ -1,0 +1,33 @@
+From 9b51bbb9be3d525e71d0974d832ff6c5315d1546 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 10 Oct 2012 21:53:13 -0400
+Subject: [PATCH] luci: Add back missing unfence patch
+
+Part of the fix for the unfence display issue went AWOL.
+This adds it back.
+
+Resolves: rhbz#815666
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/node.html | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/luci/templates/node.html b/luci/templates/node.html
+index f749706..874c8f9 100644
+--- a/luci/templates/node.html
++++ b/luci/templates/node.html
+@@ -18,9 +18,7 @@
+ 
+ <body py:with="cluster_data = tmpl_context.cluster.get_model();
+                cluster_status = tmpl_context.cluster.get_status();
+-               nodename = (cluster_data and cluster_data.cluster_version &lt;= 2 and name) and name or None;">
+-               <!--!  "nodename" parameter is spread to fence_scsi only under
+-                      given conditions  -->
++               nodename = name;">
+ 
+   <script type="text/javascript" src="/js/add_nodes.js"></script>
+   <script type="text/javascript" src="/js/node.js"></script>
+-- 
+1.7.11.4
+

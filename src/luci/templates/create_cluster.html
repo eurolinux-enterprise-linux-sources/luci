@@ -1,0 +1,67 @@
+<div>
+   <form name="create_cluster" action="/cluster/create_cmd" method="post">
+    <div class="row"><label>Cluster Name</label>
+        <input type="text" class="text" name="cluster_name" value="" />
+        <input type="hidden" name="num_nodes" value="1" />
+    </div>
+    <div class="row">
+      <input type="checkbox" class="checkbox"
+        name="allSameCheckBox" onclick="allPasswdsSame(this)" />
+        <label class="choice">Use the Same Password for All Nodes</label>
+    </div>
+    <div class="row">
+    <table class="clusternodes">
+       <tbody>
+       <tr>
+          <td>Node Name</td>
+          <td>Password</td>
+          <td>Ricci Hostname</td>
+          <td>Ricci Port</td>
+          <td></td>
+       </tr>
+       <tr id="create_cluster_system_row_elem0" class="systemtriple">
+          <td><input type="text" class="text" name="hostname0" onchange="update_node_hostname(this)" value="" /></td>
+          <td><input type="password" class="text" name="password0" autocomplete="off" /></td>
+          <td><input type="text" class="text" name="riccihost0" value="" /></td>
+          <td><input type="text" class="text" name="port0" maxlength="5" size="5" value="${app_globals.DEFAULT_RICCI_PORT}" /></td>
+          <td><img src="/images/delete-grey.png" onclick="$(':input[name!=port0]', '#create_cluster_system_row_elem0').val('')" /></td>
+       </tr>
+       <tr class="add_node_button_row">
+          <td><input type="button" class="button small silver" value="Add Another Node" onclick="add_system_row(this.form)" /></td>
+       </tr>
+       </tbody>
+    </table>
+    </div>
+    <div class="row">
+        <input type="radio" class="radio" name="download_pkgs" value="download" />
+        <label class="choice">Download Packages</label>
+        <br />
+        <input type="radio" class="radio" name="download_pkgs" value="local" checked="yes"/>
+        <label class="choice">Use Locally Installed Packages</label>
+    </div>
+    <div class="row">
+        <input type="checkbox" class="checkbox" name="reboot_nodes" />
+        <label class="choice">Reboot Nodes Before Joining Cluster</label>
+    </div>
+    <div class="row">
+        <input type="checkbox" class="checkbox" name="shared_storage" />
+        <label class="choice">Enable Shared Storage Support</label>
+    </div>
+    <div class="row">
+       <input type="submit" class="button formsubmit blue" value="Create Cluster" />
+       <input type="button" class="button formsubmit silver" value="Cancel"
+        onclick="$('#create_cluster_dialog').dialog('close');reset_form(this.form)" />
+    </div>
+   </form>
+   <div class="hidden">
+    <table>
+       <tr id="system_row_elem" class="systemtriple">
+          <td><input type="text" class="text" name="hostname" value="" onchange="update_node_hostname(this)"/></td>
+          <td><input type="password" class="text" name="password" autocomplete="off" /></td>
+          <td><input type="text" class="text" name="riccihost" value="" /></td>
+          <td><input type="text" class="text" name="port" maxlength="5" size="5" value="${app_globals.DEFAULT_RICCI_PORT}" /></td>
+          <td><img src="/images/delete-grey.png"/></td>
+       </tr>
+    </table>
+  </div>
+</div>

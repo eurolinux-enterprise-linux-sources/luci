@@ -1,0 +1,171 @@
+diff --git a/luci/lib/ClusterConf/Altmulticast.py b/luci/lib/ClusterConf/Altmulticast.py
+index bac0612..e295b17 100644
+--- a/luci/lib/ClusterConf/Altmulticast.py
++++ b/luci/lib/ClusterConf/Altmulticast.py
+@@ -21,7 +21,7 @@ class Altmulticast(TagObject):
+     return self.addAttribute('addr', val)
+ 
+   def delAddr(self):
+-    return self.attr_hash.get('addr')
++    return self.removeAttribute('addr')
+ 
+   def getPort(self):
+     return self.getAttribute('port')
+diff --git a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+index 23ba30d..817551c 100644
+--- a/luci/lib/ClusterConf/ModelBuilder.py
++++ b/luci/lib/ClusterConf/ModelBuilder.py
+@@ -759,6 +759,36 @@ class ModelBuilder:
+           an.delPort()
+         if altmcast_ttl and an.getTTL() == altmcast_ttl:
+           an.delTTL()
++
++  def getAltmcastConfig(self):
++    alt_mcast_addrs = set()
++    alt_mcast_ports = set()
++    alt_mcast_ttl = set()
++
++    if self.altmcast_ptr:
++      return self.altmcast_ptr
++
++    for node in self.getNodes():
++      an = node.getAltname()
++      if an:
++        cur_amc_mcast = an.getMcast()
++        if cur_amc_mcast:
++            alt_mcast_addrs.add(cur_amc_mcast)
++        cur_amc_port = an.getPort()
++        if cur_amc_port:
++            alt_mcast_ports.add(cur_amc_port)
++        cur_amc_ttl = an.getTTL()
++        if cur_amc_ttl:
++            alt_mcast_ttl.add(cur_amc_ttl)
++
++    am = Altmulticast.Altmulticast()
++    if len(alt_mcast_addrs) == 1:
++        am.setAddr(alt_mcast_addrs.pop())
++    if len(alt_mcast_ports) == 1:
++        am.setPort(alt_mcast_ports.pop())
++    if len(alt_mcast_ttl) == 1:
++        am.setTTL(alt_mcast_ttl.pop())
++    return am
+     
+   def setQuorumd(self, qd):
+     cp = self.getClusterPtr()
+diff --git a/luci/templates/configure.html b/luci/templates/configure.html
+index d6a83d3..e23d942 100644
+--- a/luci/templates/configure.html
++++ b/luci/templates/configure.html
+@@ -197,24 +197,23 @@
+                         <td>Alternate Ring Multicast Address</td>
+                         <td>
+                             <input name="altmcast_addr" type="text" class="text"
+-                                py:attrs="cluster_data and {'disabled': not cluster_data.get_cluster_multicast() and 'disabled' or None, 'value': cluster_data.getAltmcastPtr() and cluster_data.getAltmcastPtr().getAddr() } or {}"/>
++                                py:attrs="cluster_data and {'disabled': not cluster_data.get_cluster_multicast() and 'disabled' or None, 'value': cluster_data.getAltmcastConfig().getAddr() } or {}"/>
+                         </td>
+                     </tr>
+                     <tr>
+                         <td>Alternate Ring CMAN Port</td>
+                         <td>
+                             <input name="altmcast_port" type="text" class="text"
+-                                py:attrs="cluster_data and {'disabled': not cluster_data.get_cluster_multicast() and 'disabled' or None, 'value': cluster_data.getAltmcastPtr() and cluster_data.getAltmcastPtr().getPort() } or {}"/>
++                                py:attrs="cluster_data and {'disabled': not cluster_data.get_cluster_multicast() and 'disabled' or None, 'value': cluster_data.getAltmcastConfig().getPort() } or {}"/>
+                         </td>
+                     </tr>
+                     <tr>
+                         <td>Alternate Ring Multicast Packet TTL</td>
+                         <td>
+                             <input name="altmcast_ttl" type="text" class="text"
+-                                py:attrs="cluster_data and {'disabled': not cluster_data.get_cluster_multicast() and 'disabled' or None, 'value': cluster_data.getAltmcastPtr() and cluster_data.getAltmcastPtr().getTTL() } or {}"/>
++                                py:attrs="cluster_data and {'disabled': not cluster_data.get_cluster_multicast() and 'disabled' or None, 'value': cluster_data.getAltmcastConfig().getTTL() } or {}"/>
+                         </td>
+                     </tr>
+-
+                 </table>
+                 <h4>Redundant Ring Cluster Node Configuration</h4>
+                 <table py:if="cluster_data">
+diff --git a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+index dead3bb..c822bcc 100644
+--- a/luci/validation/validate_cluster_prop.py
++++ b/luci/validation/validate_cluster_prop.py
+@@ -15,6 +15,7 @@ from luci.lib.ClusterConf.Method import Method
+ from luci.lib.ClusterConf.Logging import Logging
+ from luci.lib.ClusterConf.LoggingDaemon import LoggingDaemon
+ from luci.lib.ClusterConf.Altname import Altname 
++from luci.lib.ClusterConf.Cman import Cman
+ 
+ from luci.lib.db_helpers import create_cluster_obj, get_node_by_name, get_cluster_db_obj, create_user_db_obj
+ from luci.lib.ricci_communicator import RicciCommunicator
+@@ -635,6 +636,8 @@ def validate_rrp_config(model, **kw):
+     if altmcast_addr and not altmcast_addr.isspace():
+         try:
+             altmcast_ptr.setAddr(altmcast_addr)
++            if model.getMcastAddr() == altmcast_addr:
++                errors.append(_('The alternate multicast address %s is the same as the primary cluster multicast address') % altmcast_addr)
+         except:
+             errors.append(_('Invalid alternate ring multicast address: %s') % altmcast_addr)
+     else:
+@@ -644,6 +647,15 @@ def validate_rrp_config(model, **kw):
+     if altmcast_port and not altmcast_port.isspace():
+         try:
+             altmcast_ptr.setPort(altmcast_port)
++
++            cman_port = None
++            cp = model.getCMANPtr()
++            if not cp:
++                cp = Cman()
++            cman_port = int(cp.getPort())
++            altmcast_port = int(altmcast_port)
++            if abs(cman_port - altmcast_port) < 2:
++                errors.append(_('Alternate multicast ports (%d %d) and CMAN ports (%d %d) overlap') % (altmcast_port, altmcast_port - 1, cman_port, cman_port - 1))
+         except:
+             errors.append(_('Invalid alternate ring CMAN port: %s') % altmcast_port)
+     else:
+@@ -658,22 +670,43 @@ def validate_rrp_config(model, **kw):
+     else:
+         altmcast_ptr.delTTL()
+ 
++    if not altmcast_ptr.getAddr():
++        if altmcast_ptr.getPort() or altmcast_ptr.getTTL():
++            errors.append(_('Alternate multicast address must be given if alternate multicast port or alternate multicast TTL is given'))
++
++    altnames = set()
+     for i in model.getNodes():
+-        cur_node_conf = kw.get('altmcast_%s' % i.getName())
+-        if cur_node_conf:
++        cur_nodename = i.getName()
++        cur_node_conf = kw.get('altmcast_%s' % cur_nodename)
++        if cur_node_conf and not cur_node_conf.isspace():
+             # Since we only want the addr attribute, create a new object
+             # to replace an existing altname that may contain old-style config
+             try:
+                 cur_an = Altname()
+-                cur_an.setName(cur_node_conf)
++                cur_an.setName(cur_node_conf.strip())
+                 i.setAltname(cur_an)
++                altnames.add(cur_nodename)
+             except Exception, e:
+                 errors.append(_('Error setting alternate address for %s: %s')
+                     % (i.getName(), str(e)))
++        else:
++            i.delAltname()
++
++    if len(altnames) > 0:
++        if not altmcast_ptr.getAddr():
++            errors.append(_('If alternate node names are given, the alternate cluster multicast address must be given'))
++        for i in set(model.getNodeNames()) - altnames:
++            errors.append(_('No alternate node name was given for node %s') % i)
++    else:
++        if altmcast_ptr.getAddr():
++            errors.append(_('If an alternate cluster multicast address is given, alternate node names must be given'))
++
++    if len(errors) > 0:
++        return (False, {'errors': errors})
+ 
+     # Clean up any old-style config that may still be around
+     model.updateRRPConfig()
+-    return (len(errors) < 1, {'errors': errors})
++    return (len(errors) < 1, {'errors': errors, 'flash': [_('These changes will take effect only after the cluster is completely stopped, then restarted')]})
+ 
+ def validate_log_config(model, **kw):
+     new_conf = False

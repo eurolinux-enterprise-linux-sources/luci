@@ -1,0 +1,270 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:py="http://genshi.edgewall.org/"
+    xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<xi:include href="master.html"/>
+
+<?python
+    import logging
+    from luci.lib import db_helpers
+?>
+
+<head>
+  <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+  <title>Server Administration</title>
+</head>
+
+<body>
+   <script type="text/javascript" src="/js/admin.js"></script>
+   <script src="/js/jquery.cookie.js" type="text/javascript"/>
+   <script type="text/javascript">
+     $(function() {
+       $("#tabs").tabs();
+       $("#tabs").tabs('select', parseInt($.cookie("adminTabCookie")));
+       $('#tabs').bind('tabsselect', function(event, ui) {
+         var adminTabCookieVal = ui.index;
+         $.cookie("adminTabCookie", adminTabCookieVal, {expires: 1});
+         return true;
+       });
+     });
+   </script>
+   <script type="text/javascript">
+     $(document).ready(function() {
+       $(".accordion").accordion({
+         active: false,
+         collapsible: true,
+         animated: false,
+         autoHeight: false
+       });
+     });
+   </script>
+   <div class="mainpage">
+     <div id="tabs">
+       <ul>
+         <li><a href="#tabs-1">Users and Permissions</a></li>
+         <li><a href="#tabs-2">Server Logging</a></li>
+       </ul>
+
+       <div id="tabs-1">
+         <h2>Users and Permissions</h2>
+         <div id="cluster_perms">
+           <form name="user_select" method="get" action="${tg.url('/admin')}">
+             <p>
+               <p>
+                 <input type="button" class="small button silver"
+                   value="Add a User"
+                   onclick="$('#add_user_dialog').dialog('open')"/>
+               </p>
+               <select name="name" onchange="this.form.submit()"
+                 py:with="usernames = db_helpers.get_user_names() or []">
+                 <option value=""
+                   py:attrs="{'selected': (not defined('name') or not name) and 'selected' or None}">Select a User</option>
+                 <py:for each="uname in usernames">
+                   <option py:if="uname != 'root'"
+                     py:attrs="{'value': uname,
+                       'selected': (defined('name') and name == uname) and 'selected' or None}"
+                     py:content="uname"/>
+                 </py:for>
+               </select>
+             </p>
+           </form>
+
+           <py:if test="defined('name') and name">
+             <div py:with="roles = db_helpers.get_user_roles(name);
+                           clusters = db_helpers.get_cluster_list()">
+               <form name="manage_edit" method="post" action="${tg.url('admin_cmd' + '?command=perms')}">
+                 <input type="hidden" name="name" value="${name}"/>
+                 <ul class="vanilla">
+                   <li>
+                     <label for="managers" class="wide">Luci Administrator</label>
+                     <input type="checkbox" class="checkbox" name="role:managers"
+                       id="managers"
+                       py:attrs="{'checked': 'managers' in roles and 'checked' or None}"/>
+                   </li>
+                   <li>
+                     <br/>
+                     <label for="create_cluster" class="wide">Can Create Clusters</label>
+                     <input type="checkbox" class="checkbox" name="role:create_cluster"
+                       id="create_cluster"
+                       py:attrs="{'checked': 'create_cluster' in roles and 'checked' or None}"/>
+                   </li>
+                   <li>
+                     <br/>
+                     <label for="import_cluster" class="wide">Can Import Existing Clusters</label>
+                     <input type="checkbox" class="checkbox" name="role:import_cluster"
+                       id="import_cluster"
+                       py:attrs="{'checked': 'import_cluster' in roles and 'checked' or None}"/><br/>
+                   </li>
+                 </ul>
+
+                 <h3 py:if="clusters">Cluster-specific Permissions</h3>
+                 <p style="width:50%">
+                   <small>Note: Users who can change the cluster configuration can cause existing service groups to stop by deleting them, and can cause new service groups to start automatically when creating them. Additionally, service groups may be restarted as a result of edits made to them or to their child resources while they are running.</small>
+                 </p>
+                 <div py:for="cluster_name in clusters">
+                   Cluster: <strong>${cluster_name}</strong><br/>
+                   <ul class="vanilla">
+                     <li class="vanilla">
+                       <label class="wide" for="${'view_%s' % cluster_name}">Can View This Cluster</label>
+                       <input type="checkbox" class="checkbox"
+                         py:attrs="{
+                           'id': 'view_%s' % cluster_name,
+                           'name': 'role:view_%s' % cluster_name,
+                           'checked': 'view_%s' % cluster_name in roles and 'checked' or None}"/>
+                     </li>
+                     <li class="vanilla">
+                       <br/>
+                       <label class="wide" for="${'config_%s' % cluster_name}">Can Change the Cluster Configuration</label>
+                       <input type="checkbox" class="checkbox"
+                         py:attrs="{
+                           'id': 'config_%s' % cluster_name,
+                           'name': 'role:config_%s' % cluster_name,
+                           'checked': 'config_%s' % cluster_name in roles and 'checked' or None}"/>
+                     </li>
+                     <li class="vanilla">
+                       <br/>
+                       <label class="wide" for="${'service_cmd_%s' % cluster_name}">Can Enable, Disable, Relocate, and Migrate Service Groups</label>
+                       <input type="checkbox" class="checkbox"
+                         py:attrs="{
+                           'id': 'service_cmd_%s' % cluster_name,
+                           'name': 'role:service_cmd_%s' % cluster_name,
+                           'checked': 'service_cmd_%s' % cluster_name in roles and 'checked' or None}"/>
+                     </li>
+                     <li class="vanilla">
+                       <br/>
+                       <label class="wide" for="${'node_cmd_%s' % cluster_name}">Can Stop, Start, and Reboot Cluster Nodes</label>
+                       <input type="checkbox" class="checkbox"
+                         py:attrs="{
+                           'id': 'node_cmd_%s' % cluster_name,
+                           'name': 'role:node_cmd_%s' % cluster_name,
+                           'checked': 'node_cmd_%s' % cluster_name in roles and 'checked' or None}"/>
+                     </li>
+                     <li class="vanilla">
+                       <br/>
+                       <label class="wide" for="${'membership_%s' % cluster_name}">Can Add and Delete Nodes</label>
+                       <input type="checkbox" class="checkbox"
+                         py:attrs="{
+                           'id': 'membership_%s' % cluster_name,
+                           'name': 'role:membership_%s' % cluster_name,
+                           'checked': 'membership_%s' % cluster_name in roles and 'checked' or None}"/>
+                     </li>
+                     <li class="vanilla">
+                       <br/>
+                       <label class="wide" for="${'remove_%s' % cluster_name}">Can Remove This Cluster From Luci</label>
+                       <input type="checkbox" class="checkbox"
+                         py:attrs="{
+                           'id': 'remove_%s' % cluster_name,
+                           'name': 'role:remove_%s' % cluster_name,
+                           'checked': 'remove_%s' % cluster_name in roles and 'checked' or None}"/>
+                     </li>
+                   </ul>
+                 </div>
+                 <div>
+                   <br/>
+                   <input type="reset" class="formsubmit button blue" value="Reset"/>
+                   <input type="submit" class="formsubmit button blue" value="Submit"/>
+                 </div>
+               </form>
+             </div>
+           </py:if>
+         </div>
+       </div>
+
+       <div id="tabs-2">
+         <h2>Luci Server Logging Configuration</h2>
+         <p style="width:50%">
+           <small>Note: Changes to these settings will persist only for the lifetime of the server. To make permanent changes, edit the logging configuration in your luci.ini file.</small>
+         </p>
+         <div id="logging_config">
+           <form name="luci_log_config" method="post" action="${tg.url('admin_cmd' + '?command=log')}">
+           <table class="formtable">
+              <tr>
+                <th>Logger Class</th>
+                <th>Log Level</th>
+              </tr>
+              <tr>
+               <td>tg.i18n</td>
+               <td>
+                 <select name="log_level_tg.i18n"
+                   py:with="cur_level=logging.getLogger('tg.i18n').getEffectiveLevel()">
+                   <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+                   <option value="DEBUG" py:attrs="cur_level==10 and {'selected':'selected'} or None">debug</option>
+                   <option value="INFO" py:attrs="cur_level==20 and {'selected':'selected'} or None">info</option>
+                   <option value="WARNING" py:attrs="cur_level==30 and {'selected':'selected'} or None">warning</option>
+                   <option value="ERROR" py:attrs="cur_level==40 and {'selected':'selected'} or None">error</option>
+                   <option value="CRITICAL" py:attrs="cur_level==50 and {'selected':'selected'} or None">critical</option>
+                 </select>
+               </td>
+             </tr>
+             <tr>
+               <td>sqlalchemy</td>
+               <td>
+                 <select name="log_level_sqlalchemy"
+                   py:with="cur_level=logging.getLogger('sqlalchemy').getEffectiveLevel()">
+                   <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+                   <option value="DEBUG" py:attrs="cur_level==10 and {'selected':'selected'} or None">debug</option>
+                   <option value="INFO" py:attrs="cur_level==20 and {'selected':'selected'} or None">info</option>
+                   <option value="WARNING" py:attrs="cur_level==30 and {'selected':'selected'} or None">warning</option>
+                   <option value="ERROR" py:attrs="cur_level==40 and {'selected':'selected'} or None">error</option>
+                   <option value="CRITICAL" py:attrs="cur_level==50 and {'selected':'selected'} or None">critical</option>
+                 </select>
+               </td>
+             </tr>
+             <tr>
+               <td>luci</td>
+               <td>
+                 <select name="log_level_luci"
+                   py:with="cur_level=logging.getLogger('luci').getEffectiveLevel()">
+                   <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+                   <option value="DEBUG" py:attrs="cur_level==10 and {'selected':'selected'} or None">debug</option>
+                   <option value="INFO" py:attrs="cur_level==20 and {'selected':'selected'} or None">info</option>
+                   <option value="WARNING" py:attrs="cur_level==30 and {'selected':'selected'} or None">warning</option>
+                   <option value="ERROR" py:attrs="cur_level==40 and {'selected':'selected'} or None">error</option>
+                   <option value="CRITICAL" py:attrs="cur_level==50 and {'selected':'selected'} or None">critical</option>
+                 </select>
+               </td>
+             </tr>
+             <tr>
+               <td>root</td>
+               <td>
+                 <select name="log_level_root"
+                   py:with="cur_level=logging.getLogger('').getEffectiveLevel()">
+                   <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+                   <option value="DEBUG" py:attrs="cur_level==10 and {'selected':'selected'} or None">debug</option>
+                   <option value="INFO" py:attrs="cur_level==20 and {'selected':'selected'} or None">info</option>
+                   <option value="WARNING" py:attrs="cur_level==30 and {'selected':'selected'} or None">warning</option>
+                   <option value="ERROR" py:attrs="cur_level==40 and {'selected':'selected'} or None">error</option>
+                   <option value="CRITICAL" py:attrs="cur_level==50 and {'selected':'selected'} or None">critical</option>
+                 </select>
+               </td>
+             </tr>
+           </table>
+           <div>
+             <br/>
+             <input type="reset" class="formsubmit button blue" value="Reset"/>
+             <input type="submit" class="formsubmit button blue" value="Submit"/>
+           </div>
+         </form>
+       </div>
+     </div>
+   </div>
+   </div>
+  <div class="hidden">
+   <div id="add_user_dialog">
+     <form name="manage_create_user" method="post" action="${tg.url('admin_cmd' + '?command=create')}">
+       <div class="row">
+         User to Add
+         <input type="text" class="text" name="name"/>
+       </div>
+       <div class="row">
+         <input type="submit" class="formsubmit button blue" value="Submit"/>
+         <input type="button" class="formsubmit button silver" value="Cancel"
+           onclick="$('#add_user_dialog').dialog('close');reset_form(this.form)" />
+       </div>
+     </form>
+   </div>
+  </div>
+</body>
+</html>

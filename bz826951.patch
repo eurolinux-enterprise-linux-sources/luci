@@ -1,0 +1,356 @@
+From 0ff30a001a64986b7228268670078823ac7ad493 Mon Sep 17 00:00:00 2001
+From: Jan Pokorny <jpokorny@redhat.com>
+Date: Thu, 16 Aug 2012 22:52:18 +0200
+Subject: [PATCH] bz826951: prevent from invalid ID and IDREF values in
+ cluster.conf
+
+(esp. digit as a first letter)
+
+Signed-off-by: Jan Pokorny <jpokorny@redhat.com>
+---
+ luci/validation/validate_fence.py | 179 ++++++++++++++++++++++++--------------
+ 1 file changed, 115 insertions(+), 64 deletions(-)
+
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index e95c69b..b6ee463 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -1,10 +1,12 @@
+-# Copyright (C) 2009-2010 Red Hat, Inc.
++# Copyright (C) 2009-2012 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+ # GNU General Public License as published by the
+ # Free Software Foundation.
+ 
++import re
++
+ from luci.lib.helpers import ugettext as _
+ from luci.lib.ClusterConf.Device import Device
+ from luci.lib.ClusterConf.FenceDevice import FenceDevice
+@@ -12,18 +14,65 @@ from luci.lib.ClusterConf.FenceDevice import FenceDevice
+ import logging
+ log = logging.getLogger(__name__)
+ 
++#
++# RELAX NG/XML datatype NCName is defined in
++#   http://books.xmlschemata.org/relaxng/ch19-77215.html
++# which can be resolved as
++#   <NCName> ::= <Start> <NonStart>*
++# where
++#   <Start> ::= [A-Z] | "_" | [a-z] | [#xC0-#xD6] | ...
++#     (see http://www.w3.org/TR/REC-xml/#NT-NameStartChar)
++#   <NonStart> ::= <Start> | "-" | "." | [0-9] | #xB7 | ..
++#     (see http://www.w3.org/TR/REC-xml/#NT-NameChar)
++#
++
++# NOTE: skipping [\u10000-\uEFFFF] as it won't get lex'd
++NCName_start = "(?:[A-Z_a-z]" \
++	u"|[\u00C0-\u00D6]" \
++	u"|[\u00D8-\u00F6]" \
++	u"|[\u00F8-\u02FF]" \
++	u"|[\u0370-\u037D]" \
++	u"|[\u037F-\u1FFF]" \
++	u"|[\u200C-\u200D]" \
++	u"|[\u2070-\u218F]" \
++	u"|[\u2C00-\u2FEF]" \
++	u"|[\u3001-\uD7FF]" \
++	u"|[\uF900-\uFDCF]" \
++	u"|[\uFDF0-\uFFFD]" \
++	")"
++
++NCName_nonstart = NCName_start + "|(?:[-.0-9]" \
++	u"|\u00B7"          \
++	u"|[\u0300-\u036F]" \
++	u"|[\u203F-\u2040]" \
++	")"
++
++NCName_RE = re.compile(NCName_start + "(?:" + NCName_nonstart + ")*$", re.UNICODE)
++
++
+ FD_PROVIDE_NAME = _('No name was given for this fence device')
+ FD_PROVIDE_AGENT = _('No fence agent type was given for this fence device')
+ FI_PROVIDE_PARENT = _('No parent fence device name was given for this fence instance')
++FD_FIX_NAME = _('Only letter, digit (not at the beginning!), underscore, dash and dot'
++				' can appear in fence device name.')
+ 
+ FD_NEW_FAIL = _('Error creating fence %s device')
+ FI_NEW_FAIL = _('Error creating fence %s instance')
+ 
+-def makeNCName(name):
+-	### name must conform to relaxNG ID type ##
+-	import re
+-	ILLEGAL_CHARS = re.compile(':| ')
+-	return ILLEGAL_CHARS.sub('_', name)
++
++def validateNCName(name):
++	"""Conformity validation for NCName datatype"
++
++	In cluster.rng, it is used for fencedevice's name and for
++	referencing it via device at particular clusternode.
++	"""
++
++	# this is the framework's default and something is wrong otherwise;
++	# the match does not work completely right for, e.g., strings starting
++	# with non-ASCII if it is not of unicode kind
++	assert isinstance(name, unicode)
++
++	return bool(NCName_RE.match(name))
+ 
+ def validateNewFenceDevice(model, **kw):
+ 	fencedev = FenceDevice()
+@@ -94,7 +143,7 @@ def config_fence_attr(params, fence, fname, **kw):
+ def val_apc_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -106,7 +155,7 @@ def val_apc_fd(fencedev, fence_name, **kw):
+ def val_wti_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('cmd_prompt', False),
+ 		('passwd', False),
+@@ -120,7 +169,7 @@ def val_wti_fd(fencedev, fence_name, **kw):
+ def val_virsh_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -185,7 +234,7 @@ def val_egenera_fd(fencedev, fence_name, **kw):
+ def val_sanbox2_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('cmd_prompt', False),
+ 		('passwd', False),
+@@ -199,7 +248,7 @@ def val_sanbox2_fd(fencedev, fence_name, **kw):
+ def val_bladecenter_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -222,7 +271,7 @@ def val_virt_fd(fencedev, fence_name, **kw):
+ def val_vmware_soap_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -291,7 +340,7 @@ def val_noop_fd(fencedev, fence_name, **kw):
+ def val_rsa_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('secure', False),
+ 		('identity_file', False),
+@@ -331,7 +380,7 @@ def val_eps_fd(fencedev, fence_name, **kw):
+ def val_drac5_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('module_name', True),
+ 		('cmd_prompt', False),
+@@ -444,7 +493,7 @@ def val_zvm_fd(fencedev, fence_name, **kw):
+ def val_ibmblade_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('udpport', False),
++		('udpport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -464,7 +513,7 @@ def val_ibmblade_fd(fencedev, fence_name, **kw):
+ def val_ifmib_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('udpport', False),
++		('udpport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -484,7 +533,7 @@ def val_ifmib_fd(fencedev, fence_name, **kw):
+ def val_cisco_mds_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('udpport', False),
++		('udpport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -504,7 +553,7 @@ def val_cisco_mds_fd(fencedev, fence_name, **kw):
+ def val_cisco_ucs_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -527,7 +576,7 @@ def val_cpint_fd(fencedev, fence_name, **kw):
+ def val_apc_snmp_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('udpport', False),
++		('udpport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -547,7 +596,7 @@ def val_apc_snmp_fd(fencedev, fence_name, **kw):
+ def val_intelmodular_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('udpport', False),
++		('udpport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -567,7 +616,7 @@ def val_intelmodular_fd(fencedev, fence_name, **kw):
+ def val_ilo_mp_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -583,7 +632,7 @@ def val_ilo_mp_fd(fencedev, fence_name, **kw):
+ def val_ilo_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -596,7 +645,7 @@ def val_ilo_fd(fencedev, fence_name, **kw):
+ def val_rhevm_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+- 		('ipport', False),
++		('ipport', False),
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -655,10 +704,12 @@ def validate_fencedevice(model, fencedev, **kw):
+ 		fence_name = kw.get('name').strip()
+ 		if not fence_name:
+ 			raise Exception, 'blank'
+-		fence_name = makeNCName(fence_name)
+ 	except Exception, e:
+ 		return [ FD_PROVIDE_NAME ]
+ 
++	if not validateNCName(fence_name):
++		return [ FD_FIX_NAME ]
++
+ 	name_change = False
+ 	fence_edit = kw.get('fence_edit') is not None
+ 
+@@ -1127,43 +1178,43 @@ def get_fence_level_info(fence_level, node, fds, major_num, minor_num):
+ 	return (cur_level, cur_shared, major_num, minor_num)
+ 
+ def getFenceInfo(model, nodename):
+-    """Return a list of lists containing the level/method and fence instances for that level.
+-
+-    """
+-
+-    fence_map = []
+-
+-    try:
+-        node = model.retrieveNodeByName(nodename)
+-    except Exception, e:
+-        return fence_map
+-
+-    fds = model.getFenceDevices()
+-    levels = node.getFenceMethods()
+-    len_levels = len(levels)
+-
+-    if len_levels == 0:
+-        return fence_map
+-
+-    for level in levels:
+-        fence_map_level = [0, 0]
+-        fence_map_level[0] = level
+-        fence_map_level[1] = []
+-
+-        for instance in level.getChildren():
+-            # Lookup, whether the unfencing was set and add a flag appropriately.
+-            unfencing_flag = False
+-            for child in node.getChildren():
+-                if child.getTagName() == 'unfence':
+-                    unfence = child
+-                    for child_device in unfence.getChildren():
+-                        # Try to find existing unfence device that mirrored fence device instance
+-                        # to be removed and remove it, too.
+-                        if len(set(instance.getAttributes().items()).difference(child_device.getAttributes().items())) == 0:
+-                            unfencing_flag = True
+-                            break
+-                    break
+-
+-            fence_map_level[1].append([instance, getDeviceForInstance(fds, instance.getName().strip()), unfencing_flag])
+-        fence_map.append(fence_map_level)
+-    return fence_map
++	"""Return a list of lists containing the level/method and fence instances for that level.
++
++	"""
++
++	fence_map = []
++
++	try:
++		node = model.retrieveNodeByName(nodename)
++	except Exception, e:
++		return fence_map
++
++	fds = model.getFenceDevices()
++	levels = node.getFenceMethods()
++	len_levels = len(levels)
++
++	if len_levels == 0:
++		return fence_map
++
++	for level in levels:
++		fence_map_level = [0, 0]
++		fence_map_level[0] = level
++		fence_map_level[1] = []
++
++		for instance in level.getChildren():
++			# Lookup, whether the unfencing was set and add a flag appropriately.
++			unfencing_flag = False
++			for child in node.getChildren():
++				if child.getTagName() == 'unfence':
++					unfence = child
++					for child_device in unfence.getChildren():
++						# Try to find existing unfence device that mirrored fence device instance
++						# to be removed and remove it, too.
++						if len(set(instance.getAttributes().items()).difference(child_device.getAttributes().items())) == 0:
++							unfencing_flag = True
++							break
++					break
++
++			fence_map_level[1].append([instance, getDeviceForInstance(fds, instance.getName().strip()), unfencing_flag])
++		fence_map.append(fence_map_level)
++	return fence_map
+-- 
+1.7.11.4
+

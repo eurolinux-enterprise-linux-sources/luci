@@ -1,0 +1,248 @@
+From e86b26b8d90b594b0d31f3d57d592f132b311e4f Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 8 Oct 2012 09:54:25 -0400
+Subject: [PATCH] luci: Add support for nfsrestart
+
+Add support for configuring and displaying the nfsrestart attribute
+for filesystem and clusterfs resources.
+
+Resolves: rhbz#822502
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/js/resource.js           | 14 ++++++++++
+ luci/templates/resource_list.html    | 50 ++++++++++++++++++++++++------------
+ luci/validation/validate_resource.py |  8 ++++++
+ 3 files changed, 55 insertions(+), 17 deletions(-)
+
+diff --git a/luci/public/js/resource.js b/luci/public/js/resource.js
+index 8e6f432..a839875 100644
+--- a/luci/public/js/resource.js
++++ b/luci/public/js/resource.js
+@@ -18,3 +18,17 @@ function swap_resource_form(resource_form_id) {
+     $('#resource_form_area').empty();
+     form_jelem.clone().appendTo('#resource_form_area');
+ }
++
++function forceunmount_update(form) {
++    var nfsrestart_cb = form.nfsrestart;
++    if (!nfsrestart_cb) {
++        return;
++    }
++
++    if (form.force_unmount.checked) {
++        nfsrestart_cb.disabled = false;
++    } else {
++        nfsrestart_cb.checked = false;
++        nfsrestart_cb.disabled = true;
++    }
++}
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index ebcd2a7..d914922 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -107,7 +107,7 @@
+      <td>Disable Updates to Static Routes</td>
+      <td>
+         <input type="checkbox" class="checkbox" name="disable_rdisc"
+-          py:attrs="res and {'checked': res.getAttribute('disable_rdisc') and 'checked' or None, 'disabled':global_resource and 'disabled' or None} or {}" />
++          py:attrs="res and {'checked': res.getBinaryAttribute('disable_rdisc') and 'checked' or None, 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+     </tr>
+     <tr>
+@@ -201,28 +201,36 @@
+       <td>Force Unmount</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="force_unmount"
+-          py:attrs="{'checked':(res and res.getAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          onchange="forceunmount_update(this.form)"
++          py:attrs="{'checked':(res and res.getBinaryAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Force fsck</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="force_fsck"
+-          py:attrs="{'checked':(res and res.getAttribute('force_fsck')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('force_fsck')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++      </td>
++    </tr>
++    <tr>
++      <td>Enable NFS daemon and lockd workaround</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="nfsrestart"   
++          py:attrs="{'checked':(res and res.getBinaryAttribute('nfsrestart')) and 'checked' or None, 'disabled':(global_resource or not res or not res.getBinaryAttribute('force_unmount')) and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Use Quick Status Checks</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="quick_status"
+-          py:attrs="{'checked':(res and res.getAttribute('quick_status')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('quick_status')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Reboot Host Node if Unmount Fails</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="self_fence"
+-          py:attrs="{'checked':(res and res.getAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     ${res_footer(res)}
+@@ -309,14 +317,22 @@
+       <td>Force Unmount</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="force_unmount"
+-          py:attrs="{'checked':(res and res.getAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          onchange="forceunmount_update(this.form)"
++          py:attrs="{'checked':(res and res.getBinaryAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++      </td>
++    </tr>
++    <tr>
++      <td>Enable NFS daemon and lockd workaround</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="nfsrestart"   
++          py:attrs="{'checked':(res and res.getBinaryAttribute('nfsrestart')) and 'checked' or None, 'disabled':(global_resource or not res or not res.getBinaryAttribute('force_unmount')) and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Reboot Host Node if Unmount Fails</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="self_fence"
+-          py:attrs="{'checked':(res and res.getAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     ${res_footer(res)}
+@@ -382,14 +398,14 @@
+       <td>Do Not Unmount the Filesystem During a Stop or Relocation Operation</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="no_unmount"
+-          py:attrs="{'checked':(res and res.getAttribute('no_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('no_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Force Unmount</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="force_unmount"
+-          py:attrs="{'checked':(res and res.getAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+@@ -510,7 +526,7 @@
+       <td>Allow Recovery of This NFS Client</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="allow_recover"
+-          py:attrs="{'checked':(res and res.getAttribute('allow_recover')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('allow_recover')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+@@ -785,7 +801,7 @@
+       <td>Fence the Node if It is Unable to Clean Up LVM Tags</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="self_fence"
+-          py:attrs="{'checked':(res and res.getAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     ${res_footer(res)}
+@@ -1066,7 +1082,7 @@
+       </td>
+       <td>
+         <input type="checkbox" class="checkbox" name="AUTOMATIC_RECOVER"
+-          py:attrs="{'checked':(res and res.getAttribute('AUTOMATIC_RECOVER')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('AUTOMATIC_RECOVER')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+@@ -1164,21 +1180,21 @@
+       <td>ABAP Stack Is Not Installed, Only Java Stack Is Installed</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="DBJ2EE_ONLY"
+-          py:attrs="{'checked':(res and res.getAttribute('DBJ2EE_ONLY')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('DBJ2EE_ONLY')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Application Level Monitoring</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="STRICT_MONITORING"
+-          py:attrs="{'checked':(res and res.getAttribute('STRICT_MONITORING')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('STRICT_MONITORING')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Automatic Startup Recovery</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="AUTOMATIC_RECOVER"
+-          py:attrs="{'checked':(res and res.getAttribute('AUTOMATIC_RECOVER')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++          py:attrs="{'checked':(res and res.getBinaryAttribute('AUTOMATIC_RECOVER')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+       </td>
+     </tr>
+     <tr>
+@@ -1553,7 +1569,7 @@
+       <td>Use Simplified Database Backend</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="named_sdb"
+-          py:attrs="{'checked':(res and res.getAttribute('named_sdb')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}"/>
++          py:attrs="{'checked':(res and res.getBinaryAttribute('named_sdb')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}"/>
+       </td>
+     </tr>
+     <tr>
+@@ -1721,7 +1737,7 @@
+         <td>Tunnel data over ssh during migration</td>
+         <td>
+           <input type="checkbox" class="checkbox" name="tunnelled"
+-            py:attrs="{'checked':(res and res.getAttribute('tunnelled')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}"/>
++            py:attrs="{'checked':(res and res.getBinaryAttribute('tunnelled')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}"/>
+         </td>
+     </tr>
+     ${res_footer(res)}
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index f499d47..da4ae91 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -131,6 +131,7 @@ def addFs(res, rname, model, **kw):
+ 		('self_fence', '', False, None),
+ 		('fsid', '', False, None),
+ 		('force_fsck', '', False, None),
++		('nfsrestart', '', False, None),
+ 		('options', '', False, None)
+ 	)
+ 	errors = config_resource(params, res, rname, **kw)
+@@ -141,6 +142,9 @@ def addFs(res, rname, model, **kw):
+ 	else:
+ 		if not fsid_is_unique(model, int(fsid)):
+ 			errors.append(_('fsid for resource %s is not unique') % rname)
++	if (res.getBinaryAttribute('nfsrestart')
++		and not res.getBinaryAttribute('force_unmount')):
++		errors.append(_('nfsrestart requires force_unmount to be enabled'))
+ 	return errors
+ 
+ def addClusterfs(res, rname, model, **kw):
+@@ -149,6 +153,7 @@ def addClusterfs(res, rname, model, **kw):
+ 		('device', '', True, None),
+ 		('fstype', '', False, None),
+ 		('force_unmount', '', False, None),
++		('nfsrestart', '', False, None),
+ 		('self_fence', '', False, None),
+ 		('fsid', '', False, None),
+ 		('options', '', False, None)
+@@ -161,6 +166,9 @@ def addClusterfs(res, rname, model, **kw):
+ 	else:
+ 		if not fsid_is_unique(model, int(fsid)):
+ 			errors.append(_('fsid for resource %s is not unique') % rname)
++	if (res.getBinaryAttribute('nfsrestart')
++		and not res.getBinaryAttribute('force_unmount')):
++		errors.append(_('nfsrestart requires force_unmount to be enabled'))
+ 	return errors
+ 
+ def addNetfs(res, rname, model, **kw):
+-- 
+1.7.11.4
+

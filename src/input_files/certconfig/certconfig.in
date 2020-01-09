@@ -1,0 +1,45 @@
+# Configuration of @SERVICENAME@ service automatically managed self-signed
+# certificate
+#
+# Please note that such certificate cannot be fully comparable to the one
+# created within own (corporate/commercial) certificate infrastructure
+# which should be considered at the first place (certificate file can be
+# changed in the configuration file coming with initscript)
+
+[req]
+default_bits             = 2048
+default_md               = sha1
+utf8                     = yes
+distinguished_name       = req_distinguished_name
+x509_extensions          = req_x509_extensions
+prompt                   = no
+
+
+[req_distinguished_name]
+#countryName             = Country Name (2 letter code)
+#stateOrProvinceName     = State or Province Name (full name)
+#localityName            = Locality Name (e.g., city)
+
+organizationName         = @PKGNAME@
+organizationalUnitName   = @PKGNAME@
+commonName               = @PKGNAME@ high availability management server
+
+#emailAddress            = Email Address
+
+
+[req_x509_extensions]
+subjectAltName           = @alt_names
+
+
+[alt_names]
+# Ensures this section is not completely empty, emailAddress can be undefined
+email = copy
+
+# Domain names and/or IP addresses can be added here
+#DNS.0 = localhost
+#IP.0  = 127.0.0.1
+# ... and so on, just changing the suffix (presumably in sequence)
+
+# If "###" mark below found as the last line, the domain names and IP addresses
+# will be added automatically by the initscript (with suffix starting at 16)
+###

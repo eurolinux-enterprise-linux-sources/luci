@@ -1,0 +1,82 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude"
+  py:strip="">
+  <xi:include href="header.html"/>
+  <xi:include href="footer.html"/>
+  <xi:include href="title.html"/>
+
+<?python
+  from luci.lib import db_helpers
+  expertMode = request.cookies.get('expertMode') == '1'
+?>
+
+<head py:match="head" py:attrs="select('@*')">
+  <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+  <title py:replace="''">Your title goes here</title>
+  <meta py:replace="select('*')"/>
+  <link rel="stylesheet" type="text/css" media="screen" href="${tg.url('/css/style.css')}" />
+  <link rel="stylesheet" type="text/css" href="/css/jquery-ui-1.8.11.custom.css" />
+  <link rel="stylesheet" type="text/css" href="/css/jquery.jnotify-alt.css"/>
+
+  <script type="text/javascript" src="/js/shared.js"></script>
+  <script type="text/javascript" src="/js/jquery-1.5.2.min.js"></script>
+  <script type="text/javascript" src="/js/jquery-ui-1.8.11.custom.min.js"></script>
+  <script type="text/javascript" src="/js/jquery.blockUI.min.js"></script>
+  <script type="text/javascript" src="/js/jquery.jnotify.min.js"></script>
+  <script type="text/javascript" src="/js/homebase.js"></script>
+  <script type="text/javascript" src="/js/busy.js"></script>
+</head>
+
+<body py:match="body" py:attrs="select('@*')">
+  <div id="status_msg_area" style="display:none">
+    <div id="status_header" class="row">
+      <img id="status_msg_img" src="/images/100wait.gif" height="50" width="50"/>
+      <span id="status_header_text">Please wait...</span>
+    </div>
+    <ul id="status_msg_details"/>
+  </div>
+  <py:if test="'cluster_name' in dir(tmpl_context)">
+    <script type="text/javascript">
+      $(document).ready(function() {
+        poll_cluster_busy('${tmpl_context.cluster_name}');
+      });
+    </script>
+  </py:if>
+  <div id="wrapper">
+  ${header()}
+  <div id="breadcrumb">
+    <ul class="mainmenu">
+      <li><a href="${tg.url('/homebase')}" class="${('', 'active')[defined('page') and page=='homebase']}">Homebase</a></li>
+      <li><a href="${tg.url('/cluster')}" class="${('', 'active')[defined('page') and page=='cluster']}" py:if="defined('page') and (page=='cluster' or page=='nodes')">Clusters</a></li>
+      <li><a href="${tg.url('/cluster/'+tmpl_context.cluster_name)}" class="${('', 'active')[defined('page') and page=='nodes']}" py:if="defined('page') and page=='nodes'"><span py:replace="tmpl_context.cluster_name">Nodes</span></a></li>
+      <li></li>
+    </ul>
+  </div>
+  <div id="content">
+    <py:with vars="flash=tg.flash_obj.render('flash', use_js=False)">
+      <div py:if="flash" py:content="XML(flash)" class="message"/>
+    </py:with>
+    <py:if test="'flash2' in session">
+    <div py:for="message in session['flash2']" class="message" id="${message.hash}">
+      <div py:if="message.hideable" class="hide_btn">
+        <a href="#" onclick="$('#${message.hash}').hide('blind',{},500,function(){});">Hide</a>
+      </div>
+      <div py:if="message.html" class="${message.css}" py:content="XML(message.message)"/>
+      <div py:if="not message.html" class="${message.css}" py:content="message.message"/>
+    </div>
+    </py:if>
+    <py:if test="'show_sidebar' in dir(tmpl_context) and tmpl_context.show_sidebar">
+     <xi:include href="mainmenu.html" />
+    </py:if>
+    <py:if test="defined('page')">
+      <div class="currentpage"></div>
+    </py:if>
+    <div py:replace="select('*|text()')"/>
+    <!-- End of content -->
+  </div>
+ </div>
+</body>
+</html>

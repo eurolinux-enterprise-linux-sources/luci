@@ -1,0 +1,165 @@
+From 5882344f24a01b1592af5b95fd829e185b100e7b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jan=20Pokorn=C3=BD?= <jpokorny@redhat.com>
+Date: Mon, 23 Jun 2014 15:39:24 +0200
+Subject: [PATCH] Resolves: rhbz#991575
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Add the ability to block weak ciphers in luci.
+
+Currently, this feature only applies to web browser connecting to luci.
+
+Signed-off-by: Jan Pokorný <jpokorny@redhat.com>
+---
+
+diff --git a/luci-0.26.0/input_files/config.tmpl/config.tmpl.in b/luci-0.26.0/input_files/config.tmpl/config.tmpl.in
+index 5ed192f..bdf4023 100644
+--- a/luci-0.26.0/input_files/config.tmpl/config.tmpl.in
++++ b/luci-0.26.0/input_files/config.tmpl/config.tmpl.in
+@@ -77,6 +77,8 @@ tmp.sysconfig = @SYSCONFIG@
+ def.port = @PORT@
+ def.host = 0.0.0.0
+ def.cert_pem = @CERTPEM@
++# following is intentionally empty to use responsible implementation's defaults
++def.cipher_list = 
+ def.cache_dir = @CACHEDIR@
+ def.sessions_dir = @SESSIONSDIR@
+ def.db_file = @DBFILE@
+@@ -88,13 +90,15 @@ def.auth_tkt_timeout = 900
+ # ===========================================================================
+ 
+ [server:main]
+-use = egg:Paste#http
++use = egg:@PKGNAME@
+ 
+ # Items to be set only if this haven't been already done in other sections
+ 
+ host = %(def.host)s
+ port = %(def.port)s
+ ssl_pem = %(def.cert_pem)s
++ssl_cipher_list = %(def.cipher_list)s
++ssl_allow_insecure = false
+ 
+ # ---------------------------------------------------------------------------
+ 
+diff --git a/luci-0.26.0/input_files/sysconfig/sysconfig.in b/luci-0.26.0/input_files/sysconfig/sysconfig.in
+index 2fb0460..1176373 100644
+--- a/luci-0.26.0/input_files/sysconfig/sysconfig.in
++++ b/luci-0.26.0/input_files/sysconfig/sysconfig.in
+@@ -55,11 +55,21 @@ INIT_CONFIG=`cat -E <<"#END#"
+ # PEM file containing both the certificate itself and respective private key),
+ # otherwise its self-signed certificate managed automatically by @SERVICENAME@
+ # service is used instead;
+-# currently, this certificate is used only for https connection with web
++# currently, this certificate is used only for https connection with the web
+ # browser, connections with ricci instances still rely on self-managed cert
+ # Note: If this configuration item is active and no such file can be read,
+ #       starting @SERVICENAME@ service will fail
+-#ssl_pem = "path_to/ssl_cert_pem_file"
++#ssl_pem = path_to/ssl_cert_pem_file
++
++# Change this to pass custom cipher list to be used by underlying OpenSSL
++# library in the SSL/TLS context.
++# Currently, this option only affects https connection with the web browser.
++#ssl_cipher_list = ALL!EXPORT!EXPORT40!EXPORT56!aNULL!LOW!RC4
++
++# When specifying custom ssl_cipher_list above, SSLv2 commnunication is
++# prevented by default;  to override it and allow SSLv2 again, uncomment
++# the following option.
++#ssl_allow_insecure = true
+ 
+ use=config:%(base_config)s
+ 
+diff --git a/luci-0.26.0/luci/initwrappers.py b/luci-0.26.0/luci/initwrappers.py
+index 2f58cf1..843c8ce 100644
+--- a/luci-0.26.0/luci/initwrappers.py
++++ b/luci-0.26.0/luci/initwrappers.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2010 Red Hat, Inc.
++# Copyright 2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -11,6 +11,7 @@ Wrappers for parts used during initial phase of running luci.
+ 
+ from pylons.util import PylonsInstaller as _PylonsInstaller
+ from repoze.who.config import WhoConfig as _WhoConfig, make_middleware_with_config
++from paste.httpserver import server_runner as _server_runner
+ 
+ from luci import config_template
+ 
+@@ -108,3 +109,47 @@ def auth_tkt_make_plugin(secret=None,
+                            cookie_name=cookie_name,
+                            secure=secure,
+                            include_ip=include_ip)
++
++
++# This is a way how to inject custom SSL context and in turn, how to have
++# a control over allowed ciphers (rhbz#991575).
++def server_runner(wsgi_app, global_conf, **kwargs):
++    try:
++        from OpenSSL import SSL
++    except ImportError:
++        # let it fail later if need be
++        pass
++    else:
++        ssl_cipher_list = kwargs.pop('ssl_cipher_list', '')
++        ssl_allow_insecure = kwargs.pop('ssl_allow_insecure', False)
++        if ssl_cipher_list:
++            ssl_pem = kwargs.pop('ssl_pem')
++            ssl_context = SSL.Context(SSL.SSLv23_METHOD)
++            if ssl_allow_insecure in ('', 'false', False):
++                # XXX note that SSL.OP_NO_COMPRESSION is missing
++                ssl_context.set_options(SSL.OP_NO_SSLv2)
++            ssl_context.use_privatekey_file(ssl_pem)
++            ssl_context.use_certificate_chain_file(ssl_pem)
++            ssl_context.set_cipher_list(ssl_cipher_list)
++            kwargs['ssl_context'] = ssl_context
++
++    return _server_runner(wsgi_app, global_conf, **kwargs)
++
++
++server_runner.__doc__ = (_server_runner.__doc__ or '') + """
++
++    You can also set these luci-specific options:
++
++    ``ssl_cipher_list``:
++
++        The list of ciphers to be used in this context.
++        See the OpenSSL manual for more information (e.g. ciphers(1)).
++        Defaults to whatever OpenSSL uses as a default.
++
++    ``ssl_allow_insecure``:
++
++        If and only if specifying ciphers manually via ``ssl_cipher_list``,
++        SSLv2 communication is suppressed by default (not the case without
++        specification).  To allow SSLv2 with its known security issues even
++        then, set this option to 'true'.
++"""
+diff --git a/luci-0.26.0/setup.py b/luci-0.26.0/setup.py
+index bbb73fe..1d11c12 100644
+--- a/luci-0.26.0/setup.py
++++ b/luci-0.26.0/setup.py
+@@ -463,7 +463,7 @@ setup(
+     # introduced by setuptools); mainly following groups of entry points are
+     # required for interaction with PasteScript (related ``paster'' commands):
+     #   * paste.app_install: used by ``make-config'' or ``setup-app'' commands
+-    #   * paste.app_factory: used by ``serve'' commands
++    #   * paste.app_factory and paste.server_runner: used by ``serve'' command
+     #
+     # Note 1: ``make-config'' visits the entry point via explicitly defined
+     #         package name as parameter, ``setup-app'' and ``serve'' visit it
+@@ -477,6 +477,9 @@ setup(
+ 
+         [paste.app_factory]
+         main = %(pkg_name)s.config.middleware:make_app
++
++        [paste.server_runner]
++        main = %(pkg_name)s.initwrappers:server_runner
+     """ % dict(pkg_name=pkg_name),
+ 
+ 
+-- 
+1.9.3
+

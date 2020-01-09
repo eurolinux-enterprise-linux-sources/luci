@@ -1,0 +1,92 @@
+/*================================ F E N C E S ============================== */
+
+/* -------------------------------- overview -------------------------------- */
+
+th.fence_tlist_type {
+}
+
+th.fence_tlist_members {
+}
+
+th.fence_tlist_ip {
+}
+
+
+/* --------------------------------- details -------------------------------- */
+
+/* details */
+
+.fence_details_label {
+  margin-right: 1em;
+  color: #4A4848;
+}
+
+#fence_details_list {
+  padding: 0;
+}
+
+#fence_details_list li {
+  display: inline;
+  margin-right: 3em;
+}
+
+/* list of nodes */
+
+#fence_tnodes {
+  margin-top: -15px;
+}
+
+#fence_tnodes thead tr {
+  background-color: inherit;
+}
+
+.fence_tnodes_name {
+  text-align: left;
+}
+
+.fence_tnodes_name a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.fence_tnodes_name a:hover {
+  text-decoration: underline;
+}
+
+th.fence_tnodes_name {
+  min-width: 30%;
+}
+
+th.fence_tnodes_status {
+}
+
+.fence_tnodes_status {
+  text-align: left;
+}
+
+th.fence_tnodes_level {
+  width: 20%;
+  min-width: 20%;
+}
+
+.fence_tnodes_level {
+  text-align: left;
+}
+
+/* --------------------------------- dialog -------------------------------- */
+
+.fencedevformselect {
+  width: 75%;
+}
+
+#create_fencedev_dialog table.formtable {
+  margin-top: 1em;
+}
+
+#create_fencedev_dialog table.formtable td {
+  padding: 0 1em 1em 0;
+}
+
+#fence_form_area {
+/*  min-height: 6em; */
+}

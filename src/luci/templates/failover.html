@@ -1,0 +1,341 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<xi:include href="master.html" />
+
+<head>
+  <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+  <title>${title()}</title>
+  <script type="text/javascript" src="${tg.url('/js/failover.js')}"></script>
+</head>
+
+<body onload="onLoad()"
+      py:with="cluster_data = tmpl_context.cluster.get_model();
+               cluster_status = tmpl_context.cluster.get_status()">
+
+  <script type="text/javascript" src="${tg.url('/js/failover_form.js')}"></script>
+  <form action="${tg.url(failovers_cmd)}" method="post">
+  <div class="sectionblock">
+  <xi:include href="submenu.html"/>
+  <div id="toolbar">
+    <a href="#" onclick="$('#create_fdom_dialog').dialog('open')" class="toolbar_button" id="tb_add">Add</a>
+    <input type="submit" name="MultiAction" value="${_('Delete')}" class="toolbar_button MultiAction" id="tb_delete" disabled="disabled"/>
+  </div>
+
+  <!--! OVERVIEW SECTION. -->
+  <div id="overview">
+    <table id="fdom_tlist" class="maintable">
+      <thead>
+        <tr>
+          <th class="checkbox"></th>
+          <th class="icon"></th>
+          <th class="main_id">Name</th>
+          <th class="fdom_tlist_prioritizied">Prioritized</th>
+          <th class="fdom_tlist_restricted">Restricted</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!--! List all the failover domains. -->
+        <py:if test="cluster_data">
+        <tr py:for="i, failover_data in enumerate(cluster_data.getFailoverDomains())"
+            py:with="entity_name=failover_data.getName();identifier=entity_name"
+            py:attrs="entity_name==name and {'class': 'chosen'} or (not i%2 and {'class': 'even'} or None)">
+          <td class="checkbox">
+            <input type="checkbox" name="${identifier}"
+                onclick="update_multi_action(this)" class="MultiActionItem"/>
+          </td>
+          <td class="icon"></td>
+          <td class="main_id"><a href="${tg.url(base_url + '/' + entity_name)}">${entity_name}</a></td>
+          <td class="fdom_tlist_prioritizied">
+            <py:choose test="failover_data.getOrdered()">
+                <img py:when="True" src="${tg.url('/images/check-11.png')}" alt="*" />
+                <span py:when="False">No</span>
+            </py:choose>
+          </td>
+          <td class="fdom_tlist_restricted">
+            <py:choose test="failover_data.getRestricted()">
+                <img py:when="True" src="${tg.url('/images/check-11.png')}" alt="*" />
+                <span py:when="False">No</span>
+            </py:choose>
+          </td>
+        </tr>
+        </py:if>
+      </tbody>
+    </table>
+  </div>
+  </div>
+  </form>
+
+  <div id="bad_conf" class="sectionblock" py:if="cluster_data and cluster_data.errors">
+      <img alt="Errors parsing cluster.conf XML" src="/images/exclamation.png"/>
+      <span class="error">Luci was not able to parse this cluster's configuration without errors. Your configuration may be invalid.</span>
+
+      <py:if test="cluster_data.errmsg">
+        The following errors occurred:<br/>
+        <ul>
+            <li py:for="m in cluster_data.errmsg">${m}</li>
+        </ul>
+      </py:if>
+      <span class="error">
+        Fixing this may require you to log into one of the cluster nodes, edit the cluster.conf file to fix the error, and propagate the new configuration.
+      </span>
+  </div>
+
+  <!--! DETAILS SECTION. -->
+  <div class="sectionblock sectionblock2">
+  <div id="details" py:choose="name">
+
+    <py:when test="None">
+    <div id="details_header">
+      <div id="not_selected">
+        <py:if test="cluster_data">
+            <py:choose test="len(cluster_data.getFailoverDomains())">
+                <py:when test="0">No item to display</py:when>
+                <py:otherwise>Select an item to view details</py:otherwise>
+            </py:choose>
+        </py:if>
+        <py:if test="not cluster_data">
+            No nodes from this cluster could be contacted. The status of this cluster is unknown.
+        </py:if>
+      </div>
+    </div>
+    </py:when>
+
+    <py:otherwise py:with="details = cluster_data.getFailoverDomainByName(name)">
+
+    <!--! DETAILS - header section. -->
+    <div id="details_header">
+      <h3 py:content="name">Failover Domain name</h3>
+      <div id="details_header_buttons">
+        <a href="${tg.url(failovers_cmd + '?command=Delete' + '&amp;name=' + name)}" id="dh_delete" title="delete"><span class="hide">Delete</span></a>
+      </div>
+    </div>
+
+    <!--! DETAILS - attributes section. -->
+    <div class="details_section">
+      <div class="details_inner">
+        <form action="${tg.url(failovers_cmd + '?command=update_properties')}" method="post">
+          <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+          <input type="hidden" name="name" value="${name}"/>
+          <input type="submit" value="Update Properties" class="float_button"/>
+          <table id="fdom_tattr">
+            <tr>
+              <td class="fdom_tattr_checkbox">
+                <input type="checkbox" id="ordered" name="ordered"
+                    onchange="updateNodePriorityState(this)"
+                    py:attrs="details.getOrdered() is True and {'checked': 'checked'} or None"/>
+              </td><td class="fdom_tattr_caption">
+                <label for="ordered">Prioritized</label>
+              </td><td class="fdom_tattr_hint">
+                Order the nodes to which services failover.
+              </td>
+            </tr>
+            <tr>
+              <td class="fdom_tattr_checkbox">
+                <input type="checkbox" id="restricted" name="restricted" py:attrs="details.getRestricted() is True and {'checked': 'checked'} or None"/>
+              </td><td class="fdom_tattr_caption">
+                <label for="restricted">Restricted</label>
+              </td><td class="fdom_tattr_hint">
+                Service can run only on nodes specified.
+              </td>
+            </tr>
+            <tr>
+              <td class="fdom_tattr_checkbox">
+                <input type="checkbox" id="nofailback" name="nofailback" py:attrs="details.getNoFailback() is True and {'checked': 'checked'} or None"/>
+              </td><td class="fdom_tattr_caption">
+                <label for="nofailback">No Failback</label>
+              </td><td class="fdom_tattr_hint">
+                Do not send service back to 1st priority node when it becomes available again.
+              </td>
+            </tr>
+          </table>
+        </form>
+      </div>
+    </div>
+
+    <!--! DETAILS - services section. -->
+    <div class="details_section">
+      <h4>Services</h4>
+      <div class="details_inner">
+        <table id="fdom_tservices" class="detailstable">
+          <tbody>
+            <!--! List all the services connected with the current failover domain. -->
+            <tr py:for="service in cluster_data.getServicesForFdom(name)" class="grid_row">
+              <py:with vars="running = cluster_status.services.has_key(service.getName()) and (cluster_status.services[service.getName()].running == 'true')">
+              <td class="icon">
+                <img py:if="not running" src="${tg.url('/images/exclamation.png')}" alt="Service is not running." />
+              </td>
+              <td class="fdom_tservices_service"><span py:attrs="running and {'class': 'entity_ok'} or {'class': 'entity_fail'}">${service.getName()}</span></td>
+              </py:with>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!--! DETAILS - members section. -->
+    <div class="details_section">
+      <form action="${tg.url(failovers_cmd + '?command=update_settings')}" method="post">
+        <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+        <input type="hidden" name="name" value="${name}"/>
+        <input type="submit" value="Update Settings" class="float_button"/>
+        <h4>Members</h4>
+        <div class="details_inner">
+          <table id="fdom_tmembers" class="detailstable">
+            <thead>
+              <tr class="grid_row">
+                <th class="icon"></th>
+                <th class="fdom_tmembers_name"></th>
+                <th class="fdom_tmembers_member">Member</th>
+                <th class="fdom_tmembers_priority">Priority</th>
+              </tr>
+            </thead>
+            <tbody py:if="cluster_data">
+              <!--! List all the nodes (of the current cluster). -->
+              <tr py:for="node_dict in cluster_data.getNodes()" class="grid_row"
+                  py:with="node = node_dict.getName()">
+                <!--! Branch according to the status of the node. -->
+                <py:choose test="cluster_status.getNodeStatus(node).clustered">
+                <!--! 1) Node is active. -->
+                <py:when test="'true'">
+                <td class="icon"></td>
+                <td class="fdom_tmembers_name"><span class="entity_ok">${node}</span></td>
+                </py:when>
+                <!--! 2) Node is inactive. -->
+                <py:when test="'false'">
+                <td class="icon">
+                  <img src="${tg.url('/images/exclamation.png')}" alt="Node has a problem." />
+                </td>
+                <td class="fdom_tmembers_name"><span class="entity_fail">${node}</span></td>
+                </py:when>
+                <!--! 3) Status of the node is unknown. -->
+                <py:when test="">
+                <td class="icon">
+                  <img src="${tg.url('/images/question.png')}" alt="Status of the node is unknown." />
+                </td>
+                <td class="fdom_tmembers_name"><span class="entity_unknown">${node}</span></td>
+                </py:when>
+                </py:choose>
+                <!--! Branch according to whether the current node is a member
+                      of this failover domain. -->
+                <py:with vars="fdom_node = details.get_member_node(node)">
+                <py:choose test="fdom_node != None"
+                    py:with="identifier_check=node + '.check';
+                             identifier_pri=node + '.priority'">
+                <!--! 1) Yes. -->
+                <py:when test="True">
+                <td class="fdom_tmembers_member">
+                  <input id="${identifier_check}" name="${identifier_check}" type="checkbox" checked="checked" onchange="onCheckMember(this.id)"/>
+                </td>
+                <td class="fdom_tmembers_priority">
+                  <input id="${identifier_pri}" name="${identifier_pri}"
+                   type="text" maxlength="3" class="input_priority"
+                   value="${fdom_node.getPriority()}"
+                   py:attrs="details.getOrdered() is not True and {'disabled':'disabled'} or None"/>
+                </td>
+                </py:when>
+                <!--! 2) No. -->
+                <py:otherwise>
+                <td class="fdom_tmembers_member">
+                  <input id="${identifier_check}" name="${identifier_check}" type="checkbox" onchange="onCheckMember(this.id)"/>
+                </td>
+                <td class="fdom_tmembers_priority">
+                  <input id="${identifier_pri}" name="${identifier_pri}"
+                   type="text" maxlength="3" class="input_priority"
+                   py:attrs="details.getOrdered() is not True and {'disabled':'disabled'} or None"/>
+                </td>
+                </py:otherwise>
+                </py:choose>
+                </py:with>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </form>
+    </div>
+
+    </py:otherwise>
+
+  <div id="form_container" class="hidden">
+   <div id="create_fdom_dialog">
+    <form name="create_fdom" action="${tg.url(failovers_cmd + '?command=create')}" method="post">
+       <table>
+        <tr>
+            <td>Name</td>
+            <td colspan="2"><input type="text" name="fdom_name" /></td>
+        </tr>
+        <tr>
+            <td class="fdom_tattr_checkbox">
+                <input type="checkbox" id="ordered" name="ordered" />
+            </td>
+            <td class="fdom_tattr_caption">
+                <label for="ordered">Prioritized</label>
+            </td>
+            <td class="fdom_tattr_hint">
+                Order the nodes to which services failover.
+            </td>
+        </tr>
+        <tr>
+            <td class="fdom_tattr_checkbox">
+                <input type="checkbox" id="restricted" name="restricted" />
+            </td>
+            <td class="fdom_tattr_caption">
+                <label for="restricted">Restricted</label>
+            </td>
+            <td class="fdom_tattr_hint">
+                Service can run only on nodes specified.
+            </td>
+        </tr>
+        <tr>
+            <td class="fdom_tattr_checkbox">
+                <input type="checkbox" id="nofailback" name="nofailback" />
+            </td>
+            <td class="fdom_tattr_caption">
+                <label for="nofailback">No Failback</label>
+            </td>
+            <td class="fdom_tattr_hint">
+                Do not send service back to 1st priority node when it becomes available again.
+            </td>
+        </tr>
+       </table>
+       <table class="detailstable">
+        <thead>
+            <tr class="grid_row">
+                <th></th>
+                <th></th>
+                <th>Member</th>
+                <th>Priority</th>
+            </tr>
+        </thead>
+        <tbody py:if="cluster_data">
+            <tr class="grid_row"
+                py:for="node_dict in cluster_data.getNodes()"
+                py:with="node = node_dict.getName();
+                         identifier_check=node + '.check';
+                         identifier_pri=node + '.priority'">
+                <td class="icon"></td>
+                <td class="fdom_tmembers_name">${node}</td>
+                <td class="fdom_tmembers_member">
+                    <input type="checkbox" id="${identifier_check}" name="${identifier_check}" />
+                </td>
+                <td class="fdom_tmembers_priority">
+                    <input type="text" id="${identifier_pri}" name="${identifier_pri}" maxlength="3" class="input_priority" />
+                </td>
+             </tr>
+         </tbody>
+        </table>
+        <input type="submit" class="button formsubmit blue" value="Create" />
+        <input type="button" class="button formsubmit silver" value="Cancel"
+            onclick="$('#create_fdom_dialog').dialog('close');reset_form(this.form)"/>
+    </form>
+   </div>
+  </div>
+
+  </div>
+  </div>
+
+</body>
+</html>

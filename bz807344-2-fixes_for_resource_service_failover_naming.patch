@@ -1,0 +1,320 @@
+From c798dea0c1d022ea211ef9429ab0e4001f925cd8 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 8 Oct 2012 09:51:05 -0400
+Subject: [PATCH] luci: More fixes for resource/service/failover naming
+
+Fix navigation to resources, services, and failover domains
+whose names start with '/' or contain consecutive '/' chars.
+
+Resolves: rhbz#807344
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/cluster.py              | 77 +++++++++++++++++++++++---------
+ luci/templates/failover.html             |  6 ++-
+ luci/templates/resource.html             |  2 +-
+ luci/templates/service.html              |  6 +--
+ luci/validation/validate_cluster_prop.py |  1 +
+ 5 files changed, 65 insertions(+), 27 deletions(-)
+
+diff --git a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+index d9011fc..af6b1cb 100644
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -493,7 +493,7 @@ class IndividualClusterController(BaseController):
+         redirect(tmpl_context.cluster_url + kw.get('name'))
+ 
+     @expose("luci.templates.resource")
+-    def resources(self, *args):
++    def resources(self, *args, **kwargs):
+         try:
+             permission_view(self.name)
+         except NotAuthorizedError, e:
+@@ -507,11 +507,22 @@ class IndividualClusterController(BaseController):
+             resourcename = '/'.join([unquote_plus(a) for a in args])
+         else:
+             resourcename = None
++
++        if 'name' in request.params:
++            resourcename = request.params['name']
++
++        try:
++            self.get_model()
++            self.model.getResourceByName(resourcename)
++        except KeyError, e:
++            resourcename=None
++
+         return dict(page='nodes', name=resourcename, base_url=base_url, resources_cmd=resources_cmd)
+ 
+     @expose("luci.templates.resource")
+     def resources_cmd(self, command=None, **kw):
+         tmpl_context.cluster_url = '/cluster/%s/resources' % self.name
++        redir_fmt = '%s?name=%s'
+ 
+         try:
+             permission_config(self.name)
+@@ -560,6 +571,7 @@ class IndividualClusterController(BaseController):
+                     status='info')
+ 
+                 rh.update_cluster_conf(self.model)
++                redirect(tmpl_context.cluster_url)
+         elif command in ("Create", "Edit"):
+             if command == 'Create':
+                 cur_action = _('Created')
+@@ -578,25 +590,27 @@ class IndividualClusterController(BaseController):
+                 kw['address'] = address
+                 kw.pop('address_nominal', None)
+                 kw.pop('address_mask', None)
+-            vret = validate_resource_form(self.model, **kw)
+-            if vret[0] is True:
+                 # For IP resources there is no name, just an IP Address
+                 # and to make IP addresses work you need to add a .html
+-                redir_fmt = '%s/%s.html'
+-                if res_type == 'ip':
+-                    res_name = kw.get('address')
+-                else:
+-                    res_name = quote_plus(kw.get('resourcename'))
++                res_name = kw.get('address')
++            else:
++                res_name = kw.get('resourcename')
++
++            vret = validate_resource_form(self.model, **kw)
++            if vret[0] is True:
+                 log.info('User "%s" %s global resource "%s" in cluster "%s"'
+                     % (self.username, cur_action, res_name, self.name))
+                 flash(_('%s global resource "%s"') % (cur_action, res_name))
+                 rh.update_cluster_conf(self.model)
+-                redirect(redir_fmt % (tmpl_context.cluster_url, res_name))
++                redirect(redir_fmt
++                    % (tmpl_context.cluster_url, quote_plus(res_name)))
+             else:
+                 msgs = vret[1].get('errors')
+                 if msgs and len(msgs) > 0:
+                     flash(', '.join(msgs), status="error")
+-            redirect(tmpl_context.cluster_url)
++                if command != 'Create':
++                    redirect(redir_fmt
++                        % (tmpl_context.cluster_url, quote_plus(res_name)))
+         else:
+             log.error('User "%s" submitted unknown command "%s" for resource "%s" from cluster "%s"' % (self.username, command, ', '.join(cur_list), self.name))
+             flash(_('An unknown command "%s" was given for resources "%s"')
+@@ -605,7 +619,7 @@ class IndividualClusterController(BaseController):
+         redirect(tmpl_context.cluster_url)
+ 
+     @expose("luci.templates.service")
+-    def services(self, *args):
++    def services(self, *args, **kwargs):
+         try:
+             permission_view(self.name)
+         except NotAuthorizedError, e:
+@@ -616,12 +630,16 @@ class IndividualClusterController(BaseController):
+         services_cmd = '/cluster/%s/services_cmd' % self.name
+ 
+         if args:
+-            if len(args) > 1:
++            if len(args) >= 1:
+                 servicename = '/'.join([unquote_plus(a) for a in args])
+             if request.response_ext:
+                 servicename = '%s%s' % (servicename, request.response_ext)
+         else:
+             servicename = None
++
++        if 'name' in request.params:
++            servicename = request.params['name']
++
+         return dict(page='nodes', name=servicename, base_url=base_url, services_cmd=services_cmd)
+ 
+     @expose("luci.templates.service")
+@@ -685,7 +704,8 @@ class IndividualClusterController(BaseController):
+                 vm_name = cur_list[0]
+                 if not preferred_node:
+                     flash(_('No destination node was given for the migration of VM "%s"') % vm_name, status="error")
+-                    redirect(tmpl_context.cluster_url)
++                    redirect('%s?name=%s'
++                        % (tmpl_context.cluster_url, quote_plus(vm_name)))
+                 log.info('User "%s" migrated VM "%s" in cluster "%s to node %s"'
+                     % (self.username, vm_name, self.name, preferred_node))
+                 flash(_('Migrating VM "%s" to node "%s"') % (vm_name, preferred_node))
+@@ -750,19 +769,26 @@ class IndividualClusterController(BaseController):
+                 msgs = vret[1].get('errors')
+                 if msgs and len(msgs) > 0:
+                     flash(', '.join(msgs), status="error")
+-            redirect('%s/%s' % (tmpl_context.cluster_url, quote_plus(svc_name)))
++            if command != 'Create':
++                redirect('%s?name=%s'
++                   % (tmpl_context.cluster_url, quote_plus(svc_name)))
++            else:
++                redirect(tmpl_context.cluster_url)
++            
+         else:
+             log.error('User "%s" submitted unknown command "%s" for service "%s" from cluster "%s"' % (self.username, command, ', '.join(cur_list), self.name))
+             flash(_('An unknown command "%s" was given for services "%s"')
+                     % (command, ', '.join(cur_list)),
+                 status='error')
++
+         if len(cur_list) != 1:
+             redirect(tmpl_context.cluster_url)
+         else:
+-            redirect(tmpl_context.cluster_url + '/' + quote_plus(cur_list[0]))
++            redirect('%s?name=%s'
++                % (tmpl_context.cluster_url, quote_plus(cur_list[0])))
+ 
+     @expose("luci.templates.failover")
+-    def failovers(self, *args):
++    def failovers(self, *args, **kwargs):
+         failovers_cmd = '/cluster/%s/failovers_cmd' % self.name
+ 
+         try:
+@@ -778,6 +804,10 @@ class IndividualClusterController(BaseController):
+                 failovername = args[0]
+         else:
+             failovername = None
++
++        if 'name' in request.params:
++            failovername = request.params['name']
++
+         return dict(page='nodes', name=failovername, base_url = '/cluster/' + self.name + '/failovers', failovers_cmd=failovers_cmd)
+ 
+     @expose("luci.templates.failover")
+@@ -800,11 +830,11 @@ class IndividualClusterController(BaseController):
+         if 'MultiAction' in kw:
+             kw["name"] = ""
+             command = kw['MultiAction']
+-            cur_list = [x for x in kw if kw[x] == 'on' in kw[x]]
++            cur_list = [unquote_plus(x) for x in kw if kw[x] == 'on' in kw[x]]
+         else:
+             obj_name = kw.get('name')
+             if obj_name:
+-                cur_list = [ obj_name ]
++                cur_list = [ unquote_plus(obj_name) ]
+ 
+         if len(cur_list) < 1 and command != 'create':
+             flash(_('No failover domains were selected'),
+@@ -839,7 +869,8 @@ class IndividualClusterController(BaseController):
+                 msgs = vret[1].get('errors')
+                 if msgs and len(msgs) > 0:
+                     flash(', '.join(msgs), status="error")
+-            redirect(tmpl_context.cluster_url + '/' + kw.get('name'))
++            redirect('%s?name=%s'
++                % (tmpl_context.cluster_url, quote_plus(cur_list[0])))
+         elif command == 'update_properties':
+             vret = vcp.validate_fdom_prop_form(self.model, **kw)
+             if vret[0] is True:
+@@ -851,20 +882,22 @@ class IndividualClusterController(BaseController):
+                 msgs = vret[1].get('errors')
+                 if msgs and len(msgs) > 0:
+                     flash(', '.join(msgs), status="error")
+-            redirect(tmpl_context.cluster_url + '/' + kw.get('name'))
++            redirect('%s?name=%s'
++                % (tmpl_context.cluster_url, quote_plus(cur_list[0])))
+         elif command == 'create':
+             vret = vcp.validate_fdom_create_form(self.model, **kw)
+             if vret[0] is True:
+                 log.info('User "%s" created failover domain "%s" in cluster "%s"'
+                     % (self.username, kw.get('fdom_name'), self.name))
+                 flash(_('Creating failover domain "%s"') % kw.get('fdom_name'))
+-
+                 rh.update_cluster_conf(self.model)
++                redirect('%s?name=%s'
++                    % (tmpl_context.cluster_url, quote_plus(kw.get('fdom_name').strip())))
+             else:
+                 msgs = vret[1].get('errors')
+                 if msgs and len(msgs) > 0:
+                     flash(', '.join(msgs), status="error")
+-            redirect(tmpl_context.cluster_url)
++                redirect(tmpl_context.cluster_url)
+         else:
+             log.error('User "%s" submitted unknown command "%s" for failover domains "%s" from cluster "%s"'
+                 % (self.username, command, ', '.join(cur_list), self.name))
+diff --git a/luci/templates/failover.html b/luci/templates/failover.html
+index 4e512b3..297a7f8 100644
+--- a/luci/templates/failover.html
++++ b/luci/templates/failover.html
+@@ -6,6 +6,10 @@
+ 
+ <xi:include href="master.html" />
+ 
++<?python
++  from luci.lib.helpers import quote_plus
++?>
++
+ <head>
+   <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+   <title>${title()}</title>
+@@ -48,7 +52,7 @@
+                 onclick="update_multi_action(this)" class="MultiActionItem"/>
+           </td>
+           <td class="icon"></td>
+-          <td class="main_id"><a href="${tg.url(base_url + '/' + entity_name)}">${entity_name}</a></td>
++          <td class="main_id"><a href="${tg.url(base_url + '?name=' + quote_plus(entity_name))}">${entity_name}</a></td>
+           <td class="fdom_tlist_prioritizied">
+             <py:choose test="failover_data.getOrdered()">
+                 <img py:when="True" src="${tg.url('/images/check-11.png')}" alt="*" />
+diff --git a/luci/templates/resource.html b/luci/templates/resource.html
+index 47173cc..d91e09c 100644
+--- a/luci/templates/resource.html
++++ b/luci/templates/resource.html
+@@ -52,7 +52,7 @@
+                 py:attrs="refcount != 1 and {'disabled':'disabled'} or {}"/>
+         </td>
+         <td class="main_id">
+-            <a href="${tg.url(base_url + '/' + quote_plus(entity_name) + '.html')}"><span class="entity_ok">${entity_name}</span></a>
++            <a href="${tg.url(base_url + '?name=' + quote_plus(entity_name))}"><span class="entity_ok">${entity_name}</span></a>
+         </td>
+         <td class="resource_tlist_type">
+             ${resource_data.getResourceType()}
+@@ -116,7 +116,7 @@
+     <div id="details_header">
+       <h3 py:content="name"/>
+       <div id="details_header_buttons">
+-        <a href="${tg.url(resources_cmd + '?command=Delete' + '&amp;name=' + name)}" id="dh_delete" title="delete"><span class="hide">delete</span></a>
++        <a href="${tg.url(resources_cmd + '?command=Delete' + '&amp;name=' + quote_plus(name))}" id="dh_delete" title="delete"><span class="hide">delete</span></a>
+       </div>
+     </div>
+ 
+diff --git a/luci/templates/service.html b/luci/templates/service.html
+index a5e18db..ef76bea 100644
+--- a/luci/templates/service.html
++++ b/luci/templates/service.html
+@@ -65,7 +65,7 @@
+           <py:when test="'true'">
+           <td class="icon"></td>
+           <td class="main_id">
+-            <a href="${tg.url(base_url + '/' + quote_plus(entity_name))}">
++            <a href="${tg.url(base_url + '?name=' + quote_plus(entity_name))}">
+               <span class="entity_ok">${entity_name}</span>
+             </a>
+           </td>
+@@ -84,7 +84,7 @@
+             <img src="${tg.url('/images/exclamation.png')}" alt="Service has a problem." />
+           </td>
+           <td class="main_id">
+-            <a href="${tg.url(base_url + '/' + quote_plus(entity_name))}">
++            <a href="${tg.url(base_url + '?name=' + quote_plus(entity_name))}">
+               <span class="entity_fail">${entity_name}</span>
+             </a>
+           </td>
+@@ -102,7 +102,7 @@
+             <img src="${tg.url('/images/question.png')}" alt="Internal error; file a bug report." />
+           </td>
+           <td class="main_id">
+-            <a href="${tg.url(base_url + '/' + quote_plus(entity_name))}">
++            <a href="${tg.url(base_url + '?name=' + quote_plus(entity_name))}">
+               <span class="entity_ok">${entity_name}</span>
+             </a>
+           </td>
+diff --git a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+index dd84092..a754d40 100644
+--- a/luci/validation/validate_cluster_prop.py
++++ b/luci/validation/validate_cluster_prop.py
+@@ -53,6 +53,7 @@ def validate_fdom_create_form(model, **kw):
+     if not fdom_name or fdom_name.isspace():
+         errors.append(_('No name was given for this failover domain'))
+         return (False, {'errors': errors})
++    fdom_name = fdom_name.strip()
+ 
+     if model.getFailoverDomainByName(fdom_name):
+         errors.append(_('A failover domain named "%s" already exists') % fdom_name)
+-- 
+1.7.11.4
+

@@ -1,0 +1,328 @@
+From 610457357deaa20fda93eed51d648d4346950fc0 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Thu, 11 Oct 2012 23:41:16 -0400
+Subject: [PATCH] luci: Add support for fence_eaton_snmp
+
+Add an interface for configuring and displaying
+fence_eaton_snmp fence devices.
+
+Resolves: rhbz#865300
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/FenceDeviceAttr.py |   1 +
+ luci/templates/fence_devices.html       | 153 ++++++++++++++++++++++++++++++++
+ luci/templates/fence_instances.html     |  34 +++++++
+ luci/validation/validate_fence.py       |  29 ++++++
+ 4 files changed, 217 insertions(+)
+
+diff --git a/luci/lib/ClusterConf/FenceDeviceAttr.py b/luci/lib/ClusterConf/FenceDeviceAttr.py
+index 9775b00..135ed83 100644
+--- a/luci/lib/ClusterConf/FenceDeviceAttr.py
++++ b/luci/lib/ClusterConf/FenceDeviceAttr.py
+@@ -21,6 +21,7 @@ FENCE_OPTS = {
+ 	'fence_sanbox2':		'QLogic SANBox2',
+ 	'fence_bladecenter':	'IBM Blade Center',
+ 	'fence_mcdata':			'McDATA SAN Switch',
++	'fence_eaton_snmp':		'Eaton Network Power Controller (SNMP Interface)',
+ 	'fence_egenera':		'Egenera SAN Controller',
+ 	'fence_bullpap':		'Bull PAP',
+ 	'fence_xvm':			'xvm Virtual Machine Fencing',
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index 97a4bb2..b76e6bf 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -3170,6 +3170,157 @@
+   <input type="hidden" name="fence_type" value="fence_ibmblade" />
+ </div>
+ 
++<div py:def="fence_eaton_snmp(cur_fencedev, ni)" id="fence_eaton_snmp" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>Eaton Network Power Switch (SNMP interface)</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Address or Hostname</td>
++      <td>
++        <input name="ipaddr" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>UDP/TCP Port (optional, defaults to 161)</td>
++      <td>
++        <input name="udpport" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('udpport')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login</td>
++      <td>
++        <input name="login" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Password</td>
++      <td>
++        <input name="passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
++      </td>
++      <td>
++        <input type="text" class="text" name="passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Version</td>
++      <td>
++        <select name="snmp_version">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_version')) and {'selected':'selected'} or {}">Default</option>
++          <option value="1"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '1' and {'selected':'selected'} or {}">1</option>
++          <option value="2c"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '2c' and {'selected':'selected'} or {}">2c</option>
++          <option value="3"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '3' and {'selected':'selected'} or {}">3</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Community</td>
++      <td>
++        <input name="community" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('community')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Security Level</td>
++      <td>
++        <select name="snmp_sec_level">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_sec_level')) and {'selected':'selected'} or {}">Default</option>
++          <option value="noAuthNoPriv"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'noAuthNoPriv' and {'selected':'selected'} or {}">noAuthNoPriv</option>
++          <option value="authNoPriv"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authNoPriv' and {'selected':'selected'} or {}">authNoPriv</option>
++          <option value="authPriv"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authPriv' and {'selected':'selected'} or {}">authPriv</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Authentication Protocol</td>
++      <td>
++        <select name="snmp_auth_prot">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_auth_prot')) and {'selected':'selected'} or {}">Default</option>
++          <option value="MD5"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'MD5' and {'selected':'selected'} or {}">MD5</option>
++          <option value="SHA"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'SHA' and {'selected':'selected'} or {}">SHA</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Privacy Protocol</td>
++      <td>
++        <select name="snmp_priv_prot">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_priv_prot')) and {'selected':'selected'} or {}">Default</option>
++          <option value="DES"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'DES' and {'selected':'selected'} or {}">DES</option>
++          <option value="AES"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'AES' and {'selected':'selected'} or {}">AES</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Privacy Protocol Password</td>
++      <td>
++        <input name="snmp_priv_passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        SNMP Privacy Protocol Script
++      </td>
++      <td>
++        <input type="text" class="text" name="snmp_priv_passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="sharable" value="1" />
++  <input type="hidden" name="num_instances" value="${ni}"/>
++  <input type="hidden" name="fence_type" value="fence_eaton_snmp" />
++</div>
++
+ <div py:def="fence_device_container" id="fence_device_container" class="hidden">
+ ${fence_apc(None,0)}
+ ${fence_apc_snmp(None,0)}
+@@ -3211,6 +3362,7 @@ ${fence_rackswitch(None,0)}
+ ${fence_xcat(None,0)}
+ ${fence_zvm(None,0)}
+ ${fence_ibmblade(None,0)}
++${fence_eaton_snmp(None,0)}
+ ${fence_unknown(None,0)}
+ </div>
+ 
+@@ -3252,6 +3404,7 @@ ${fence_unknown(None,0)}
+       <option py:if="cluster_version == 3" name="fence_drac" value="fence_drac">Dell DRAC (Deprecated)</option>
+ 
+       <option name="fence_drac5" value="fence_drac5">Dell DRAC 5</option> <!-- needs work -->
++      <option py:if="cluster_version == 3" name="fence_eaton_snmp" value="fence_eaton_snmp">Eaton Network Power Switch (SNMP interface)</option>
+       <option name="fence_egenera" value="fence_egenera">Egenera SAN Controller</option>
+ 
+       <option name="fence_eps" value="fence_eps">ePowerSwitch</option>
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index 9bfada3..f2e3dde 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -1039,6 +1039,30 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
++<div py:def="fence_eaton_snmp_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_eaton_snmp_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++  <table class="detailstable">
++    <tr>
++      <td>Port (Outlet) Number</td>
++      <td>
++        <input name="port" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
++      </td>
++    </tr>
++    <tr><td colspan="2">
++      <div>
++        <input type="button" name="remove_fence" value="Remove this instance"
++          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
++      </div>
++    </td></tr>
++  </table>
++
++  <input type="hidden" name="fence_type" value="fence_eaton_snmp" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
+ <div py:def="fence_unknown_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_unknown_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+ 
+@@ -1048,10 +1072,20 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
++<div py:def="fence_drac_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_drac_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++
++  <div class="emptyfenceinst">No additional parameters</div>
++  <input type="hidden" name="fence_type" value="fence_drac" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
+ <div py:def="fence_instance_container(nodename)"
+   id="fence_instance_container" class="hidden">
+ ${fence_apc_instance(None, None, None)}
+ ${fence_apc_snmp_instance(None, None, None)}
++${fence_eaton_snmp_instance(None, None, None)}
+ ${fence_egenera_instance(None, None, None)}
+ ${fence_lpar_instance(None, None, None)}
+ ${fence_vmware_instance(None, None, None)}
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index 2ea032e..bb2e6af 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -662,6 +662,26 @@ def val_ipdu_fd(fencedev, fence_name, **kw):
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+ 	return errors
+ 
++def val_eaton_snmp_fd(fencedev, fence_name, **kw):
++	params = (
++		('ipaddr', True),
++		('udpport', False),
++		('login', True),
++		('passwd', False),
++		('passwd_script', False),
++		('community', False),
++		('snmp_version', False),
++		('snmp_sec_level', False),
++		('snmp_auth_prot', False),
++		('snmp_priv_prot', False),
++		('snmp_priv_passwd', False),
++		('snmp_priv_passwd_script', False),
++		('power_wait', False),
++	)
++
++	errors = config_fence_attr(params, fencedev, fence_name, **kw)
++	return errors
++
+ def val_rhevm_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+@@ -688,6 +708,7 @@ FD_VALIDATE = {
+ 	'fence_cpint':			val_cpint_fd,
+ 	'fence_drac5':			val_drac5_fd,
+ 	'fence_drac':			val_drac_fd,
++	'fence_eaton_snmp':		val_eaton_snmp_fd,
+ 	'fence_egenera':		val_egenera_fd,
+ 	'fence_eps':			val_eps_fd,
+ 	'fence_gnbd':			val_gnbd_fd,
+@@ -1025,6 +1046,13 @@ def val_rhevm_fi(fenceinst, parent_name, **kw):
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+ 	return errors
+ 
++def val_eaton_snmp_fi(fenceinst, parent_name, **kw):
++	params = (
++		('port', True),
++	)
++
++	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
++	return errors
+ def val_noop_fi(fenceinst, parent_name, **kw):
+ 	return []
+ 
+@@ -1040,6 +1068,7 @@ FI_VALIDATE = {
+ 	'fence_cpint':			val_noop_fi,
+ 	'fence_drac5':			val_noop_fi,
+ 	'fence_drac':			val_noop_fi,
++	'fence_eaton_snmp':		val_eaton_snmp_fi,
+ 	'fence_egenera':		val_egenera_fi,
+ 	'fence_eps':			val_eps_fi,
+ 	'fence_gnbd':			val_gnbd_fi,
+-- 
+1.7.11.7
+

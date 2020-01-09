@@ -1,0 +1,32 @@
+From 26488ac435c8ca5eadf4db4b7fdac21a6b6f3eb0 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Fri, 16 Nov 2012 09:28:47 -0500
+Subject: [PATCH] luci: Fix value for LVM self_fence
+
+The LVM resource agent does not accept on/off, only yes/no and 1/0
+as values for its self_fence attribute. Write 1 instead of on.
+
+Resolves: rhbz#877392
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/validation/validate_resource.py | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 25e02cf..413112e 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -345,6 +345,9 @@ def addLVM(res, rname, model, **kw):
+ 		('self_fence', '', False, None)
+ 	)
+ 	errors = config_resource(params, res, rname, **kw)
++	self_fence = res.getAttribute('self_fence')
++	if self_fence == 'on':
++		res.addAttribute('self_fence', '1')
+ 	return errors
+ 
+ def addSAPDatabase(res, rname, model, **kw):
+-- 
+1.7.11.7
+

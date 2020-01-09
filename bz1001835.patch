@@ -1,0 +1,12 @@
+diff -urN luci-0.26.0.base/luci/validation/validate_fence.py luci-0.26.0/luci/validation/validate_fence.py
+--- luci-0.26.0.base/luci/validation/validate_fence.py	2013-08-29 17:14:54.023539308 +0200
++++ luci-0.26.0/luci/validation/validate_fence.py	2013-08-29 17:18:09.842551425 +0200
+@@ -433,7 +433,7 @@
+ 		('ipaddr', True),
+ 		('ipport', False),
+ 		('login', True),
+-		('module_name', True),
++		('module_name', False),
+ 		('cmd_prompt', False),
+ 		('secure', False),
+ 		('identity_file', False),

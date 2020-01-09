@@ -1,0 +1,154 @@
+From 5742117eca9a1ead3f9a35572f1da0cdb651e65d Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 10 Aug 2014 23:14:57 -0400
+Subject: [PATCH] luci: Remove bad default values for startup_wait and
+ shutdown_wait
+
+Remove incorrect default values in the form fields for startup_wait
+and shutdown_wait attributes. Simply leaving the fields blank will
+cause the correct defaults to be used.
+
+Resolves: rhbz#1117398
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html | 32 ++++++++++++++++++--------------
+ 1 file changed, 18 insertions(+), 14 deletions(-)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 996afec..fc5b482 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -467,9 +467,16 @@
+   <h3>Bind Mount</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Mount Point</td>
++      <td>Name</td>
+       <td>
+         <input type="text" class="text" name="resourcename"
++          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    <tr>
++      <td>Mount Point</td>
++      <td>
++        <input type="text" class="text" name="mountpoint"
+           py:attrs="res and {'value':res.getAttribute('mountpoint'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -664,7 +671,7 @@
+     <tr>
+       <td>Shutdown Wait (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="shutdown_wait" value="0"
++        <input type="text" class="text" name="shutdown_wait"
+           py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -787,7 +794,7 @@
+     <tr>
+       <td>Shutdown Wait (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="shutdown_wait" value="0"
++        <input type="text" class="text" name="shutdown_wait"
+           py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -839,14 +846,14 @@
+     <tr>
+       <td>Startup Wait (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="startup_wait" value="0"
++        <input type="text" class="text" name="startup_wait"
+           py:attrs="res and {'value':res.getAttribute('startup_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Shutdown Wait (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="shutdown_wait" value="0"
++        <input type="text" class="text" name="shutdown_wait"
+           py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -943,7 +950,7 @@
+     <tr>
+       <td>Shutdown Wait (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="shutdown_wait" value="0"
++        <input type="text" class="text" name="shutdown_wait"
+           py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -998,14 +1005,14 @@
+     <tr>
+       <td>Shutdown Wait (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="shutdown_wait" value="0"
++        <input type="text" class="text" name="shutdown_wait"
+           py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+     <tr py:if="cluster_os != 'RHEL' or os_version &gt; 6.5">
+       <td>Startup Wait (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="startup_wait" value="0"
++        <input type="text" class="text" name="startup_wait"
+           py:attrs="res and {'value':res.getAttribute('startup_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -1066,7 +1073,7 @@
+     <tr>
+       <td>Shutdown Wait (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="shutdown_wait" value="30"
++        <input type="text" class="text" name="shutdown_wait"
+           py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -1114,7 +1121,7 @@
+     <tr>
+       <td>Shutdown Wait (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="shutdown_wait" value="30"
++        <input type="text" class="text" name="shutdown_wait"
+           py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -1451,7 +1458,6 @@
+       <td>Start Timeout (seconds)</td>
+       <td>
+         <input type="text" class="text" name="start_timeout"
+-          value="0"
+           py:attrs="res and {'value':res.getAttribute('start_timeout'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -1459,7 +1465,6 @@
+       <td>Shutdown Timeout (seconds)</td>
+       <td>
+         <input type="text" class="text" name="shutdown_timeout"
+-          value="0"
+           py:attrs="res and {'value':res.getAttribute('shutdown_timeout'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -1467,7 +1472,6 @@
+       <td>Deep Probe Timeout (seconds)</td>
+       <td>
+         <input type="text" class="text" name="deep_probe_timeout"
+-          value="0"
+           py:attrs="res and {'value':res.getAttribute('deep_probe_timeout'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+@@ -1706,7 +1710,7 @@
+     <tr>
+       <td>Shutdown Wait (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="shutdown_wait" value="5"
++        <input type="text" class="text" name="shutdown_wait"
+           py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+-- 
+1.9.3
+

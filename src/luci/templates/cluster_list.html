@@ -1,0 +1,130 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<xi:include href="master.html" />
+
+<?python
+    from luci.lib import db_helpers
+?>
+
+<head>
+  <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+  <title>${title()}</title>
+</head>
+
+<body py:with="clusters = db_helpers.get_cluster_list_full()">
+  <script type="text/javascript" src="/js/cluster_list.js"></script>
+  <script type="text/javascript" src="/js/add_existing.js"></script>
+
+  <form action="${tg.url('/' + page + '/delete_cmd')}" method="post">
+
+  <div class="sectionblock">
+  <xi:include href="submenu.html"/>
+  <div id="toolbar">
+    <a href="#" onclick="$('#add_existing_dialog').dialog('open')" class="toolbar_button" id="tb_add">Add</a>
+    <a href="#" onclick="$('#create_cluster_dialog').dialog('open')" class="toolbar_button" id="tb_create">Create</a>
+    <input type="submit" name="MultiAction" value="${_('Remove')}" class="toolbar_button MultiAction" id="tb_delete" disabled="disabled"/>
+   </div>
+
+  <!--! OVERVIEW SECTION. -->
+  <div id="overview">
+    <table id="clusters_tlist" class="maintable">
+      <thead>
+        <tr>
+          <th class="checkbox"></th>
+          <th class="main_id">Name</th>
+          <th class="cluster_tlist_status">Status</th>
+          <th class="cluster_tlist_votes">Possible Votes</th>
+          <th class="cluster_tlist_votes">Current Votes</th>
+          <th class="cluster_tlist_quorum">Quorum</th>
+          <th class="cluster_tlist_quorum">Nodes Joined</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!--! List all the fences. -->
+        <tr py:for="i, (entity_name, cluster_data) in enumerate(clusters.iteritems())"
+            py:attrs="not i%2 and {'class': 'even'} or None"
+            py:with="identifier = entity_name">
+          <py:if test="hasattr(cluster_data['status'],'quorate')">
+            <td class="checkbox">
+                <input type="checkbox" name="${identifier}"
+                    onclick="update_multi_action(this)" class="MultiActionItem"/>
+            </td>
+            <!--! Branch according to the status of the cluster. -->
+            <py:choose test="cluster_data['status'].quorate">
+            <!--! 1) Cluster is OK. -->
+            <py:when test="'true'">
+            <td class="main_id">
+              <a href="${tg.url('/' + page + '/' + entity_name) + '/'}">
+                <span class="entity_ok">${entity_name}</span>
+              </a>
+            </td>
+            <td class="cluster_tlist_status">Quorate</td>
+            <td class="cluster_tlist_votes">${sum(map(lambda n: int(n.getVotes()), cluster_data['model'].getNodes()))}</td>
+            <td class="cluster_tlist_votes">${cluster_data['status'].votes}</td>
+            <td class="cluster_tlist_quorum">${cluster_data['status'].minQuorum}</td>
+            <td class="cluster_tlist_votes">${cluster_data['status'].nodesClustered}</td>
+            </py:when>
+            <!--! 2) Cluster is not OK. -->
+            <py:when test="'false'">
+            <td class="main_id">
+              <a href="${tg.url('/' + page + '/' + entity_name) + '/'}">
+                <span class="entity_fail">${entity_name}</span>
+              </a>
+            </td>
+            <td class="cluster_tlist_status">Not Quorate</td>
+            <td class="cluster_tlist_votes">${sum(map(lambda n: int(n.getVotes()), cluster_data['model'].getNodes()))}</td>
+            <td class="cluster_tlist_votes">${cluster_data['status'].votes}</td>
+            <td class="cluster_tlist_quorum">${cluster_data['status'].minQuorum}</td>
+            <td class="cluster_tlist_votes">${cluster_data['status'].nodesClustered}</td>
+            </py:when>
+            <!--! 3) Status of the cluster is unknown. -->
+            <py:when test="">
+            <td class="main_id">
+              <a href="${tg.url('/' + page + '/' + entity_name) + '/'}">
+                <span class="entity_unknown">${entity_name}</span>
+              </a>
+            </td>
+            <td class="cluster_tlist_status">Status unknown</td>
+            <td class="cluster_tlist_votes">-</td>
+            <td class="cluster_tlist_votes">-</td>
+            <td class="cluster_tlist_quorum">-</td>
+            <td class="cluster_tlist_votes">-</td>
+            </py:when>
+            </py:choose>
+          </py:if>
+          <div py:if="not hasattr(cluster_data['status'],'quorate')">
+            <td class="checkbox">
+                <input type="checkbox" name="${identifier}"
+                    onclick="update_multi_action(this)" class="MultiActionItem"/>
+            </td>
+            <td class="main_id">
+              <a href="${tg.url('/' + page + '/' + entity_name) + '/'}">
+                <span class="entity_unknown">${entity_name}</span>
+              </a>
+            </td>
+            <td class="cluster_tlist_status">Currently Loading</td>
+            <td class="cluster_tlist_votes">-</td>
+            <td class="cluster_tlist_votes">-</td>
+            <td class="cluster_tlist_quorum">-</td>
+            <td class="cluster_tlist_votes">-</td>
+          </div>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  </div>
+  </form>
+
+  <div id="form_container" class="hidden">
+   <xi:include href="add_existing.html" />
+
+   <div id="create_cluster_dialog">
+    <xi:include href="create_cluster.html" />
+   </div>
+  </div>
+</body>
+</html>

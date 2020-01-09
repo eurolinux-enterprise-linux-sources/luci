@@ -1,0 +1,44 @@
+From b76d5db10ffda25cffd7a5d0a49b9048e17cdaa9 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 28 Jul 2014 08:43:10 -0400
+Subject: [PATCH] luci: Remove mention of fenced skip_undefined
+
+Remove any mention of the skip_undefined attribute. This feature
+is not implemented.
+
+Resolves: rhbz#1117398
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/configure.html            | 2 +-
+ luci/validation/validate_cluster_prop.py | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/luci/templates/configure.html b/luci/templates/configure.html
+index f06a6ef..086b73d 100644
+--- a/luci/templates/configure.html
++++ b/luci/templates/configure.html
+@@ -107,7 +107,7 @@
+                 <input type="checkbox" class="text" name="clean_start"
+                   py:attrs="fenced_ptr and fenced_ptr.getCleanStart() and {'checked':'checked'} or {}"/>
+               </div>
+-              <div class="row" py:if="expertMode">
++              <div class="row" py:if="0 and expertMode">
+                 <label class="wide">Skip Startup Fencing for Nodes With No Fencing Configured (dangerous)</label>
+                 <input type="checkbox" class="text" name="skip_undefined"
+                   py:attrs="fenced_ptr and fenced_ptr.getSkipUndefined() and {'checked':'checked'} or {}"/>
+diff --git a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+index be5fcdd..dda8045 100644
+--- a/luci/validation/validate_cluster_prop.py
++++ b/luci/validation/validate_cluster_prop.py
+@@ -510,7 +510,7 @@ def validate_fenced_config(model, **kw):
+     if kw.get('expert_mode'):
+         # Fields only exposed when in "expert mode"
+         fd.setCleanStart(kw.get('clean_start') is not None)
+-        fd.setSkipUndefined(kw.get('skip_undefined') is not None)
++        #fd.setSkipUndefined(kw.get('skip_undefined') is not None)
+ 
+         override_path = kw.get('override_path')
+         if not override_path or override_path.isspace():
+-- 
+1.9.3
+

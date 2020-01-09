@@ -1,0 +1,136 @@
+diff --git a/luci/lib/ClusterConf/CondorSchedd.py b/luci/lib/ClusterConf/CondorSchedd.py
+new file mode 100644
+index 0000000..718c8d4
+--- /dev/null
++++ b/luci/lib/ClusterConf/CondorSchedd.py
+@@ -0,0 +1,18 @@
++# Copyright (C) 2012 Red Hat, Inc.
++#
++# This program is free software; you can redistribute
++# it and/or modify it under the terms of version 2 of the
++# GNU General Public License as published by the
++# Free Software Foundation.
++
++from BaseResource import BaseResource
++from gettext import gettext as _
++
++TAG_NAME = 'condor_schedd'
++RESOURCE_TYPE = _('condor_schedd Instance')
++
++class CondorSchedd(BaseResource):
++  def __init__(self):
++    BaseResource.__init__(self)
++    self.TAG_NAME = TAG_NAME
++    self.resource_type = RESOURCE_TYPE
+diff --git a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+index 9f8a939..41e605a 100644
+--- a/luci/lib/ClusterConf/ModelBuilder.py
++++ b/luci/lib/ClusterConf/ModelBuilder.py
+@@ -62,7 +62,7 @@ import Event
+ 
+ # Children of <resources> and <service>
+ import Ip, Script, NFSClient, NFSExport, NFSServer, Fs, Samba, Smb, Apache, Named, \
+-       DRBD, LVM, MySQL, OpenLDAP, Postgres8, Tomcat5, Tomcat6, \
++       CondorSchedd, DRBD, LVM, MySQL, OpenLDAP, Postgres8, Tomcat5, Tomcat6, \
+        SAPDatabase, SAPInstance, SybaseASE, Netfs, Clusterfs, \
+        OracleDB, OracleListener, OracleInstance
+ 
+@@ -112,6 +112,7 @@ TAGNAMES = {
+     Smb.TAG_NAME:                   Smb.Smb,
+     Apache.TAG_NAME:                Apache.Apache,
+     Named.TAG_NAME:                 Named.Named,
++    CondorSchedd.TAG_NAME:          CondorSchedd.CondorSchedd,
+     DRBD.TAG_NAME:                  DRBD.DRBD,
+     LVM.TAG_NAME:                   LVM.LVM,
+     MySQL.TAG_NAME:                 MySQL.MySQL,
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 9cb0828..64137e1 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1604,6 +1604,29 @@
+   </table>
+ </div>
+ 
++<div py:def="condor_schedd_resource(res, form_id, parent_id, isref)" name="CONDOR_SCHEDD" id="condor_schedd_resource" class="row rescfg"
++  py:with="global_resource = res and isref != 0"
++  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
++  <input name="global" type="hidden" value="1" py:if="global_resource"/>
++  <input name="parent_id" type="hidden" value="${parent_id}"/>
++  <input name="form_id" type="hidden" value="${form_id}"/>
++  <input name="oldname" type="hidden"
++    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
++  <input name="type" type="hidden" value="condor_schedd" />
++
++  <h3>condor_schedd Instance</h3>
++  <table class="formtable">
++    <tr>
++      <td>Name of the condor_schedd Instance to Control</td>
++      <td>
++        <input type="text" class="text" name="resourcename"
++          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    ${res_footer(res)}
++  </table>
++</div>
++
+ <div py:def="vm_resource(res, form_id, parent_id, isref)" name="VM" id="vm_resource" class="row rescfg"
+   py:with="global_resource = res and isref != 0"
+   py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+@@ -1707,6 +1730,7 @@ ${oralistener_resource(None,None,None,0)}
+ ${named_resource(None,None,None,0)}
+ ${drbd_resource(None,None,None,0)}
+ ${vm_resource(None,None,None,0)}
++${condor_schedd_resource(None,None,None,0)}
+ 
+ <py:if test="model">
+   <py:for each="res in model.getResources()">
+@@ -1725,6 +1749,7 @@ ${vm_resource(None,None,None,0)}
+       svc_onchange_fn = 'insert_resource(this.options[this.selectedIndex].value, \'%s\', this.form, \'%s\')' % (dest, parentid);
+       res_onchange_fn = 'swap_resource_form(this.options[this.selectedIndex].value)';
+       cluster_version = tmpl_context.cluster.get_version();
++      os_version = tmpl_context.cluster.get_OSVersion();
+       cluster_os = tmpl_context.cluster.get_OS()"
+     py:attrs="{'onchange': model and svc_onchange_fn or res_onchange_fn, 'id': parentid and '%s_resource_selector' % parentid or 'resource_selector'}">
+     <py:if test="model" py:with="global_res = model.getResources()">
+@@ -1741,6 +1766,8 @@ ${vm_resource(None,None,None,0)}
+     <option selected="selected" disabled="disabled">-- Select a Resource Type --</option>
+     <option name="apache_resource" value="apache_resource">Apache</option>
+     <py:if test="cluster_version >= 3">
++      <option py:if="cluster_os != 'RHEL' or os_version &gt; 6.2"
++        name="condor_schedd" value="condor_schedd_resource">condor_schedd Instance</option>
+       <option name="drbd_resource" value="drbd_resource">DRBD Resource</option>
+     </py:if>
+     <option name="fs_resource" value="fs_resource">Filesystem</option>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index ca092b5..7f546b6 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -23,6 +23,7 @@ from luci.lib.ClusterConf.Apache import Apache
+ from luci.lib.ClusterConf.OpenLDAP import OpenLDAP
+ from luci.lib.ClusterConf.LVM import LVM
+ from luci.lib.ClusterConf.MySQL import MySQL
++from luci.lib.ClusterConf.CondorSchedd import CondorSchedd
+ from luci.lib.ClusterConf.DRBD import DRBD
+ from luci.lib.ClusterConf.Vm import Vm
+ from luci.lib.ClusterConf.Named import Named
+@@ -444,6 +445,11 @@ def addDRBD(res, rname, model, **kw):
+ 	errors = config_resource(params, res, rname, **kw)
+ 	return errors
+ 
++def addCondorSchedd(res, rname, model, **kw):
++	params = ()
++	errors = config_resource(params, res, rname, **kw)
++	return errors
++
+ resource_table = {
+ 	'ip':				( addIp,				Ip				),
+ 	'fs':				( addFs,				Fs				),
+@@ -470,6 +476,7 @@ resource_table = {
+ 	'ASEHAagent':		( addSybaseASE,			SybaseASE		),
+ 	'named':			( addNamed,				Named			),
+ 	'drbd':				( addDRBD,				DRBD			),
++	'condor_schedd':	( addCondorSchedd,		CondorSchedd	),
+ 	'vm':				( addVM,				Vm				),
+ }
+ 

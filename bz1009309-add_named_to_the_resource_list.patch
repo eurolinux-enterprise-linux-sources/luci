@@ -1,0 +1,70 @@
+From 1e8a0c232741424079636937ce45a59ed10cf18a Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 14:20:06 -0400
+Subject: [PATCH] luci: Add named to the resource list
+
+Add the named agent to the list of resource agents shown when
+configuring a RHEL6 cluster.
+
+Also fix the behavior of luci to write '1' instead of 'on' for
+the 'named_sdb' attribute.
+
+Resolves: rhbz#1009309
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html    | 8 ++++----
+ luci/validation/validate_resource.py | 4 ++++
+ 2 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index b15c153..18606fd 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1575,7 +1575,7 @@
+     py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+   <input name="type" type="hidden" value="named" />
+ 
+-  <h3>Named</h3>
++  <h3>Named (Bind 9)</h3>
+   <table class="formtable">
+     <tr>
+       <td>Name</td>
+@@ -1857,6 +1857,9 @@ ${condor_resource(None,None,None,0)}
+     <option name="ip_resource" value="ip_resource">IP Address</option>
+     <option name="lvm_resource" value="lvm_resource">HA LVM</option>
+     <option name="mysql_resource" value="mysql_resource">MySQL</option>
++    <py:if test="cluster_version >= 3">
++      <option name="named_resource" value="named_resource">Named (Bind 9) Resource</option>
++    </py:if>
+     <option name="netfs_resource" value="netfs_resource">NFS/CIFS Mount</option>
+     <option name="nfsclient_resource" value="nfsclient_resource">NFS Client</option>
+     <option name="nfsexport_resource" value="nfsexport_resource">NFS v3 Export</option>
+@@ -1875,9 +1878,6 @@ ${condor_resource(None,None,None,0)}
+     <option py:if="cluster_version &lt; 3" name="tomcat5_resource" value="tomcat5_resource">Tomcat 5</option>
+     <option py:if="cluster_version >= 3" name="tomcat6_resource" value="tomcat6_resource">Tomcat 6</option>
+     <option name="vm_resource" value="vm_resource" py:if="model">Virtual Machine</option>
+-    <py:if test="cluster_version >= 3">
+-      <option py:if="cluster_os != 'RHEL'" name="named_resource" value="named_resource">named (Bind 9) Resource</option>
+-    </py:if>
+   </select>
+ </div>
+ 
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 9b9a531..e7676ba 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -489,6 +489,10 @@ def addNamed(res, rname, model, **kw):
+ 		('shutdown_wait', _('Shutdown Wait Time'), False, None)
+ 	)
+ 	errors = config_resource(params, res, rname, **kw)
++
++	for a in ('named_sdb',):
++		if res.getAttribute(a) == 'on':
++			res.addAttribute(a, '1')
+ 	return errors
+ 
+ def addDRBD(res, rname, model, **kw):
+-- 
+1.9.3
+

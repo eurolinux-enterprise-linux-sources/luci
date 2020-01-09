@@ -1,0 +1,78 @@
+# User serviceable configuration of @PKGNAME@
+#
+# This configuration file uses a rather uncommon structure because it is
+# intended to be parseable by both shell and Python's ConfigParser.  If you
+# want to change any configuration item listed (i.e. to explicitly redefine
+# @PKGNAME@'s defaults for this item), uncomment particular line and set your
+# value.  Each configurable item is preceeded with descriptive comment.
+#
+# Please be aware that changing anything else may render this file defective
+# when unexpected content found here!
+#
+# Remember to restart the @SERVICENAME@ service for the changes to take effect.
+
+
+# ===========================================================================
+# INITSCRIPT CONFIGURATION
+# Shell syntax (i.e. FOO=bar, BAZ="white-spaced string")
+# ===========================================================================
+[ INITSCRIPT ]
+
+# Change this to set log file; this file either must not exist (so it is
+# initially created in ownership of user running initscript, presumably root,
+# and then @USERNAME@ becomes its owner) or must be writeable for @USERNAME@
+# directly
+#LOG_FILE="path_to/log_file"
+
+# Uncomment this to override default behaviour of removing run time data
+# (files maintained by middleware handling cache and sessions) everytime
+# the @SERVICENAME@ service is stopped (and also on service start)
+#KEEP_RUNTIME_DATA=1
+
+
+INIT_CONFIG=`cat -E <<"#END#"
+
+#
+# From this point, everything is in Python's ConfigParser syntax
+# (i.e. no quoted strings and the syntax is generally more relaxed)
+#
+
+# ===========================================================================
+# SERVER CONFIGURATION
+# ===========================================================================
+[server:main]
+
+# Change this to set the host IP (and, in turn, respective network interface)
+# running @PKGNAME@ binds at;  this is particularly useful when it should be bound
+# only at a specific one according to its IP address (0.0.0.0 => any interface)
+#host = 127.0.0.1
+
+# Change this to set the port running @PKGNAME@ binds at;  please note that you
+# cannot use privileged ports (i.e. <1024) because it runs as a non-root user
+#port = 4443
+
+# Change this to force @PKGNAME@ to use custom SSL certificate (given the path of
+# PEM file containing both the certificate itself and respective private key),
+# otherwise its self-signed certificate managed automatically by @SERVICENAME@
+# service is used instead;
+# currently, this certificate is used only for https connection with web
+# browser, connections with ricci instances still rely on self-managed cert
+# Note: If this configuration item is active and no such file can be read,
+#       starting @SERVICENAME@ service will fail
+#ssl_pem = "path_to/ssl_cert_pem_file"
+
+use=config:%(base_config)s
+
+# ===========================================================================
+# APPLICATION CONFIGURATION
+# ===========================================================================
+[app:main]
+
+# Change this to override default number of seconds of inactivity after which
+# the @PKGNAME@ authenticated session will timeout
+# (requires repoze.who >= 1.0.14)
+#who.auth_tkt_timeout = 600
+
+use=config:%(base_config)s
+
+#END#`

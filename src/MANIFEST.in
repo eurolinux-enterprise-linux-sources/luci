@@ -1,0 +1,14 @@
+include luci/public/css/*.css
+include luci/public/css/images/*.png
+include luci/public/favicon.ico
+include luci/public/images/*.gif
+include luci/public/images/*.png
+include luci/public/js/*.js
+include luci/templates/*.html
+include luci/config/*
+include input_files/certconfig/*
+include input_files/initscript/*
+include input_files/sysconfig/*
+include input_files/logrotateconfig/*
+include input_files/pamconfig/*
+include input_files/sasl2config/*

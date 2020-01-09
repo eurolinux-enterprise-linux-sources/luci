@@ -1,0 +1,187 @@
+commit 878cd92f167d0dbf71883db98dc042f0d93131f9
+Author: Ryan McCabe <rmccabe@redhat.com>
+Date:   Mon Mar 5 14:35:27 2012 -0500
+
+    Update the condor resource handlers per the latest cut of the condor resource agent
+
+diff --git a/luci/lib/ClusterConf/Condor.py b/luci/lib/ClusterConf/Condor.py
+new file mode 100644
+index 0000000..ab67e89
+--- /dev/null
++++ b/luci/lib/ClusterConf/Condor.py
+@@ -0,0 +1,18 @@
++# Copyright (C) 2012 Red Hat, Inc.
++#
++# This program is free software; you can redistribute
++# it and/or modify it under the terms of version 2 of the
++# GNU General Public License as published by the
++# Free Software Foundation.
++
++from BaseResource import BaseResource
++from gettext import gettext as _
++
++TAG_NAME = 'condor'
++RESOURCE_TYPE = _('Condor Resource')
++
++class Condor(BaseResource):
++  def __init__(self):
++    BaseResource.__init__(self)
++    self.TAG_NAME = TAG_NAME
++    self.resource_type = RESOURCE_TYPE
+diff --git a/luci/lib/ClusterConf/CondorSchedd.py b/luci/lib/ClusterConf/CondorSchedd.py
+deleted file mode 100644
+index 718c8d4..0000000
+--- a/luci/lib/ClusterConf/CondorSchedd.py
++++ /dev/null
+@@ -1,18 +0,0 @@
+-# Copyright (C) 2012 Red Hat, Inc.
+-#
+-# This program is free software; you can redistribute
+-# it and/or modify it under the terms of version 2 of the
+-# GNU General Public License as published by the
+-# Free Software Foundation.
+-
+-from BaseResource import BaseResource
+-from gettext import gettext as _
+-
+-TAG_NAME = 'condor_schedd'
+-RESOURCE_TYPE = _('condor_schedd Instance')
+-
+-class CondorSchedd(BaseResource):
+-  def __init__(self):
+-    BaseResource.__init__(self)
+-    self.TAG_NAME = TAG_NAME
+-    self.resource_type = RESOURCE_TYPE
+diff --git a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+index a4e7d9f..23ba30d 100644
+--- a/luci/lib/ClusterConf/ModelBuilder.py
++++ b/luci/lib/ClusterConf/ModelBuilder.py
+@@ -63,7 +63,7 @@ import Event
+ 
+ # Children of <resources> and <service>
+ import Ip, Script, NFSClient, NFSExport, NFSServer, Fs, Samba, Smb, Apache, Named, \
+-       CondorSchedd, DRBD, LVM, MySQL, OpenLDAP, Postgres8, Tomcat5, Tomcat6, \
++       Condor, DRBD, LVM, MySQL, OpenLDAP, Postgres8, Tomcat5, Tomcat6, \
+        SAPDatabase, SAPInstance, SybaseASE, Netfs, Clusterfs, \
+        OracleDB, OracleListener, OracleInstance
+ 
+@@ -113,7 +113,7 @@ TAGNAMES = {
+     Smb.TAG_NAME:                   Smb.Smb,
+     Apache.TAG_NAME:                Apache.Apache,
+     Named.TAG_NAME:                 Named.Named,
+-    CondorSchedd.TAG_NAME:          CondorSchedd.CondorSchedd,
++    Condor.TAG_NAME:                Condor.Condor,
+     DRBD.TAG_NAME:                  DRBD.DRBD,
+     LVM.TAG_NAME:                   LVM.LVM,
+     MySQL.TAG_NAME:                 MySQL.MySQL,
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index b8aa938..03c1415 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1604,7 +1604,7 @@
+   </table>
+ </div>
+ 
+-<div py:def="condor_schedd_resource(res, form_id, parent_id, isref)" name="CONDOR_SCHEDD" id="condor_schedd_resource" class="row rescfg"
++<div py:def="condor_resource(res, form_id, parent_id, isref)" name="CONDOR" id="condor_resource" class="row rescfg"
+   py:with="global_resource = res and isref != 0"
+   py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+   <input name="global" type="hidden" value="1" py:if="global_resource"/>
+@@ -1612,17 +1612,33 @@
+   <input name="form_id" type="hidden" value="${form_id}"/>
+   <input name="oldname" type="hidden"
+     py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+-  <input name="type" type="hidden" value="condor_schedd" />
++  <input name="type" type="hidden" value="condor" />
+ 
+-  <h3>condor_schedd Instance</h3>
++  <h3>Condor Instance</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name of the condor_schedd Instance to Control</td>
++      <td>Instance Name</td>
+       <td>
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
++    <tr>
++      <td>Condor Subsystem Type</td>
++      <td>
++        <select name="subsystype" class="serviceformselect"
++          py:attrs="{'disabled':global_resource and 'disabled' or None}">
++          <option value=""
++            py:attrs="(not res or not res.getAttribute('type')) and {'selected':'selected'} or {}">Subsystem Type</option>
++          <option name="schedd" value="schedd"
++            py:attrs="res and res.getAttribute('type') == 'schedd' and {'selected':'selected'} or {}">schedd</option>
++          <option name="job_server" value="job_server"
++            py:attrs="res and res.getAttribute('type') == 'job_server' and {'selected':'selected'} or {}">job_server</option>
++          <option name="query_server" value="query_server"
++            py:attrs="res and res.getAttribute('type') == 'query_server' and {'selected':'selected'} or {}">query_server</option>
++        </select>
++      </td>
++    </tr>
+     ${res_footer(res)}
+   </table>
+ </div>
+@@ -1730,7 +1746,7 @@ ${oralistener_resource(None,None,None,0)}
+ ${named_resource(None,None,None,0)}
+ ${drbd_resource(None,None,None,0)}
+ ${vm_resource(None,None,None,0)}
+-${condor_schedd_resource(None,None,None,0)}
++${condor_resource(None,None,None,0)}
+ 
+ <py:if test="model">
+   <py:for each="res in model.getResources()">
+@@ -1767,7 +1783,7 @@ ${condor_schedd_resource(None,None,None,0)}
+     <option name="apache_resource" value="apache_resource">Apache</option>
+     <py:if test="cluster_version >= 3">
+       <option py:if="cluster_os != 'RHEL' or os_version &gt; 6.2"
+-        name="condor_schedd" value="condor_schedd_resource">condor_schedd Instance</option>
++        name="condor" value="condor_resource">Condor Instance</option>
+       <option name="drbd_resource" value="drbd_resource">DRBD Resource</option>
+     </py:if>
+     <option name="fs_resource" value="fs_resource">Filesystem</option>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 3f5c3b5..3c2210b 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -23,7 +23,7 @@ from luci.lib.ClusterConf.Apache import Apache
+ from luci.lib.ClusterConf.OpenLDAP import OpenLDAP
+ from luci.lib.ClusterConf.LVM import LVM
+ from luci.lib.ClusterConf.MySQL import MySQL
+-from luci.lib.ClusterConf.CondorSchedd import CondorSchedd
++from luci.lib.ClusterConf.Condor import Condor
+ from luci.lib.ClusterConf.DRBD import DRBD
+ from luci.lib.ClusterConf.Vm import Vm
+ from luci.lib.ClusterConf.Named import Named
+@@ -445,9 +445,19 @@ def addDRBD(res, rname, model, **kw):
+ 	errors = config_resource(params, res, rname, **kw)
+ 	return errors
+ 
+-def addCondorSchedd(res, rname, model, **kw):
++def addCondor(res, rname, model, **kw):
+ 	params = ()
+ 	errors = config_resource(params, res, rname, **kw)
++
++	subsys = kw.get('subsystype')
++	if not subsys or subsys.isspace():
++		errors.append(_('No condor subsystem type was given'))
++	else:
++		subsys = subsys.lower()
++		if not subsys in ('schedd', 'job_server', 'query_server'):
++			errors.append(_('Invalid condor subsystem type: "%s"') % subsys)
++		else:
++			res.addAttribute('type', subsys)
+ 	return errors
+ 
+ resource_table = {
+@@ -476,7 +486,7 @@ resource_table = {
+ 	'ASEHAagent':		( addSybaseASE,			SybaseASE		),
+ 	'named':			( addNamed,				Named			),
+ 	'drbd':				( addDRBD,				DRBD			),
+-	'condor_schedd':	( addCondorSchedd,		CondorSchedd	),
++	'condor':			( addCondor,			Condor			),
+ 	'vm':				( addVM,				Vm				),
+ }
+ 

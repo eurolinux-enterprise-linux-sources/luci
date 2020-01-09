@@ -1,0 +1,1968 @@
+<html xmlns:py="http://genshi.edgewall.org/"
+    xmlns:xi="http://www.w3.org/2001/XInclude"
+    py:strip="">
+
+<div py:def="res_footer(res)" py:strip="">
+    <py:if test="defined('svc')">
+     <py:if test="defined('cur_res')">
+        <?python res = cur_res ?>
+     </py:if>
+    <tr py:if="expertMode">
+        <td>Enforce Timeouts</td>
+        <td>
+            <input type="hidden" name="expert_mode" value="1"/>
+            <input type="checkbox" name="enforce_timeouts" class="checkbox subtree"
+                py:attrs="(res and res.getEnforceTimeouts()) and {'checked':'checked'} or {}"/>
+        </td>
+    </tr>
+    <tr>
+        <td>Independent Subtree</td>
+        <td>
+            <input type="checkbox" name="independent_subtree" class="checkbox subtree"
+                py:attrs="(res and res.getIndependentSubtree()) and {'checked':'checked'} or {}"/>
+        </td>
+    </tr>
+    <tr>
+        <td>Non-Critical Resource</td>
+        <td>
+            <input type="checkbox" name="noncritical_resource" class="checkbox subtree"
+                py:attrs="(res and res.getNonCriticalResource()) and {'checked':'checked'} or {}"/>
+        </td>
+    </tr>
+    <tr><td>
+        <fieldset>
+            <legend>Independent Subtree/Non-Critical Options</legend>
+            <table>
+                <tr>
+                    <td>Maximum Number of Failures</td>
+                    <td>
+                        <input type="text" class="text subtree" name="__max_failures"
+                            py:attrs="res and {'value':res.getMaxFailures()} or {}"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Failure Expire Time (seconds)</td>
+                    <td>
+                        <input type="text" class="text subtree" name="__failure_expire_time"
+                            py:attrs="res and {'value':res.getFailureExpireTime()} or {}"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Maximum Number of Restarts</td>
+                    <td>
+                        <input type="text" class="text subtree" name="__max_restarts"
+                            py:attrs="res and {'value':res.getResMaxRestarts()} or {}"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Restart Expire Time (seconds)</td>
+                    <td>
+                        <input type="text" class="text subtree" name="__restart_expire_time"
+                            py:attrs="res and {'value':res.getResRestartExpireTime()} or {}"/>
+                    </td>
+                </tr>
+            </table>
+        </fieldset>
+    </td></tr>
+    </py:if>
+</div>
+
+<div py:def="ip_resource(res, form_id, parent_id, isref)" name="IP" id="ip_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0;
+      cluster_os = tmpl_context.cluster.get_OS();
+      os_version = tmpl_context.cluster.get_OSVersion();
+      ip_address = res and res.getAttribute('address').split('/') or []"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('address')} or {}" />
+  <input name="type" type="hidden" value="ip" />
+
+  <h3>IP Address</h3>
+   <table class="formtable">
+    <tr>
+      <td>IP Address</td>
+      <td>
+        <input name="address_nominal" type="text" class="text"
+          py:attrs="ip_address and {'value': ip_address[0], 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Netmask Bits (optional)</td>
+      <td>
+        <input name="address_mask" type="text" class="text"
+          py:attrs="len(ip_address) &gt; 1 and {'value': ip_address[1], 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Monitor Link</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="monitor_link"
+          py:attrs="res and {'checked': res.getBinaryAttribute('monitor_link') in (None, True) and 'checked' or None, 'disabled':global_resource and 'disabled' or None} or {'checked':'checked'}" />
+      </td>
+    </tr>
+    <tr py:if="cluster_os != 'RHEL' or os_version &gt; 6.0">
+     <td>Disable Updates to Static Routes</td>
+     <td>
+        <input type="checkbox" class="checkbox" name="disable_rdisc"
+          py:attrs="res and {'checked': res.getAttribute('disable_rdisc') and 'checked' or None, 'disabled':global_resource and 'disabled' or None} or {}" />
+     </td>
+    </tr>
+    <tr>
+      <td>Number of Seconds to Sleep After Removing an IP Address</td>
+      <td>
+        <input name="sleeptime" type="text" class="text"
+          value="10"
+          py:attrs="res and {'value': res.getAttribute('sleeptime'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="fs_resource(res, form_id, parent_id, isref)" name="FS" id="fs_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="fs" />
+
+  <h3>Filesystem</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Filesystem Type</td>
+      <td>
+        <select name="fstype" class="serviceformselect"
+          py:attrs="{'disabled':global_resource and 'disabled' or None}">
+          <option value=""
+            py:attrs="(not res or not res.getAttribute('fstype')) and {'selected':'selected'} or {}">Autodetect</option>
+          <option name="ext4" value="ext4"
+            py:attrs="res and res.getAttribute('fstype') == 'ext4' and {'selected':'selected'} or {}">ext4</option>
+          <option name="xfs" value="xfs"
+            py:attrs="res and res.getAttribute('fstype') == 'xfs' and {'selected':'selected'} or {}">xfs</option>
+          <option name="jfs" value="jfs"
+            py:attrs="res and res.getAttribute('fstype') == 'jfs' and {'selected':'selected'} or {}">jfs</option>
+          <option name="btrfs" value="btrfs"
+            py:attrs="res and res.getAttribute('fstype') == 'btrfs' and {'selected':'selected'} or {}">btrfs</option>
+          <option name="vxfs" value="vxfs"
+            py:attrs="res and res.getAttribute('fstype') == 'vxfs' and {'selected':'selected'} or {}">vxfs</option>
+          <option name="reiserfs" value="reiserfs"
+            py:attrs="res and res.getAttribute('fstype') == 'reiserfs' and {'selected':'selected'} or {}">reiserfs</option>
+          <option name="ext3" value="ext3"
+            py:attrs="res and res.getAttribute('fstype') == 'ext3' and {'selected':'selected'} or {}">ext3</option>
+          <option name="ext2" value="ext2"
+            py:attrs="res and res.getAttribute('fstype') == 'ext2' and {'selected':'selected'} or {}">ext2</option>
+          <option name="vfat" value="vfat"
+            py:attrs="res and res.getAttribute('fstype') == 'vfat' and {'selected':'selected'} or {}">vfat</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>Mount Point</td>
+      <td>
+        <input type="text" class="text" name="mountpoint"
+          py:attrs="res and {'value':res.getAttribute('mountpoint'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Device, FS Label, or UUID</td>
+      <td>
+        <input type="text" class="text" name="device"
+          py:attrs="res and {'value':res.getAttribute('device'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Mount Options</td>
+      <td>
+        <input type="text" class="text" name="options"
+          py:attrs="res and {'value':res.getAttribute('options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Filesystem ID (optional)</td>
+      <td>
+        <input type="text" class="text" name="fsid"
+          py:attrs="res and {'value':res.getAttribute('fsid'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Force Unmount</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="force_unmount"
+          py:attrs="{'checked':(res and res.getAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Force fsck</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="force_fsck"
+          py:attrs="{'checked':(res and res.getAttribute('force_fsck')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Use Quick Status Checks</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="quick_status"
+          py:attrs="{'checked':(res and res.getAttribute('quick_status')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Reboot Host Node if Unmount Fails</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="self_fence"
+          py:attrs="{'checked':(res and res.getAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="clusterfs_resource(res, form_id, parent_id, isref)" name="CLUSTERFS" id="clusterfs_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0;
+       cluster_version = tmpl_context.cluster.get_version()"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="clusterfs" />
+
+  <py:choose test="cluster_version">
+    <py:when test="2">
+      <h3>GFS/GFS2</h3>
+    </py:when>
+    <py:otherwise>
+      <h3>GFS2</h3>
+    </py:otherwise>
+  </py:choose>
+
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Mount Point</td>
+      <td>
+        <input type="text" class="text" name="mountpoint"
+          py:attrs="res and {'value':res.getAttribute('mountpoint'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Device, FS Label, or UUID</td>
+      <td>
+        <input type="text" class="text" name="device"
+          py:attrs="res and {'value':res.getAttribute('device'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Filesystem Type</td>
+      <td>
+        <select name="fstype" class="serviceformselect"
+          py:attrs="{'disabled':global_resource and 'disabled' or None}">
+          <py:choose test="cluster_version">
+          <py:when test="3">
+          <option value="gfs2"
+            py:attrs="res and res.getAttribute('fstype') == 'gfs2' and {'selected':'selected'} or {}">GFS2</option>
+          </py:when>
+          <py:otherwise>
+          <option value="gfs"
+            py:attrs="res and res.getAttribute('fstype') == 'gfs' and {'selected':'selected'} or {}">GFS</option>
+          <option value="gfs2"
+            py:attrs="res and res.getAttribute('fstype') == 'gfs2' and {'selected':'selected'} or {}">GFS2</option>
+          </py:otherwise>
+          </py:choose>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>Mount Options</td>
+      <td>
+        <input type="text" class="text" name="options"
+          py:attrs="res and {'value':res.getAttribute('options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Filesystem ID (optional)</td>
+      <td>
+        <input type="text" class="text" name="fsid"
+          py:attrs="res and {'value':res.getAttribute('fsid'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Force Unmount</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="force_unmount"
+          py:attrs="{'checked':(res and res.getAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Reboot Host Node if Unmount Fails</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="self_fence"
+          py:attrs="{'checked':(res and res.getAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="netfs_resource(res, form_id, parent_id, isref)" name="NETFS" id="netfs_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="netfs" />
+
+  <h3>NFS/CIFS Mount</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Mount Point</td>
+      <td>
+        <input type="text" class="text" name="mountpoint"
+          py:attrs="res and {'value':res.getAttribute('mountpoint'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Host</td>
+      <td>
+        <input type="text" class="text" name="host"
+          py:attrs="res and {'value':res.getAttribute('host'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>NFS Export Directory Name or CIFS Share</td>
+      <td>
+        <input type="text" class="text" name="export"
+          py:attrs="res and {'value':res.getAttribute('export'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Filesystem Type</td>
+      <td>
+        <select name="fstype" class="serviceformselect"
+          py:attrs="{'disabled':global_resource and 'disabled' or None}">
+          <option value="">Default</option>
+          <option value="nfs"
+            py:attrs="res and res.getAttribute('fstype') == 'nfs' and {'selected':'selected'} or {}">NFS</option>
+          <option value="nfs4"
+            py:attrs="res and res.getAttribute('fstype') == 'nfs4' and {'selected':'selected'} or {}">NFS v4</option>
+          <option value="cifs"
+            py:attrs="res and res.getAttribute('fstype') == 'cifs' and {'selected':'selected'} or {}">CIFS</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>Do Not Unmount the Filesystem During a Stop or Relocation Operation</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="no_unmount"
+          py:attrs="{'checked':(res and res.getAttribute('no_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Force Unmount</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="force_unmount"
+          py:attrs="{'checked':(res and res.getAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Options</td>
+      <td>
+        <input type="text" class="text" name="options"
+          py:attrs="res and {'value':res.getAttribute('options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="nfsexport_resource(res, form_id, parent_id, isref)" name="NFSEXPORT" id="nfsexport_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="nfsexport" />
+  <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+
+  <h3>NFS v3 Export</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr py:if="expertMode">
+      <td>Override Inherited Path</td>
+      <td>
+        <input type="text" class="text" name="path"
+          py:attrs="res and {'value':res.getAttribute('path'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="nfsserver_resource(res, form_id, parent_id, isref)" name="NFSSERVER" id="nfsserver_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="nfsserver" />
+  <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+
+  <h3>NFS Server</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr py:if="expertMode">
+      <td>Override Inherited Path</td>
+      <td>
+        <input type="text" class="text" name="path"
+          py:attrs="res and {'value':res.getAttribute('path'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr py:if="expertMode">
+      <td>NFS Recovery Path</td>
+      <td>
+        <input type="text" class="text" name="nfspath"
+          py:attrs="res and {'value':res.getAttribute('nfspath'), 'disabled':global_resource and 'disabled' or None} or {'value':'.clumanager/nfs', 'disabled':global_resource and 'disabled' or None}"/>
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="nfsclient_resource(res, form_id, parent_id, isref)" name="NFSCLIENT" id="nfsclient_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="nfsclient" />
+  <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+
+  <h3>NFS Client</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Target Hostname, Wildcard, or Netgroup</td>
+      <td>
+        <input type="text" class="text" name="target"
+          py:attrs="res and {'value':res.getAttribute('target'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr py:if="expertMode">
+      <td>Override Inherited Path</td>
+      <td>
+        <input type="text" class="text" name="path"
+          py:attrs="res and {'value':res.getAttribute('path'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Allow Recovery of This NFS Client</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="allow_recover"
+          py:attrs="{'checked':(res and res.getAttribute('allow_recover')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Options</td>
+      <td>
+        <input type="text" class="text" name="options"
+          py:attrs="res and {'value':res.getAttribute('options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="samba_resource(res, form_id, parent_id, isref)" name="SAMBA" id="samba_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="samba" />
+
+  <h3>Samba Server</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Config File</td>
+      <td>
+        <input type="text" class="text" name="config_file"
+          py:attrs="res and {'value':res.getAttribute('config_file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Other Command-Line Options for smbd</td>
+      <td>
+        <input type="text" class="text" name="smbd_options"
+          py:attrs="res and {'value':res.getAttribute('smbd_options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Other Command-Line Options for nmbd</td>
+      <td>
+        <input type="text" class="text" name="nmbd_options"
+          py:attrs="res and {'value':res.getAttribute('nmbd_options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Shutdown Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="shutdown_wait" value="0"
+          py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="smb_resource(res, form_id, parent_id, isref)" name="SMB" id="smb_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="smb" />
+
+  <h3>Samba Server</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Workgroup</td>
+      <td>
+        <input type="text" class="text" name="workgroup"
+          py:attrs="res and {'value':res.getAttribute('workgroup'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="script_resource(res, form_id, parent_id, isref)" name="SCRIPT" id="script_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="script" />
+
+  <h3>Script</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Full Path to Script File</td>
+      <td>
+        <input type="text" class="text" name="file"
+          py:attrs="res and {'value':res.getAttribute('file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="apache_resource(res, form_id, parent_id, isref)" name="APACHE" id="apache_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="apache" />
+
+  <h3>Apache</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Server Root</td>
+      <td>
+        <input type="text" class="text" name="server_root"
+          value="/etc/httpd"
+          py:attrs="res and {'value':res.getAttribute('server_root'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+
+    <tr>
+      <td>Config File</td>
+      <td>
+        <input type="text" class="text" name="config_file"
+          value="conf/httpd.conf"
+          py:attrs="res and {'value':res.getAttribute('config_file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>httpd Options</td>
+      <td>
+        <input type="text" class="text" name="httpd_options"
+          py:attrs="res and {'value':res.getAttribute('httpd_options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Shutdown Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="shutdown_wait" value="0"
+          py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="mysql_resource(res, form_id, parent_id, isref)" name="MYSQL" id="mysql_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="mysql" />
+
+  <h3>MySQL</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Config File</td>
+      <td>
+        <input type="text" class="text" name="config_file"
+          value="/etc/my.cnf"
+          py:attrs="res and {'value':res.getAttribute('config_file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Listen Address</td>
+      <td>
+        <input type="text" class="text" name="listen_address"
+          py:attrs="res and {'value':res.getAttribute('listen_address'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>mysqld Options</td>
+      <td>
+        <input type="text" class="text" name="mysqld_options"
+          py:attrs="res and {'value':res.getAttribute('mysqld_options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Startup Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="startup_wait" value="0"
+          py:attrs="res and {'value':res.getAttribute('startup_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Shutdown Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="shutdown_wait" value="0"
+          py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="lvm_resource(res, form_id, parent_id, isref)" name="LVM" id="lvm_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="lvm" />
+
+  <h3>HA LVM</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Volume Group Name</td>
+      <td>
+        <input type="text" class="text" name="vg_name"
+          py:attrs="res and {'value':res.getAttribute('vg_name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Logical Volume Name</td>
+      <td>
+        <input type="text" class="text" name="lv_name"
+          py:attrs="res and {'value':res.getAttribute('lv_name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Fence the Node if It is Unable to Clean Up LVM Tags</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="self_fence"
+          py:attrs="{'checked':(res and res.getAttribute('self_fence')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="openldap_resource(res, form_id, parent_id, isref)" name="OPENLDAP" id="openldap_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="openldap" />
+
+  <h3>Open LDAP</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Config File</td>
+      <td>
+        <input type="text" class="text" name="config_file"
+          value="/etc/openldap/slapd.conf"
+          py:attrs="res and {'value':res.getAttribute('config_file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>URL List</td>
+      <td>
+        <input type="text" class="text" name="url_list"
+          value="ldap:///"
+          py:attrs="res and {'value':res.getAttribute('url_list'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>slapd Options</td>
+      <td>
+        <input type="text" class="text" name="slapd_options"
+          py:attrs="res and {'value':res.getAttribute('slapd_options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Shutdown Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="shutdown_wait" value="0"
+          py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="postgres8_resource(res, form_id, parent_id, isref)" name="POSTGRES-8" id="postgres8_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="postgres-8" />
+
+  <h3>PostgreSQL 8</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Config File</td>
+      <td>
+        <input type="text" class="text" name="config_file"
+          value="/var/lib/pgsql/data/postgresql.conf"
+          py:attrs="res and {'value':res.getAttribute('config_file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Postmaster User</td>
+      <td>
+        <input type="text" class="text" name="postmaster_user"
+          value="postgres"
+          py:attrs="res and {'value':res.getAttribute('postmaster_user'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Postmaster Options</td>
+      <td>
+        <input type="text" class="text" name="postmaster_options"
+          py:attrs="res and {'value':res.getAttribute('postmaster_options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Shutdown Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="shutdown_wait" value="0"
+          py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="tomcat5_resource(res, form_id, parent_id, isref)" name="TOMCAT-5" id="tomcat5_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="tomcat-5" />
+
+  <h3>Tomcat 5</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Config File</td>
+      <td>
+        <input type="text" class="text" name="config_file"
+          value="/etc/tomcat5/tomcat5.conf"
+          py:attrs="res and {'value':res.getAttribute('config_file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Tomcat User</td>
+      <td>
+        <input type="text" class="text" name="tomcat_user"
+          value="tomcat"
+          py:attrs="res and {'value':res.getAttribute('tomcat_user'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Catalina Options</td>
+      <td>
+        <input type="text" class="text" name="catalina_options"
+          py:attrs="res and {'value':res.getAttribute('catalina_options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Catalina Base</td>
+      <td>
+        <input type="text" class="text" name="catalina_base"
+          value="/usr/share/tomcat5"
+          py:attrs="res and {'value':res.getAttribute('catalina_base'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Shutdown Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="shutdown_wait" value="30"
+          py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="tomcat6_resource(res, form_id, parent_id, isref)" name="TOMCAT-6" id="tomcat6_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="tomcat-6" />
+
+  <h3>Tomcat 6</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Config File</td>
+      <td>
+        <input type="text" class="text" name="config_file"
+          value="/etc/tomcat6/tomcat6.conf"
+          py:attrs="res and {'value':res.getAttribute('config_file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+        <!--! XXX: really not supported?
+    <tr>
+      <td>Tomcat user</td>
+      <td>
+        <input type="text" class="text" name="tomcat_user"
+          value="tomcat"
+          py:attrs="res and {'value':res.getAttribute('tomcat_user'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+        -->
+    <tr>
+      <td>Shutdown Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="shutdown_wait" value="30"
+          py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="SAPInstance_resource(res, form_id, parent_id, isref)" name="SAPInstance" id="SAPInstance_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('InstanceName')} or {}" />
+  <input name="type" type="hidden" value="SAPInstance" />
+
+  <h3>SAP Instance</h3>
+  <table class="formtable">
+    <tr>
+      <td>SAP Instance Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('InstanceName'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path to sapstartsrv and sapcontrol">SAP Executable Directory</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="DIR_EXECUTABLE"
+          py:attrs="res and {'value':res.getAttribute('DIR_EXECUTABLE'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path to the directory containing the SAP START profile">Directory Containing the SAP START Profile</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="DIR_PROFILE"
+          py:attrs="res and {'value':res.getAttribute('DIR_PROFILE'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Name of the SAP START Profile</td>
+      <td>
+        <input type="text" class="text" name="START_PROFILE"
+          py:attrs="res and {'value':res.getAttribute('START_PROFILE'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="After that time in seconds a monitor operation is executed by the resource agent. Does the monitor return SUCCESS, the start is handled as SUCCESS. This is useful to resolve timing problems with e.g. the J2EE-Addin instance.">Number of Seconds to Wait Before Checking Startup Status</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="START_WAITTIME"
+          py:attrs="res and {'value':res.getAttribute('START_WAITTIME'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The SAPInstance resource agent tries to recover a failed start attempt automaticaly one time. This is done by killing runing instance processes and executing cleanipc.">Enable Automatic Startup Recovery</span>
+      </td>
+      <td>
+        <input type="checkbox" class="checkbox" name="AUTOMATIC_RECOVER"
+          py:attrs="{'checked':(res and res.getAttribute('AUTOMATIC_RECOVER')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path where to find a script or program which should be executed before this resource gets started.">Path to a Pre-Start Script</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="PRE_START_USEREXIT"
+          py:attrs="res and {'value':res.getAttribute('PRE_START_USEREXIT'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path where to find a script or program which should be executed after this resource got started.">Path to a Post-Start Script</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="POST_START_USEREXIT"
+          py:attrs="res and {'value':res.getAttribute('POST_START_USEREXIT'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path where to find a script or program which should be executed before this resource gets stopped.">Path to a Pre-Stop Script</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="PRE_STOP_USEREXIT"
+          py:attrs="res and {'value':res.getAttribute('PRE_STOP_USEREXIT'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path where to find a script or program which should be executed after this resource got stopped.">Path to a Post-Stop Script</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="POST_STOP_USEREXIT"
+          py:attrs="res and {'value':res.getAttribute('POST_STOP_USEREXIT'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="SAPDatabase_resource(res, form_id, parent_id, isref)" name="SAPDatabase" id="SAPDatabase_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('SID')} or {}" />
+  <input name="type" type="hidden" value="SAPDatabase" />
+
+  <h3>SAP Database</h3>
+  <table class="formtable">
+    <tr>
+      <td>SAP Database name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('SID'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path to sapstartsrv and sapcontrol">SAP Executable Directory</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="DIR_EXECUTABLE"
+          py:attrs="res and {'value':res.getAttribute('DIR_EXECUTABLE'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Database Type</td>
+      <td>
+        <select name="DBTYPE" class="serviceformselect"
+          py:attrs="{'disabled':global_resource and 'disabled' or None}">
+          <option value=""
+            py:attrs="(not res or not res.getAttribute('DBTYPE')) and {'selected':'selected'} or {}">Select SAP Database Type</option>
+          <option value="ORA"
+            py:attrs="res and res.getAttribute('DBTYPE') == 'ORA' and {'selected':'selected'} or {}">Oracle</option>
+          <option value="DB6"
+            py:attrs="res and res.getAttribute('DBTYPE') == 'DB6' and {'selected':'selected'} or {}">DB6</option>
+          <option value="ADA"
+            py:attrs="res and res.getAttribute('DBTYPE') == 'ADA' and {'selected':'selected'} or {}">ADA</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>Oracle Listener Name</td>
+      <td>
+        <input type="text" class="text" name="NETSERVICENAME"
+          py:attrs="res and {'value':res.getAttribute('NETSERVICENAME'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>ABAP Stack Is Not Installed, Only Java Stack Is Installed</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="DBJ2EE_ONLY"
+          py:attrs="{'checked':(res and res.getAttribute('DBJ2EE_ONLY')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Application Level Monitoring</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="STRICT_MONITORING"
+          py:attrs="{'checked':(res and res.getAttribute('STRICT_MONITORING')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Automatic Startup Recovery</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="AUTOMATIC_RECOVER"
+          py:attrs="{'checked':(res and res.getAttribute('AUTOMATIC_RECOVER')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path to the Java SDK">Path to Java SDK</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="JAVA_HOME"
+          py:attrs="res and {'value':res.getAttribute('JAVA_HOME'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified filename of the jdbc driver for the database connection test. It will be automaticaly read from the bootstrap.properties file in Java engine 6.40 and 7.00. For Java engine 7.10 the parameter is mandatory">File Name of the JDBC Driver</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="DB_JARS"
+          py:attrs="res and {'value':res.getAttribute('DB_JARS'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path where to find a script or program which should be executed before this resource gets started.">Path to a Pre-Start Script</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="PRE_START_USEREXIT"
+          py:attrs="res and {'value':res.getAttribute('PRE_START_USEREXIT'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path where to find a script or program which should be executed after this resource got started.">Path to a Post-Start Script</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="POST_START_USEREXIT"
+          py:attrs="res and {'value':res.getAttribute('POST_START_USEREXIT'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path where to find a script or program which should be executed before this resource gets stopped.">Path to a Pre-Stop Script</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="PRE_STOP_USEREXIT"
+          py:attrs="res and {'value':res.getAttribute('PRE_STOP_USEREXIT'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path where to find a script or program which should be executed after this resource got stopped.">Path to a Post-Stop Script</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="POST_STOP_USEREXIT"
+          py:attrs="res and {'value':res.getAttribute('POST_STOP_USEREXIT'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path to the J2EE instance bootstrap directory">J2EE Instance Bootstrap Directory</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="DIR_BOOTSTRAP"
+          py:attrs="res and {'value':res.getAttribute('DIR_BOOTSTRAP'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="The fully qualified path to the J2EE security store directory">J2EE Security Store Path</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="DIR_SECSTORE"
+          py:attrs="res and {'value':res.getAttribute('DIR_SECSTORE'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="ASEHAagent_resource(res, form_id, parent_id, isref)" name="ASEHAagent" id="ASEHAagent_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="ASEHAagent" />
+
+  <h3>Sybase ASE Failover Instance</h3>
+  <table class="formtable">
+    <tr>
+      <td>Instance Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td><span title="">ASE Server Name</span></td>
+      <td>
+        <input type="text" class="text" name="server_name"
+          py:attrs="res and {'value':res.getAttribute('server_name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="">SYBASE Home Directory</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="sybase_home"
+          py:attrs="res and {'value':res.getAttribute('sybase_home'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span title="">Login File</span>
+      </td>
+      <td>
+        <input type="text" class="text" name="login_file"
+          py:attrs="res and {'value':res.getAttribute('login_file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Interfaces File</td>
+      <td>
+        <input type="text" class="text" name="interfaces_file"
+          py:attrs="res and {'value':res.getAttribute('interfaces_file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>SYBASE_ASE Directory Name</td>
+      <td>
+        <input type="text" class="text" name="sybase_ase"
+          value="ASE-15_0"
+          py:attrs="res and {'value':res.getAttribute('sybase_ase'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>SYBASE_OCS Directory Name</td>
+      <td>
+        <input type="text" class="text" name="sybase_ocs"
+          value="OCS-15_0"
+          py:attrs="res and {'value':res.getAttribute('sybase_ocs'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Sybase User</td>
+      <td>
+        <input type="text" class="text" name="sybase_user"
+          value="sybase"
+          py:attrs="res and {'value':res.getAttribute('sybase_user'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Start Timeout (seconds)</td>
+      <td>
+        <input type="text" class="text" name="start_timeout"
+          value="0"
+          py:attrs="res and {'value':res.getAttribute('start_timeout'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Shutdown Timeout (seconds)</td>
+      <td>
+        <input type="text" class="text" name="shutdown_timeout"
+          value="0"
+          py:attrs="res and {'value':res.getAttribute('shutdown_timeout'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Deep Probe Timeout (seconds)</td>
+      <td>
+        <input type="text" class="text" name="deep_probe_timeout"
+          value="0"
+          py:attrs="res and {'value':res.getAttribute('deep_probe_timeout'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="oracledb_resource(res, form_id, parent_id, isref)" name="oracledb" id="oracledb_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="oracledb" />
+
+  <h3>Oracle 10g/11g Failover Instance</h3>
+  <table class="formtable">
+    <tr>
+      <td>Instance Name (SID) of Oracle Instance</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Oracle Listener Instance Name</td>
+      <td>
+        <input type="text" class="text" name="listener_name"
+          py:attrs="res and {'value':res.getAttribute('listener_name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Oracle User Name</td>
+      <td>
+        <input type="text" class="text" name="user"
+          py:attrs="res and {'value':res.getAttribute('user'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Oracle Application Home Directory</td>
+      <td>
+        <input type="text" class="text" name="home"
+          py:attrs="res and {'value':res.getAttribute('home'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Oracle Installation Type</td>
+      <td>
+        <select name="oracletype" class="serviceformselect"
+          py:attrs="{'disabled':global_resource and 'disabled' or None}">
+          <option value=""
+            py:attrs="(not res or not res.getAttribute('oracletype')) and {'selected':'selected'} or {}">Default</option>
+          <option value="base"
+            py:attrs="res and res.getAttribute('oracletype') == 'base' and {'selected':'selected'} or {}">Database Instance and Listener Only</option>
+          <option value="base-em"
+            py:attrs="res and res.getAttribute('oracletype') == 'base-em' and {'selected':'selected'} or {}">Database, Listener, Enterprise Manager, and iSQL*Plus</option>
+          <option value="ias"
+            py:attrs="res and res.getAttribute('oracletype') == 'ias' and {'selected':'selected'} or {}">Internet Application Server (Infrastructure)</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>Virtual Hostname (optional)</td>
+      <td>
+        <input type="text" class="text" name="vhost"
+          py:attrs="res and {'value':res.getAttribute('vhost'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="orainstance_resource(res, form_id, parent_id, isref)" name="orainstance" id="orainstance_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="orainstance" />
+
+  <h3>Oracle 10g Failover Instance</h3>
+  <table class="formtable">
+    <tr>
+      <td>Instance Name (SID) of Oracle Instance</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Oracle User Name</td>
+      <td>
+        <input type="text" class="text" name="user"
+          py:attrs="res and {'value':res.getAttribute('user'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Oracle Application Home Directory</td>
+      <td>
+        <input type="text" class="text" name="home"
+          py:attrs="res and {'value':res.getAttribute('home'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>List of Oracle Listeners (optional, separated by spaces)</td>
+      <td>
+        <input type="text" class="text" name="listeners"
+          py:attrs="res and {'value':res.getAttribute('listeners'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Path to Lock File (optional)</td>
+      <td>
+        <input type="text" class="text" name="lockfile"
+          py:attrs="res and {'value':res.getAttribute('lockfile'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="oralistener_resource(res, form_id, parent_id, isref)" name="oralistener" id="oralistener_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="oralistener" />
+
+  <h3>Oracle 10g Listener</h3>
+  <table class="formtable">
+    <tr>
+      <td>Listener Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Oracle User Name</td>
+      <td>
+        <input type="text" class="text" name="user"
+          py:attrs="res and {'value':res.getAttribute('user'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Oracle Application Home Directory</td>
+      <td>
+        <input type="text" class="text" name="home"
+          py:attrs="res and {'value':res.getAttribute('home'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="named_resource(res, form_id, parent_id, isref)" name="NAMED" id="named_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="named" />
+
+  <h3>Named</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Full Path to Config File</td>
+      <td>
+        <input type="text" class="text" name="config_file"
+          py:attrs="res and {'value':res.getAttribute('config_file'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Named Working Directory</td>
+      <td>
+        <input type="text" class="text" name="named_working_dir"
+          value="/var/named"
+          py:attrs="res and {'value':res.getAttribute('named_working_dir'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Use Simplified Database Backend</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="named_sdb"
+          py:attrs="{'checked':(res and res.getAttribute('named_sdb')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Other Command-Line Options</td>
+      <td>
+        <input type="text" class="text" name="named_options"
+          py:attrs="res and {'value':res.getAttribute('named_options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Shutdown Wait (seconds)</td>
+      <td>
+        <input type="text" class="text" name="shutdown_wait" value="5"
+          py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="drbd_resource(res, form_id, parent_id, isref)" name="DRBD" id="drbd_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="drbd" />
+
+  <h3>DRBD</h3>
+  <table class="formtable">
+    <tr>
+      <td>Name</td>
+      <td>
+        <input type="text" class="text" name="resourcename"
+          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>DRBD Resource Name, as Specified in /etc/drbd.conf</td>
+      <td>
+        <input type="text" class="text" name="resource"
+          py:attrs="res and {'value':res.getAttribute('resource'), 'disabled':global_resource and 'disabled' or None} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="vm_resource(res, form_id, parent_id, isref)" name="VM" id="vm_resource" class="row rescfg"
+  py:with="global_resource = res and isref != 0"
+  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+  <input name="global" type="hidden" value="1" py:if="global_resource"/>
+  <input name="parent_id" type="hidden" value="${parent_id}"/>
+  <input name="form_id" type="hidden" value="${form_id}"/>
+  <input name="oldname" type="hidden"
+    py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+  <input name="type" type="hidden" value="vm" />
+
+  <table class="formtable">
+    <tr>
+      <td>Migration Type</td>
+      <td>
+        <select name="migrate"
+          py:with="cur_migrate = res and res.getAttribute('migrate') or ''">
+          <option value="live"
+            py:attrs="cur_migrate == 'live' and {'selected':'selected'} or {}">Live</option>
+          <option value="pause"
+            py:attrs="cur_migrate == 'pause' and {'selected':'selected'} or {}">Pause</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>Migration Mapping</td>
+      <td>
+        <input type="text" class="text" name="migration_mapping"
+          py:attrs="res and {'value':res.getAttribute('migration_mapping')} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Status Program</td>
+      <td>
+        <input type="text" class="text" name="status_program"
+          py:attrs="res and {'value':res.getAttribute('status_program')} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Path to xmlfile Used to Create the VM</td>
+      <td>
+        <input type="text" class="text" name="xmlfile"
+          py:attrs="res and {'value':res.getAttribute('xmlfile')} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>VM Configuration File Path</td>
+      <td>
+        <input type="text" class="text" name="path"
+          py:attrs="res and {'value':res.getAttribute('path')} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Path to the VM Snapshot Directory</td>
+      <td>
+        <input type="text" class="text" name="snapshot"
+          py:attrs="res and {'value':res.getAttribute('snapshot')} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Hypervisor URI</td>
+      <td>
+        <input type="text" class="text" name="hypervisor_uri"
+          py:attrs="res and {'value':res.getAttribute('hypervisor_uri')} or {}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Migration URI</td>
+      <td>
+        <input type="text" class="text" name="migration_uri"
+          py:attrs="res and {'value':res.getAttribute('migration_uri')} or {}" />
+      </td>
+    </tr>
+    ${res_footer(res)}
+  </table>
+</div>
+
+<div py:def="resource_container(model)" id="resource_container" class="hidden">
+${ip_resource(None,None,None,0)}
+${fs_resource(None,None,None,0)}
+${clusterfs_resource(None,None,None,0)}
+${netfs_resource(None,None,None,0)}
+${nfsexport_resource(None,None,None,0)}
+${nfsclient_resource(None,None,None,0)}
+${nfsserver_resource(None,None,None,0)}
+${samba_resource(None,None,None,0)}
+${smb_resource(None,None,None,0)}
+${script_resource(None,None,None,0)}
+${apache_resource(None,None,None,0)}
+${mysql_resource(None,None,None,0)}
+${lvm_resource(None,None,None,0)}
+${openldap_resource(None,None,None,0)}
+${postgres8_resource(None,None,None,0)}
+${tomcat5_resource(None,None,None,0)}
+${tomcat6_resource(None,None,None,0)}
+${SAPInstance_resource(None,None,None,0)}
+${SAPDatabase_resource(None,None,None,0)}
+${ASEHAagent_resource(None,None,None,0)}
+${oracledb_resource(None,None,None,0)}
+${orainstance_resource(None,None,None,0)}
+${oralistener_resource(None,None,None,0)}
+${named_resource(None,None,None,0)}
+${drbd_resource(None,None,None,0)}
+${vm_resource(None,None,None,0)}
+
+<py:if test="model">
+  <py:for each="res in model.getResources()">
+    <?python
+      res_type = res.getTagName()
+      res_fn = eval('%s_resource' % res_type.replace('-', ''))
+    ?>
+    ${res_fn(res, None, None, 0)}
+  </py:for>
+</py:if>
+</div>
+
+<div py:def="resource_selector(model, dest, parentid)" id="resource_select_area">
+  <select name="res_select" class="resource_selector"
+    py:with="
+      svc_onchange_fn = 'insert_resource(this.options[this.selectedIndex].value, \'%s\', this.form, \'%s\')' % (dest, parentid);
+      res_onchange_fn = 'swap_resource_form(this.options[this.selectedIndex].value)';
+      cluster_version = tmpl_context.cluster.get_version();
+      cluster_os = tmpl_context.cluster.get_OS()"
+    py:attrs="{'onchange': model and svc_onchange_fn or res_onchange_fn, 'id': parentid and '%s_resource_selector' % parentid or 'resource_selector'}">
+    <py:if test="model" py:with="global_res = model.getResources()">
+      <py:if test="len(global_res) != 0">
+        <option disabled="disabled">-- Global Resources --</option>
+        <option py:for="res in global_res"
+          py:with="cur_res_name = res.getName();
+               cur_res_id = 'global_res_%s' % cur_res_name"
+          py:content="cur_res_name"
+          py:attrs="{'value': cur_res_id, 'id': cur_res_id }" />
+      </py:if>
+    </py:if>
+
+    <option selected="selected" disabled="disabled">-- Select a Resource Type --</option>
+    <option name="apache_resource" value="apache_resource">Apache</option>
+    <py:if test="cluster_version >= 3">
+      <option name="drbd_resource" value="drbd_resource">DRBD Resource</option>
+    </py:if>
+    <option name="fs_resource" value="fs_resource">Filesystem</option>
+    <py:choose test="cluster_version">
+      <py:when test="3">
+        <option name="clusterfs_resource" value="clusterfs_resource">GFS2</option>
+      </py:when>
+      <py:otherwise>
+        <option name="clusterfs_resource" value="clusterfs_resource">GFS/GFS2</option>
+      </py:otherwise>
+    </py:choose>
+    <option name="ip_resource" value="ip_resource">IP Address</option>
+    <option name="lvm_resource" value="lvm_resource">HA LVM</option>
+    <option name="mysql_resource" value="mysql_resource">MySQL</option>
+    <option name="netfs_resource" value="netfs_resource">NFS/CIFS Mount</option>
+    <option name="nfsclient_resource" value="nfsclient_resource">NFS Client</option>
+    <option name="nfsexport_resource" value="nfsexport_resource">NFS v3 Export</option>
+    <option py:if="cluster_version not in (1, 2)" name="nfsserver_resource" value="nfsserver_resource">NFS Server</option>
+    <option name="oracledb_resource" value="oracledb_resource">Oracle 10g/11g Failover Instance</option>
+    <option name="orainstance_resource" value="orainstance_resource">Oracle 10g Instance</option>
+    <option name="oralistener_resource" value="oralistener_resource">Oracle 10g Listener</option>
+    <option name="openldap_resource" value="openldap_resource">Open LDAP</option>
+    <option name="postgres8_resource" value="postgres8_resource">PostgreSQL 8</option>
+    <option name="SAPDatabase_resource" value="SAPDatabase_resource">SAP Database</option>
+    <option name="SAPInstance_resource" value="SAPInstance_resource">SAP Instance</option>
+    <option name="samba_resource" value="samba_resource">Samba Server</option>
+    <option py:if="cluster_os != 'RHEL'" name="smb_resource" value="smb_resource">(old) Samba Server</option>
+    <option name="script_resource" value="script_resource">Script</option>
+    <option name="ASEHAagent_resource" value="ASEHAagent_resource">Sybase ASE Failover Instance</option>
+    <option py:if="cluster_version &lt; 3" name="tomcat5_resource" value="tomcat5_resource">Tomcat 5</option>
+    <option py:if="cluster_version >= 3" name="tomcat6_resource" value="tomcat6_resource">Tomcat 6</option>
+    <option name="vm_resource" value="vm_resource" py:if="model">Virtual Machine</option>
+    <py:if test="cluster_version >= 3">
+      <option py:if="cluster_os != 'RHEL'" name="named_resource" value="named_resource">named (Bind 9) Resource</option>
+    </py:if>
+  </select>
+</div>
+
+<div py:def="service_properties_dialog(svc, model)">
+  <table class="detailstable"
+    py:with="recovery_policy = svc and svc.getRecoveryPolicy() or '';
+             central_processing = model and model.getResourceManagerPtr().getCentralProcessing() is True">
+    <tbody>
+    <tr>
+      <td>Service Name</td>
+      <td>
+        <input name="svc_name" type="text" class="text"
+          py:attrs="svc and {'value': svc.getName()}" />
+      </td>
+    </tr>
+    <tr>
+      <td>Automatically Start This Service</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="autostart"
+          py:attrs="(svc and svc.getAutostart()) and {'checked': 'checked'} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Run Exclusive</td>
+      <td>
+        <input py:if="central_processing" type="text" class="text"
+          py:attrs="svc and {'value':svc.getExclusive()} or {}"/>
+        <input py:if="not central_processing" type="checkbox" class="checkbox" name="exclusive"
+          py:attrs="(svc and svc.getExclusiveBinary()) and {'checked': 'checked'} or {}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Failover Domain</td>
+      <td>
+        <select name="domain"
+          py:with="cur_domain = svc and svc.getFailoverDomain() or ''">
+          <option value="">None</option>
+          <py:if test="model">
+           <option
+            py:for="fd in model.getFailoverDomains()"
+            py:with="fdom_name = fd.getName()"
+            value="${fdom_name}"
+            py:attrs="cur_domain == fdom_name and {'selected': 'selected'} or {}"
+            py:content="fdom_name"/>
+          </py:if>
+        </select>
+      </td>
+    </tr>
+    <tr py:if="expertMode">
+      <td>Enable NFS Lock Workarounds</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="nfslock"
+            py:attrs="(svc and svc.getNFSLock()) and {'checked':'checked'} or {}"/>
+      </td>
+    </tr>
+    <tr py:if="expertMode">
+      <td>Enable exportfs List Caching for NFS</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="nfs_client_cache"
+            py:attrs="(svc and svc.getNFSClientCache()) and {'checked':'checked'} or {}"/>
+      </td>
+    </tr>
+    <tr py:if="expertMode">
+      <td>Priority (Central Processing Mode Only)</td>
+      <td>
+        <input type="text" class="text" name="priority"
+            py:if="central_processing"
+            py:attrs="svc and {'value':svc.getPriority()} or {}"/>
+        <input disabled="disabled" type="text" class="text" value=""
+            py:if="not cluster_data or cluster_data.getResourceManagerPtr().getCentralProcessing() is not True"/>
+      </td>
+    </tr>
+    <tr py:if="expertMode">
+      <td>Top-level Service This Service Depends On</td>
+      <td>
+        <input name="depend" type="text" class="text"
+            onchange="if (!$.trim(this.value)) {$(':input[name=depend_mode]').attr('disabled', 'disabled');} else {$(':input[name=depend_mode]').removeAttr('disabled');}"
+            py:attrs="svc and {'value':svc.getDepend()} or {}"/>
+      </td>
+    </tr>
+    <tr py:if="expertMode">
+      <td>Service Dependency Mode</td>
+      <td>
+        <select name="depend_mode"
+            py:attrs="(not svc or not svc.getDepend()) and {'disabled':'disabled'} or {}">
+            <option value="hard"
+                py:attrs="(not svc or svc.getDependMode() == 'hard') and {'selected':'selected'} or {}">Hard</option>
+            <option value="soft"
+                py:attrs="(svc and svc.getDependMode() == 'soft') and {'selected':'selected'} or {}">Soft</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>Recovery Policy</td>
+      <td>
+        <select name="recovery"
+          onchange="update_restart_opts(this.options[this.selectedIndex].value)">
+          <option value="relocate"
+            py:attrs="recovery_policy == 'relocate' and {'selected':'selected'} or {}">Relocate</option>
+          <option value="restart"
+            py:attrs="recovery_policy == 'restart' and {'selected':'selected'} or {}">Restart</option>
+          <option value="restart-disable"
+            py:attrs="recovery_policy == 'restart-disable' and {'selected':'selected'} or {}">Restart-Disable</option>
+          <option value="disable"
+            py:attrs="recovery_policy == 'disable' and {'selected':'selected'} or {}">Disable</option>
+        </select>
+      </td>
+    </tr>
+    <tr><td>
+      <fieldset>
+      <legend>Restart Options</legend>
+      <table>
+        <tr>
+          <td>Maximum Number of Restart Failures Before Relocating</td>
+          <td>
+            <input type="text" class="text restart_opt" size="3"
+              name="max_restarts"
+              value="${svc and svc.getMaxRestarts() or ''}"
+              py:attrs="recovery_policy not in ('restart', 'restart-disable') and {'disabled':'disabled'} or {}"/>
+          </td>
+        </tr>
+        <tr>
+          <td>Length of Time in Seconds After Which to Forget a Restart</td>
+          <td>
+            <input type="text" class="text restart_opt" size="3"
+              name="restart_expire_time" id="restart_expire_time"
+              value="${svc and svc.getRestartExpireTime() or ''}"
+              py:attrs="recovery_policy not in ('restart', 'restart-disable') and {'disabled':'disabled'} or {}"/>
+          </td>
+        </tr>
+      </table>
+      </fieldset>
+    </td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div py:def="print_svc_children(model, res_list, parentid)">
+  <py:for each="cur_res in res_list"
+    py:with="cur_id_str = 'res_%d' % last_formid.next()">
+  <table class="detailstable" id="${'table_%s' % cur_id_str}">
+    <thead class="svc_padding">
+      <tr>
+        <th width="5"/>
+        <th width="98%"/>
+        <th colspan="3"/>
+      </tr>
+    </thead>
+    <tbody>
+    <tr class="svc_res_table">
+      <td></td>
+      <td align="right" colspan="4">
+        <a href="#"
+          py:attrs="{'onclick': '$(\'#table_%s\').remove();return false;' % cur_id_str}">Remove</a>
+      </td>
+    </tr>
+    <tr>
+    <td class="svc_padding"></td>
+    <td class="svc_content" colspan="4">
+    <div id="${cur_id_str}" class="reslevel">
+      <?python
+        cur_res_type = cur_res.getTagName()
+        cur_res_fn = eval('%s_resource' % cur_res_type.replace('-', ''))
+      ?>
+      <py:choose test="cur_res.isRefObject()">
+        <py:when test="True">
+          ${cur_res_fn(cur_res.getObj(), cur_id_str, parentid, 1)}
+        </py:when>
+        <py:otherwise>
+          ${cur_res_fn(cur_res, cur_id_str, parentid, 0)}
+        </py:otherwise>
+      </py:choose>
+      <div class="row rescntrl" py:if="cur_res_type != 'vm'">
+        <input type="button" class="button small silver"
+          value="Add Child Resource"
+          onclick="${'insert_resource_dialog(this.form, \'children_%s\', \'%s\')' % (cur_id_str, cur_id_str)}"/>
+      </div>
+      <div class="reschild" id="${'children_%s' % cur_id_str}">
+        <py:if test="cur_res.getChildren()">
+          ${print_svc_children(model, cur_res.getChildren(), cur_id_str)}
+        </py:if>
+      </div>
+    </div>
+  </td>
+  </tr>
+  </tbody>
+  </table>
+  </py:for>
+</div>
+</html>

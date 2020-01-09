@@ -1,0 +1,239 @@
+diff -ur a/luci/lib/ClusterConf/BaseResource.py b/luci/lib/ClusterConf/BaseResource.py
+--- a/luci/lib/ClusterConf/BaseResource.py	2012-01-23 11:20:32.000000000 -0500
++++ b/luci/lib/ClusterConf/BaseResource.py	2012-02-24 12:27:28.326945725 -0500
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2011 Red Hat, Inc.
++# Copyright (C) 2006-2012 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -17,11 +17,11 @@
+     self.deny_all_children = False
+     self.refcount = 1
+     self.reflist = []
+-  
++
+   def ref(self):
+     self.refcount += 1
+     return self.refcount
+-  
++
+   def unref(self):
+     self.refcount -= 1
+     return self.refcount
+@@ -115,6 +115,13 @@
+   def delResRestartExpireTime(self):
+     return self.removeAttribute('__restart_expire_time')
+ 
++  def getChildResources(self):
++    ret = []
++    for i in self.getChildren():
++      if issubclass(type(i), BaseResource):
++        ret.append(i)
++    return ret
++
+   def delSubtreeProperties(self):
+ 	self.delIndependentSubtree()
+ 	self.delEnforceTimeouts()
+diff -ur a/luci/lib/ClusterConf/FailoverDomain.py b/luci/lib/ClusterConf/FailoverDomain.py
+--- a/luci/lib/ClusterConf/FailoverDomain.py	2012-01-23 11:20:32.000000000 -0500
++++ b/luci/lib/ClusterConf/FailoverDomain.py	2012-02-24 12:27:28.326945725 -0500
+@@ -75,9 +75,9 @@
+     self.children = list()
+ 
+   def removeDefaults(self):
+-    if self.getRestricted() == self.DEFAULTS.get('restricted'):
++    if self.getRestricted() == int(self.DEFAULTS.get('restricted')):
+         self.delRestricted()
+-    if self.getOrdered() == self.DEFAULTS.get('ordered'):
++    if self.getOrdered() == int(self.DEFAULTS.get('ordered')):
+         self.delOrdered()
+-    if self.getNoFailback() == self.DEFAULTS.get('nofailback'):
++    if self.getNoFailback() == int(self.DEFAULTS.get('nofailback')):
+         self.delNoFailback()
+diff -ur a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+--- a/luci/lib/ClusterConf/ModelBuilder.py	2012-02-24 12:27:04.236530169 -0500
++++ b/luci/lib/ClusterConf/ModelBuilder.py	2012-02-24 12:27:28.329945652 -0500
+@@ -8,6 +8,7 @@
+ from xml.dom import minidom, Node
+ from TagObject import TagObject
+ from RefObject import RefObject
++from BaseResource import BaseResource
+ 
+ import Cluster
+ 
+@@ -340,7 +341,7 @@
+   ##entities after the object tree is built.
+   def resolve_references(self):
+     reset_list_sentinel = True
+-    while(reset_list_sentinel is True):
++    while reset_list_sentinel is True:
+       reset_list_sentinel = False
+       resource_children = self.resourcemanager_ptr.getChildren()
+       for r_child in resource_children:
+@@ -364,7 +365,7 @@
+     result = False
+     #This entity has a "ref" attr...need to walk through resources list
+     #and look for a match
+-    recs = self.resources_ptr.getChildren()
++    recs = self.getResources()
+     for rec in recs:
+       if rec.getTagName() == entity.getTagName():
+         if entity.getTagName() == "ip":
+@@ -822,8 +823,7 @@
+   def getServices(self):
+     rg_list = list()
+     if self.resourcemanager_ptr is not None:
+-      kids = self.resourcemanager_ptr.getChildren()
+-      for kid in kids:
++      for kid in self.resourcemanager_ptr.getChildren():
+         if kid.getTagName() in (Service.TAG_NAME, Vm.TAG_NAME):
+           rg_list.append(kid)
+ 
+@@ -862,10 +862,22 @@
+           break
+ 
+   def getResources(self):
++    ret = []
+     if self.resources_ptr is not None:
+-      return self.resources_ptr.getChildren()
+-    else:
+-      return list()
++      for i in self.resources_ptr.getChildren():
++        if issubclass(type(i), BaseResource):
++            ret.append(i)
++        else:
++          self.errors = True
++          try:
++            if not i.errors:
++              i.errors = True
++              cur_msg = 'Expecting a resource element, got %s' % i.getTagName()
++              self.errmsg.append(cur_msg)
++              log.error("Error parsing cluster.conf XML: %s" % cur_msg)
++          except:
++            pass
++    return ret
+ 
+   def getResourcesPtr(self):
+     return self.resources_ptr
+@@ -929,7 +941,7 @@
+     return gobj
+ 
+   def getResourceByName(self, name):
+-    resources = self.resources_ptr.getChildren()
++    resources = self.getResources()
+     res = filter(lambda x: x.getName() == name, resources)
+     if not res or len(res) < 1:
+       raise KeyError, name
+@@ -938,7 +950,7 @@
+     return res[0]
+ 
+   def deleteResource(self, name):
+-    for i in self.resources_ptr.getChildren():
++    for i in self.getResources():
+       if i.getName() == name:
+         self.resources_ptr.removeChild(i)
+         return i
+diff -ur a/luci/lib/ClusterConf/QuorumD.py b/luci/lib/ClusterConf/QuorumD.py
+--- a/luci/lib/ClusterConf/QuorumD.py	2012-01-23 11:20:32.000000000 -0500
++++ b/luci/lib/ClusterConf/QuorumD.py	2012-02-24 12:27:28.327945701 -0500
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2011 Red Hat, Inc.
++# Copyright (C) 2006-2012 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -6,6 +6,7 @@
+ # Free Software Foundation.
+ 
+ from TagObject import TagObject
++from Heuristic import Heuristic
+ 
+ TAG_NAME = "quorumd"
+ 
+@@ -214,8 +215,15 @@
+   def delUseUptime(self):
+     return self.removeAttribute('use_uptime')
+ 
++  def getHeuristics(self):
++    ret = []
++    for i in self.getChildren():
++      if type(i) == Heuristic:
++        ret.append(i)
++    return ret
++
+   def getHeuristicsLen(self):
+-    return len(self.children)
++    return len(self.getHeuristics())
+ 
+   def removeDefaults(self):
+     if self.getReboot() == int(self.DEFAULTS.get('reboot')):
+diff -ur a/luci/lib/ClusterConf/Service.py b/luci/lib/ClusterConf/Service.py
+--- a/luci/lib/ClusterConf/Service.py	2012-01-23 11:20:32.000000000 -0500
++++ b/luci/lib/ClusterConf/Service.py	2012-02-24 12:27:28.327945701 -0500
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2010 Red Hat, Inc.
++# Copyright (C) 2006-2012 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -6,6 +6,7 @@
+ # Free Software Foundation.
+ 
+ from TagObject import TagObject
++from BaseResource import BaseResource
+ 
+ TAG_NAME = "service"
+ 
+@@ -127,6 +128,13 @@
+   def delDepend(self):
+     return self.removeAttribute('depend')
+ 
++  def getChildResources(self):
++    ret = []
++    for i in self.getChildren():
++      if issubclass(type(i), BaseResource):
++        ret.append(i)
++    return ret
++
+   def removeDefaults(self):
+     if self.getAutostart() == int(self.DEFAULTS.get('autostart')):
+         self.delAutostart()
+diff -ur a/luci/templates/configure.html b/luci/templates/configure.html
+--- a/luci/templates/configure.html	2012-01-23 11:20:32.000000000 -0500
++++ b/luci/templates/configure.html	2012-02-24 12:27:28.328945677 -0500
+@@ -317,7 +317,7 @@
+               </tr>
+               </py:when>
+               <py:otherwise>
+-           <tr py:for="(hnum, hobj) in enumerate(quorumd_ptr.getChildren())"
++           <tr py:for="(hnum, hobj) in enumerate(quorumd_ptr.getHeuristics())"
+                class="qdisk_heuristic" id="qdisk_heuristic${hnum}">
+             <td>
+                 <input type="text" class="text" name="heuristic${hnum}:hprog"
+diff -ur a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+--- a/luci/templates/resource_list.html	2012-02-24 12:27:04.236530169 -0500
++++ b/luci/templates/resource_list.html	2012-02-24 12:27:28.329945652 -0500
+@@ -1981,8 +1981,8 @@
+           onclick="${'insert_resource_dialog(this.form, \'children_%s\', \'%s\')' % (cur_id_str, cur_id_str)}"/>
+       </div>
+       <div class="reschild" id="${'children_%s' % cur_id_str}">
+-        <py:if test="cur_res.getChildren()">
+-          ${print_svc_children(model, cur_res.getChildren(), cur_id_str)}
++        <py:if test="cur_res.getChildResources()">
++          ${print_svc_children(model, cur_res.getChildResources(), cur_id_str)}
+         </py:if>
+       </div>
+     </div>
+diff -ur a/luci/templates/service.html b/luci/templates/service.html
+--- a/luci/templates/service.html	2012-01-23 11:20:32.000000000 -0500
++++ b/luci/templates/service.html	2012-02-24 12:27:28.329945652 -0500
+@@ -220,7 +220,7 @@
+                         ${print_svc_children(cluster_data, [ svc ], 'esvc_root')}
+                     </py:when>
+                     <py:otherwise>
+-                        ${print_svc_children(cluster_data, svc.getChildren(), 'esvc_root')}
++                        ${print_svc_children(cluster_data, svc.getChildResources(), 'esvc_root')}
+                     </py:otherwise>
+             </py:choose>
+             </div>

@@ -1,0 +1,40 @@
+diff -urN luci-0.26.0-foo/luci/validation/validate_fence.py luci-0.26.0/luci/validation/validate_fence.py
+--- luci-0.26.0-foo/luci/validation/validate_fence.py	2013-09-26 17:43:55.075813367 +0200
++++ luci-0.26.0/luci/validation/validate_fence.py	2013-09-26 18:40:01.595247007 +0200
+@@ -121,7 +121,7 @@
+ 
+ 		try:
+ 			# passwords may begin and/or end with blank characters
+-			if not attr_name in ['passwd', 'vmpasswd', 'snmp_priv_passwd']:
++			if not attr_name in ('passwd', 'vmpasswd', 'snmp_priv_passwd'):
+ 				val = val.strip()
+ 			if not val:
+ 				val = None
+@@ -136,7 +136,8 @@
+ 					fence.removeAttribute(attr_name)
+ 				except:
+ 					pass
+-		else:
++		# unfencing in passed params (when required) is just internal tracking
++		elif attr_name != 'unfencing':
+ 			fence.addAttribute(attr_name, val)
+ 	return errors
+ 
+@@ -1207,7 +1208,7 @@
+ 		('nodename', False),
+ 		('key', False),
+ 		('delay', False),
+-		('unfencing', True),  # just a template sanity-check
++		('unfencing', True),  # just a template sanity-check, not propagated
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1234,7 +1235,7 @@
+ def val_sanlock_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('host_id', True),
+-		('unfencing', True),  # just a template sanity-check
++		('unfencing', True),  # just a template sanity-check, not propagated
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)

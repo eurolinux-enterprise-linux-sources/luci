@@ -1,0 +1,1998 @@
+diff -ur a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -515,7 +515,7 @@
+             self.get_model()
+             self.model.getResourceByName(resourcename)
+         except Exception, e:
+-            resourcename=None
++            resourcename = None
+ 
+         return dict(page='nodes', name=resourcename, base_url=base_url, resources_cmd=resources_cmd)
+ 
+@@ -915,7 +915,7 @@
+         redirect(tmpl_context.cluster_url)
+ 
+     @expose("luci.templates.fence")
+-    def fences(self, *args):
++    def fences(self, *args, **kwargs):
+         fences_cmd = '/cluster/%s/fences_cmd' % self.name
+ 
+         try:
+@@ -924,14 +924,14 @@
+             flash(e, status="warning")
+             redirect("/")
+  
+-        if len(args) == 1:
+-            if request.response_ext:
+-                fencename = '%s%s' % (args[0], request.response_ext)
+-            else:
+-                fencename = args[0]
++        if len(args) >= 1:
++            fencename = '/'.join([unquote_plus(a) for a in args])
+         else:
+             fencename = None
+ 
++        if 'name' in request.params:
++            fencename = request.params['name']
++
+         self.get_model()
+         if not self.model.getFenceDeviceByName(fencename):
+             fencename = None
+@@ -941,6 +941,7 @@
+     @expose("luci.templates.fence")
+     def fences_cmd(self, command=None, **kw):
+         tmpl_context.cluster_url = '/cluster/%s/fences' % self.name
++        redir_fmt = '%s?name=%s'
+ 
+         try:
+             permission_config(self.name)
+@@ -973,12 +974,18 @@
+             fret = validateNewFenceDevice(self.model, **kw)
+             if fret[0] is True:
+                 rh.update_cluster_conf(self.model)
+-                log.info('User "%s" created fence devices "%s" in cluster "%s"'
++                flash(_('Created fence device "%s"') % cur_list[0])
++                log.info('User "%s" created fence device "%s" in cluster "%s"'
+                     % (self.username, ', '.join(cur_list), self.name))
++                redirect(redir_fmt
++                    % (tmpl_context.cluster_url, quote_plus(cur_list[0])))
+             else:
+                 msgs = fret[1]
+                 if msgs and len(msgs) > 0:
+                     flash(', '.join(msgs), status="error")
++                else:
++                    flash(_('Creating fence device %s failed') % cur_list[0],
++                            status="error")
+         elif command == 'Delete':
+             log.info('User "%s" deleted fence devices "%s" in cluster "%s"'
+                 % (self.username, ', '.join(cur_list), self.name))
+@@ -995,12 +1002,18 @@
+             fret = validateFenceDevice(self.model, **kw)
+             if fret[0] is True:
+                 rh.update_cluster_conf(self.model)
++                flash(_('Edited fence device "%s"') % cur_list[0])
+                 log.info('User "%s" updated fence device "%s" in cluster "%s"'
+                     % (self.username, ', '.join(cur_list), self.name))
++                redirect(redir_fmt
++                    % (tmpl_context.cluster_url, quote_plus(cur_list[0])))
+             else:
+                 msgs = fret[1]
+                 if msgs and len(msgs) > 0:
+                     flash(', '.join(msgs), status="error")
++                else:
++                    flash(_('Updating fence device %s failed') % cur_list[0],
++                            status="error")
+         else:
+             log.error('User "%s" submitted unknown command "%s" for fence devices "%s" from cluster "%s"'
+                 % (self.username, command, ', '.join(cur_list), self.name))
+diff -ur a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -60,6 +60,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -211,6 +239,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -348,6 +404,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -485,6 +569,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -806,6 +918,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -878,6 +1018,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -1142,6 +1310,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -1214,6 +1410,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -1293,6 +1517,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -1357,17 +1609,38 @@
+       </td>
+     </tr>
+     <tr>
+-      <td>Separator</td>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="separator"
+-          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('separator')} or {}"/>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
+       </td>
+     </tr>
+     <tr>
+-      <td>Power Wait (seconds)</td>
++      <td>Shell Timeout (seconds)</td>
+       <td>
+-        <input type="text" class="text" name="power_wait"
+-          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
+       </td>
+     </tr>
+   </table>
+@@ -1458,6 +1731,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -1530,6 +1831,41 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -1619,6 +1955,13 @@
+         </select>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -1711,6 +2054,41 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -1774,6 +2152,55 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('telnet_port')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Force Command Prompt</td>
++      <td>
++        <input type="text" class="text" name="cmd_prompt"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -1916,6 +2343,27 @@
+         </py:with>
+       </td>
+     </tr>
++    <tr>
++      <td>IPMI Operation Timeout</td>
++      <td>
++        <input name="timeout" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('timeout')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -1986,6 +2434,41 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -2135,6 +2618,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -2221,6 +2732,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -2353,6 +2892,41 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -2416,6 +2990,13 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('hidden_page')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -2567,6 +3148,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -2661,6 +3270,41 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (seconds)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -2810,6 +3454,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -2886,6 +3558,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -3191,6 +3891,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -3342,6 +4070,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -3428,6 +4184,34 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+diff -ur a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -28,6 +28,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('switch')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td>
+       <fieldset>
+         <legend>SSH</legend>
+@@ -83,6 +90,13 @@
+       </td>
+     </tr>
+     <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
+       <td>Unfencing</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="unfencing"
+@@ -123,6 +137,13 @@
+       </td>
+     </tr>
+     <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
+       <td>Path to SSH Identity File</td>
+       <td>
+         <input type="text" class="text" name="identity_file"
+@@ -154,6 +175,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td>
+       <fieldset>
+         <legend>SSH</legend>
+@@ -209,6 +237,13 @@
+       </td>
+     </tr>
+     <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
+         <td>
+             <span title="Enable SSL operation">Use SSL</span>
+         </td>
+@@ -241,6 +276,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td>
+       <fieldset>
+         <legend>SSH</legend>
+@@ -288,6 +330,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td>
+       <fieldset>
+         <legend>SSH</legend>
+@@ -335,6 +384,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -417,6 +473,13 @@
+       </td>
+     </tr>
+     <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
++    <tr>
+       <td>Unfencing</td>
+       <td>
+         <input type="checkbox" class="checkbox" name="unfencing"
+@@ -541,6 +604,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('domain')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -565,6 +635,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('domain')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -613,6 +690,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td>
+       <fieldset>
+         <legend>SSH</legend>
+@@ -684,6 +768,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td>
+       <fieldset>
+         <legend>SSH</legend>
+@@ -731,6 +822,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -755,6 +853,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -779,6 +884,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -803,6 +915,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -827,6 +946,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -851,6 +977,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -875,6 +1008,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -959,6 +1099,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -973,16 +1120,6 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
+-<div py:def="fence_drac_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_drac_instance"
+-  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+-
+-  <div class="emptyfenceinst">No additional parameters</div>
+-  <input type="hidden" name="fence_type" value="fence_drac" />
+-  <input type="hidden" name="fence_instance" value="1" />
+-  <input type="hidden" name="parent_fencedev"
+-    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+-</div>
+-
+ <div py:def="fence_alom_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_alom_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+ 
+@@ -1095,6 +1232,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -1119,6 +1263,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td>
+       <fieldset>
+         <legend>SSH</legend>
+@@ -1165,15 +1316,6 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
+-<div py:def="fence_drac_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_drac_instance"
+-  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+-
+-  <div class="emptyfenceinst">No additional parameters</div>
+-  <input type="hidden" name="fence_type" value="fence_drac" />
+-  <input type="hidden" name="fence_instance" value="1" />
+-  <input type="hidden" name="parent_fencedev"
+-    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+-</div>
+ <div py:def="fence_instance_container(nodename)"
+   id="fence_instance_container" class="hidden">
+ ${fence_apc_instance(None, None, None)}
+diff -ur a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -148,6 +148,10 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+ 	return errors
+@@ -161,6 +165,10 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -174,6 +182,10 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -240,6 +252,10 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -253,6 +269,10 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -275,8 +295,11 @@
+ 		('login', True),
+ 		('passwd', False),
+ 		('passwd_script', False),
+-		('separator', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -292,6 +315,10 @@
+ 		('vmpasswd', False),
+ 		('vmpasswd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -315,6 +342,10 @@
+ 		('passwd_script', False),
+ 		('hmc_version', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -355,6 +386,11 @@
+ 		('passwd_script', False),
+ 		('cmd_prompt', False),
+ 		('power_wait', False),
++		('delay', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -367,6 +403,13 @@
+ 		('telnet_port', False),
+ 		('passwd', False),
+ 		('passwd_script', False),
++		('cmd_prompt', False),
++		('power_wait', False),
++		('delay', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -379,6 +422,7 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('hidden_page', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -396,6 +440,11 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('power_wait', False),
++		('delay', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -410,6 +459,7 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('drac_version', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -434,6 +484,9 @@
+ 		('lanplus', False),
+ 		('cipher', False),
+ 		('privlvl', False),
++		('timeout', False),
++		('power_wait', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -447,6 +500,11 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('power_wait', False),
++		('delay', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -461,6 +519,10 @@
+ 		('passwd_script', False),
+ 		('cmd_prompt', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -513,6 +575,10 @@
+ 		('snmp_priv_passwd', False),
+ 		('snmp_priv_passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -528,6 +594,10 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -548,6 +618,10 @@
+ 		('snmp_priv_passwd', False),
+ 		('snmp_priv_passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -568,6 +642,10 @@
+ 		('snmp_priv_passwd', False),
+ 		('snmp_priv_passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -583,6 +661,10 @@
+ 		('ssl', False),
+ 		('suborg', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -611,6 +693,10 @@
+ 		('snmp_priv_passwd', False),
+ 		('snmp_priv_passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -631,6 +717,10 @@
+ 		('snmp_priv_passwd', False),
+ 		('snmp_priv_passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -647,6 +737,11 @@
+ 		('identity_file', False),
+ 		('cmd_prompt', False),
+ 		('power_wait', False),
++		('delay', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -660,6 +755,11 @@
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('power_wait', False),
++		('delay', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -680,6 +780,10 @@
+ 		('snmp_priv_passwd', False),
+ 		('snmp_priv_passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -700,6 +804,10 @@
+ 		('snmp_priv_passwd', False),
+ 		('snmp_priv_passwd_script', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -714,6 +822,10 @@
+ 		('passwd_script', False),
+ 		('ssl', False),
+ 		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -827,6 +939,7 @@
+ 		('switch', False),
+ 		('secure', False),
+ 		('identity_file', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -837,6 +950,7 @@
+ 		('port', True),
+ 		('secure', False),
+ 		('identity_file', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -847,6 +961,7 @@
+ 		('port', True),
+ 		('secure', False),
+ 		('identity_file', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -879,6 +994,7 @@
+ def val_sanbox2_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -890,6 +1006,7 @@
+ 		('switch', False),
+ 		('secure', False),
+ 		('identity_file', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -901,6 +1018,7 @@
+ 		('switch', False),
+ 		('secure', False),
+ 		('identity_file', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -918,6 +1036,7 @@
+ 	params = (
+ 		('lpan', True),
+ 		('pserver', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -929,6 +1048,7 @@
+ 		('managed', True),
+ 		('secure', True),
+ 		('identity_file', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -945,6 +1065,7 @@
+ def val_xvm_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('domain', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -953,6 +1074,7 @@
+ def val_virt_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('domain', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -963,6 +1085,7 @@
+ 		('ssl', False),
+ 		('port', False),
+ 		('uuid', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -975,6 +1098,7 @@
+ 		('port', True),
+ 		('secure', False),
+ 		('identity_file', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -993,6 +1117,7 @@
+ 		('port', True),
+ 		('secure', False),
+ 		('identity_file', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1001,6 +1126,7 @@
+ def val_cisco_mds_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1009,6 +1135,7 @@
+ def val_cisco_ucs_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1017,6 +1144,7 @@
+ def val_eps_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1025,6 +1153,7 @@
+ def val_ibmblade_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1035,6 +1164,7 @@
+ 		('port', True),
+ 		('secure', False),
+ 		('identity_file', False),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1043,6 +1173,7 @@
+ def val_ifmib_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1051,6 +1182,7 @@
+ def val_apc_snmp_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1059,6 +1191,7 @@
+ def val_intelmodular_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1076,6 +1209,7 @@
+ def val_rhevm_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1084,6 +1218,7 @@
+ def val_eaton_snmp_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
++		('delay', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+diff -ur a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -604,13 +604,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('domain')}"/>
+       </td>
+     </tr>
+-    <tr>
+-      <td>Delay (optional)</td>
+-      <td>
+-        <input name="delay" type="text" class="text"
+-          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+-      </td>
+-    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -666,6 +659,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('domain')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+diff -ur a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -1201,6 +1201,7 @@
+ 	params = (
+ 		('nodename', False),
+ 		('key', False),
++		('unfencing', True),  # just a template sanity-check
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1223,9 +1224,11 @@
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+ 	return errors
++
+ def val_sanlock_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('host_id', True),
++		('unfencing', True),  # just a template sanity-check
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)

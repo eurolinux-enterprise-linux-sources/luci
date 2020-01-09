@@ -1,0 +1,96 @@
+diff --git a/luci/controllers/root.py b/luci/controllers/root.py
+index 9bcc973..dc354bf 100644
+--- a/luci/controllers/root.py
++++ b/luci/controllers/root.py
+@@ -16,6 +16,10 @@ from luci.controllers.async import AsyncController
+ import luci.validation.validate_cluster_prop as vcp
+ from luci.lib.db_helpers import db_remove_cluster, grant_all_cluster_roles
+ 
++from luci.model import DBSession
++from luci.model.auth import User
++
++
+ __all__ = ['RootController']
+ 
+ 
+@@ -121,6 +125,20 @@ class RootController(BaseController):
+         tmpl_context.show_sidebar = True
+         tmpl_context.homebase = True
+         tmpl_context.cluster = []
++
++        try:
++            identity = request.environ.get('repoze.who.identity')
++            username = identity['repoze.who.userid']
++
++            db_obj = User.by_user_name(username)
++            if db_obj and db_obj.email_address == '':
++                from luci.lib.strings import stern_warning
++                # User was just created
++                db_obj.email_address = username
++                tmpl_context.stern_warning = stern_warning
++        except:
++            pass
++
+         return dict(page='homebase', homebasepage=homebasepage, args=args,
+                     base_url='/cluster')
+ 
+diff --git a/luci/lib/plugin_sasl2auth.py b/luci/lib/plugin_sasl2auth.py
+index 5143174..bd00051 100644
+--- a/luci/lib/plugin_sasl2auth.py
++++ b/luci/lib/plugin_sasl2auth.py
+@@ -47,7 +47,7 @@ class Sasl2AuthPlugin(object):
+                     db_user = User(
+                         user_name=username,
+                         display_name=username,
+-                        email_address=username,
++                        email_address='',
+                     )
+                     try:
+                         DBSession.add(db_user)
+diff --git a/luci/lib/strings.py b/luci/lib/strings.py
+index ac948cf..17a7351 100644
+--- a/luci/lib/strings.py
++++ b/luci/lib/strings.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2010 Red Hat, Inc.
++# Copyright (C) 2009-2011 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -14,6 +14,8 @@ from luci.lib.helpers import ugettext as _
+ __all__ = ['TitleStrings', 'VerboseStrings']
+ 
+ 
++stern_warning = _("Luci is a graphical user interface that you can use to administer the Red Hat High Availability Add-On. Note, however, that in order to use this interface effectively you need to have a good and clear understanding of the underlying concepts. Learning about cluster configuration by exploring the available features in the user interface is not recommended, as it may result in a system that is not robust enough to keep all services running when components fail.")
++
+ class TitleStrings:
+     """Strings used in the title of the page.
+ 
+diff --git a/luci/templates/master.html b/luci/templates/master.html
+index 0417409..27abc80 100644
+--- a/luci/templates/master.html
++++ b/luci/templates/master.html
+@@ -59,6 +59,23 @@
+     <py:with vars="flash=tg.flash_obj.render('flash', use_js=False)">
+       <div py:if="flash" py:content="XML(flash)" class="message"/>
+     </py:with>
++    <py:if test="'stern_warning' in dir(tmpl_context) and tmpl_context.stern_warning">
++      <div id="stern_warning" title="Warning">
++        <p>${tmpl_context.stern_warning}</p>
++      </div>
++      <script type="text/javascript">
++        $('#stern_warning').dialog({
++          resizable: false,
++          modal: true,
++          width: '650px',
++          buttons: {
++            "Ok": function() {
++              $(this).dialog('close');
++            }
++          }
++        });
++      </script>
++    </py:if>
+     <py:if test="'flash2' in session">
+     <div py:for="message in session['flash2']" class="message" id="${message.hash}">
+       <div py:if="message.hideable" class="hide_btn">

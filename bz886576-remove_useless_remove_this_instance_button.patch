@@ -1,0 +1,426 @@
+From a455f295951af2b64ba7a88667d8e18f89fb0573 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 12 Aug 2013 16:44:31 -0400
+Subject: [PATCH] luci: Remove useless "remove this instance" button
+
+Remove the "remove this instance" button from the fence device
+instance creation form because it did nothing at all. There is already
+a button to remove an instance on the cluster nodes page.
+
+Resolves: rhbz#886576
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/fence_instances.html | 186 ------------------------------------
+ 1 file changed, 186 deletions(-)
+
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index 34a0d28..dd42b09 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -58,12 +58,6 @@
+         </table>
+       </fieldset>
+     </td></tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_apc" />
+@@ -105,12 +99,6 @@
+         <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_egenera" />
+@@ -150,12 +138,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('identity_file')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_lpar" />
+@@ -205,12 +187,6 @@
+         </table>
+       </fieldset>
+     </td></tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_vmware" />
+@@ -252,12 +228,6 @@
+               py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('ssl') and {'checked': 'checked'}"/>
+         </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_vmware_soap" />
+@@ -306,12 +276,6 @@
+         </table>
+       </fieldset>
+     </td></tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_wti" />
+@@ -360,12 +324,6 @@
+         </table>
+       </fieldset>
+     </td></tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_virsh" />
+@@ -391,12 +349,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_rhevm" />
+@@ -424,12 +376,6 @@
+         <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_brocade" />
+@@ -448,12 +394,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_vixel" />
+@@ -488,12 +428,6 @@
+         <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_sanbox2" />
+@@ -523,12 +457,6 @@
+         <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_sanlock" />
+@@ -556,12 +484,6 @@
+         <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_mcdata" />
+@@ -580,12 +502,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('ipaddress')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_gnbd" />
+@@ -604,12 +520,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('domain')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_bullpap" />
+@@ -635,12 +545,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_virt" />
+@@ -666,12 +570,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_xvm" />
+@@ -720,12 +618,6 @@
+         </table>
+       </fieldset>
+     </td></tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_bladecenter" />
+@@ -744,12 +636,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_rackswitch" />
+@@ -798,12 +684,6 @@
+         </table>
+       </fieldset>
+     </td></tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_ldom" />
+@@ -829,12 +709,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_cisco_mds" />
+@@ -860,12 +734,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_cisco_ucs" />
+@@ -891,12 +759,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_eps" />
+@@ -922,12 +784,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_ibmblade" />
+@@ -953,12 +809,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_ifmib" />
+@@ -984,12 +834,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_intelmodular" />
+@@ -1015,12 +859,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_apc_snmp" />
+@@ -1156,12 +994,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_ipdu" />
+@@ -1266,12 +1098,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+   <input type="hidden" name="fence_type" value="fence_scsi" />
+   <input type="hidden" name="fence_instance" value="1" />
+@@ -1296,12 +1122,6 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
+       </td>
+     </tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_eaton_snmp" />
+@@ -1350,12 +1170,6 @@
+         </table>
+       </fieldset>
+     </td></tr>
+-    <tr><td colspan="2">
+-      <div>
+-        <input type="button" name="remove_fence" value="Remove this instance"
+-          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+-      </div>
+-    </td></tr>
+   </table>
+ 
+   <input type="hidden" name="fence_type" value="fence_hpblade" />
+-- 
+1.8.3.1
+

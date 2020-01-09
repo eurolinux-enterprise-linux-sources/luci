@@ -1,0 +1,33 @@
+commit 6166adff2b390faf7be78697899116eb3f94f0d6
+Author: Ryan McCabe <rmccabe@redhat.com>
+Date:   Wed May 9 16:13:18 2012 -0400
+
+    Allow new IF MIB and Intel Modular fencing agents to be configured for
+    clusters running RHEL6.
+    
+    Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index 8b2ece3..2046c0d 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -3104,9 +3104,10 @@ ${fence_unknown(None,0)}
+       <py:if test="cluster_version == 3 and cluster_os != 'RHEL'">
+         <option name="fence_cpint" value="fence_cpint">IBM S/390 cpint</option>
+         <option name="fence_zvm" value="fence_zvm">IBM S/390 z/VM</option>
++      </py:if>
++      <py:if test="cluster_version == 3">
+         <option name="fence_ifmib" value="fence_ifmib">IF MIB</option>
+         <option name="fence_intelmodular" value="fence_intelmodular">Intel Modular</option>
+-        <option name="fence_virsh" value="fence_virsh">virsh fence agent</option>
+       </py:if>
+ 
+       <option name="fence_rhevm" value="fence_rhevm">RHEV-M fencing</option>
+@@ -3124,6 +3125,7 @@ ${fence_unknown(None,0)}
+       <py:if test="cluster_version == 3 and cluster_os != 'RHEL'">
+         <option name="fence_alom" value="fence_alom">Sun ALOM</option>
+         <option name="fence_ldom" value="fence_ldom">Sun LDOM</option>
++        <option name="fence_virsh" value="fence_virsh">virsh fence agent</option>
+       </py:if>
+ 
+       <option py:if="cluster_version == 2" name="fence_vixel" value="fence_vixel">Vixel SAN Switch</option>

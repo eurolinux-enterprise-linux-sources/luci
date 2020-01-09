@@ -1,0 +1,72 @@
+diff --git a/luci/templates/admin.html b/luci/templates/admin.html
+index 10a0d39..f82ee34 100644
+--- a/luci/templates/admin.html
++++ b/luci/templates/admin.html
+@@ -190,11 +190,11 @@
+                  <select name="log_level_tg.i18n"
+                    py:with="cur_level=logging.getLogger('tg.i18n').getEffectiveLevel()">
+                    <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+-                   <option value="DEBUG" py:attrs="cur_level==10 and {'selected':'selected'} or None">debug</option>
+-                   <option value="INFO" py:attrs="cur_level==20 and {'selected':'selected'} or None">info</option>
+-                   <option value="WARNING" py:attrs="cur_level==30 and {'selected':'selected'} or None">warning</option>
+-                   <option value="ERROR" py:attrs="cur_level==40 and {'selected':'selected'} or None">error</option>
+-                   <option value="CRITICAL" py:attrs="cur_level==50 and {'selected':'selected'} or None">critical</option>
++                   <option value="DEBUG" py:attrs="cur_level in (10, 'DEBUG') and {'selected':'selected'} or None">debug</option>
++                   <option value="INFO" py:attrs="cur_level in (20, 'INFO') and {'selected':'selected'} or None">info</option>
++                   <option value="WARNING" py:attrs="cur_level in (30, 'WARNING', 'WARN') and {'selected':'selected'} or None">warning</option>
++                   <option value="ERROR" py:attrs="cur_level in (40, 'ERROR') and {'selected':'selected'} or None">error</option>
++                   <option value="CRITICAL" py:attrs="cur_level in (50, 'CRITICAL') and {'selected':'selected'} or None">critical</option>
+                  </select>
+                </td>
+              </tr>
+@@ -204,11 +204,11 @@
+                  <select name="log_level_sqlalchemy"
+                    py:with="cur_level=logging.getLogger('sqlalchemy').getEffectiveLevel()">
+                    <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+-                   <option value="DEBUG" py:attrs="cur_level==10 and {'selected':'selected'} or None">debug</option>
+-                   <option value="INFO" py:attrs="cur_level==20 and {'selected':'selected'} or None">info</option>
+-                   <option value="WARNING" py:attrs="cur_level==30 and {'selected':'selected'} or None">warning</option>
+-                   <option value="ERROR" py:attrs="cur_level==40 and {'selected':'selected'} or None">error</option>
+-                   <option value="CRITICAL" py:attrs="cur_level==50 and {'selected':'selected'} or None">critical</option>
++                   <option value="DEBUG" py:attrs="cur_level in (10, 'DEBUG') and {'selected':'selected'} or None">debug</option>
++                   <option value="INFO" py:attrs="cur_level in (20, 'INFO') and {'selected':'selected'} or None">info</option>
++                   <option value="WARNING" py:attrs="cur_level in (30, 'WARNING', 'WARN') and {'selected':'selected'} or None">warning</option>
++                   <option value="ERROR" py:attrs="cur_level in (40, 'ERROR') and {'selected':'selected'} or None">error</option>
++                   <option value="CRITICAL" py:attrs="cur_level in (50, 'CRITICAL') and {'selected':'selected'} or None">critical</option>
+                  </select>
+                </td>
+              </tr>
+@@ -218,11 +218,11 @@
+                  <select name="log_level_luci"
+                    py:with="cur_level=logging.getLogger('luci').getEffectiveLevel()">
+                    <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+-                   <option value="DEBUG" py:attrs="cur_level==10 and {'selected':'selected'} or None">debug</option>
+-                   <option value="INFO" py:attrs="cur_level==20 and {'selected':'selected'} or None">info</option>
+-                   <option value="WARNING" py:attrs="cur_level==30 and {'selected':'selected'} or None">warning</option>
+-                   <option value="ERROR" py:attrs="cur_level==40 and {'selected':'selected'} or None">error</option>
+-                   <option value="CRITICAL" py:attrs="cur_level==50 and {'selected':'selected'} or None">critical</option>
++                   <option value="DEBUG" py:attrs="cur_level in (10, 'DEBUG') and {'selected':'selected'} or None">debug</option>
++                   <option value="INFO" py:attrs="cur_level in (20, 'INFO') and {'selected':'selected'} or None">info</option>
++                   <option value="WARNING" py:attrs="cur_level in (30, 'WARNING', 'WARN') and {'selected':'selected'} or None">warning</option>
++                   <option value="ERROR" py:attrs="cur_level in (40, 'ERROR') and {'selected':'selected'} or None">error</option>
++                   <option value="CRITICAL" py:attrs="cur_level in (50, 'CRITICAL') and {'selected':'selected'} or None">critical</option>
+                  </select>
+                </td>
+              </tr>
+@@ -232,11 +232,11 @@
+                  <select name="log_level_root"
+                    py:with="cur_level=logging.getLogger('').getEffectiveLevel()">
+                    <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+-                   <option value="DEBUG" py:attrs="cur_level==10 and {'selected':'selected'} or None">debug</option>
+-                   <option value="INFO" py:attrs="cur_level==20 and {'selected':'selected'} or None">info</option>
+-                   <option value="WARNING" py:attrs="cur_level==30 and {'selected':'selected'} or None">warning</option>
+-                   <option value="ERROR" py:attrs="cur_level==40 and {'selected':'selected'} or None">error</option>
+-                   <option value="CRITICAL" py:attrs="cur_level==50 and {'selected':'selected'} or None">critical</option>
++                   <option value="DEBUG" py:attrs="cur_level in (10, 'DEBUG') and {'selected':'selected'} or None">debug</option>
++                   <option value="INFO" py:attrs="cur_level in (20, 'INFO') and {'selected':'selected'} or None">info</option>
++                   <option value="WARNING" py:attrs="cur_level in (30, 'WARNING', 'WARN') and {'selected':'selected'} or None">warning</option>
++                   <option value="ERROR" py:attrs="cur_level in (40, 'ERROR') and {'selected':'selected'} or None">error</option>
++                   <option value="CRITICAL" py:attrs="cur_level in (50, 'CRITICAL') and {'selected':'selected'} or None">critical</option>
+                  </select>
+                </td>
+              </tr>

@@ -1,0 +1,22 @@
+/* ===================== G L O B A L   R E S O U R C E S ==================== */
+
+/* -------------------------------- overview -------------------------------- */
+
+.globalres_tlist_type {
+  text-align: left;
+}
+
+th.globalres_tlist_type {
+  width: 15%;
+  min-width: 15%;
+}
+
+.globalres_tlist_main {
+  text-align: left;
+}
+
+th.globalres_tlist_main {
+  width: 45%;
+  min-width: 45%;
+}
+

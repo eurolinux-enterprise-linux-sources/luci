@@ -1,0 +1,21 @@
+# Wildcards
+*.pyc
+*.swp
+*.so
+
+# Directories
+build
+dev
+luci.egg-info
+
+# Files generated from "input files"
+extensions/sasl2auth.h
+input_files/certconfig/cacert.config
+input_files/config.tmpl/config.tmpl.in-dev
+input_files/initscript/luci
+input_files/logrotateconfig/luci
+input_files/pamconfig/luci
+input_files/sasl2config/luci.conf
+input_files/sysconfig/luci
+input_files/sysconfig/luci.sysconfig
+luci/config/config.tmpl

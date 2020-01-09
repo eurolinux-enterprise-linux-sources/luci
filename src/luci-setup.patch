@@ -1,0 +1,15 @@
+--- setup.py.orig	2010-11-29 18:13:36.000000000 +0100
++++ setup.py	2010-11-29 18:44:39.049249577 +0100
+@@ -1,11 +1,6 @@
+ # -*- coding: utf-8 -*-
+ 
+-try:
+-    from setuptools import setup, find_packages, Extension
+-except ImportError:
+-    from ez_setup import use_setuptools
+-    use_setuptools()
+-    from setuptools import setup, find_packages, Extension
++from setuptools import setup, find_packages, Extension
+ 
+ from os.path import (join as path_join, basename as path_basename,
+                      dirname as path_dirname, normpath as path_norm,

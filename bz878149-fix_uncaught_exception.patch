@@ -1,0 +1,30 @@
+From 50c49338b7b0d649383872b5f01ae3fde831bbfa Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 4 Dec 2012 09:47:34 -0500
+Subject: [PATCH] luci: Fix uncaught exception
+
+Catch all exceptions when the cluster model cannot be built.
+
+Resoves: rhbz#878149
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/cluster.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+index 25d8088..3035306 100644
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -515,7 +515,7 @@ class IndividualClusterController(BaseController):
+         try:
+             self.get_model()
+             self.model.getResourceByName(resourcename)
+-        except KeyError, e:
++        except Exception, e:
+             resourcename=None
+ 
+         return dict(page='nodes', name=resourcename, base_url=base_url, resources_cmd=resources_cmd)
+-- 
+1.8.3.1
+

@@ -1,0 +1,87 @@
+--- a/luci/templates/failover.html	2012-11-23 14:38:44.154530614 +0100
++++ b/luci/templates/failover.html	2012-11-23 14:38:00.026019375 +0100
+@@ -114,7 +114,7 @@
+     <div id="details_header">
+       <h3 py:content="name">Failover Domain name</h3>
+       <div id="details_header_buttons">
+-        <a href="${tg.url(failovers_cmd + '?command=Delete' + '&amp;name=' + name)}" id="dh_delete" title="delete"><span class="hide">Delete</span></a>
++        <a href="${tg.url(failovers_cmd + '?command=Delete' + '&amp;name=' + quote_plus(name))}" id="dh_delete" title="delete"><span class="hide">Delete</span></a>
+       </div>
+     </div>
+ 
+@@ -123,7 +123,7 @@
+       <div class="details_inner">
+         <form action="${tg.url(failovers_cmd + '?command=update_properties')}" method="post">
+           <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+-          <input type="hidden" name="name" value="${name}"/>
++          <input type="hidden" name="name" value="${quote_plus(name)}"/>
+           <input type="submit" value="Update Properties" class="float_button"/>
+           <table id="fdom_tattr">
+             <tr>
+--- a/luci/templates/fence.html	2012-11-23 16:30:29.086720356 +0100
++++ b/luci/templates/fence.html	2012-11-23 16:31:39.895543000 +0100
+@@ -6,6 +6,10 @@
+ 
+ <xi:include href="master.html" />
+ 
++<?python
++  from luci.lib.helpers import quote_plus
++?>
++
+ <head>
+   <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+   <title>${title()}</title>
+@@ -54,7 +54,7 @@
+                 onclick="update_multi_action(this)" class="MultiActionItem"/>
+           </td>
+           <!--! If the fence is shared, display appropriate icon. -->
+-          <td class="main_id"><a href="${tg.url(base_url + '/' + entity_name)}">${entity_name}</a></td>
++          <td class="main_id"><a href="${tg.url(base_url + '/' + quote_plus(entity_name))}">${entity_name}</a></td>
+           <td class="fence_tlist_type">${fence_data.getPrettyName()}</td>
+           <!--! Branch according to whether the fence is local or shared. -->
+           <py:choose test="local_fence">
+@@ -119,7 +123,7 @@
+     <div id="details_header">
+       <h3 py:content="name">Fence A</h3>
+       <div id="details_header_buttons">
+-        <a href="${tg.url(fences_cmd + '?command=Delete' + '&amp;name=' + name)}" id="dh_delete" title="delete"><span class="hide">delete</span></a>
++        <a href="${tg.url(fences_cmd + '?command=Delete' + '&amp;name=' + quote_plus(name))}" id="dh_delete" title="delete"><span class="hide">delete</span></a>
+       </div>
+       <span class="details_header_info_label">Type</span> <span class="details_header_info">${details.getPrettyName()}</span>
+     </div>
+--- a/luci/controllers/cluster.py	2012-11-23 07:18:01.660141599 -0600
++++ b/luci/controllers/cluster.py	2012-11-23 07:47:41.561743120 -0600
+@@ -641,6 +641,10 @@
+         if 'name' in request.params:
+             servicename = request.params['name']
+ 
++        self.get_model()
++        if not self.model.getService(servicename):
++            servicename = None
++
+         return dict(page='nodes', name=servicename, base_url=base_url, services_cmd=services_cmd)
+ 
+     @expose("luci.templates.service")
+@@ -809,6 +815,10 @@
+         if 'name' in request.params:
+             failovername = request.params['name']
+ 
++        self.get_model()
++        if not self.model.getFailoverDomainByName(failovername):
++            failovername = None
++
+         return dict(page='nodes', name=failovername, base_url = '/cluster/' + self.name + '/failovers', failovers_cmd=failovers_cmd)
+ 
+     @expose("luci.templates.failover")
+@@ -924,6 +936,11 @@
+                 fencename = args[0]
+         else:
+             fencename = None
++
++        self.get_model()
++        if not self.model.getFenceDeviceByName(fencename):
++            fencename = None
++
+         return dict(page='nodes', name=fencename, base_url='/cluster/' + self.name + '/fences', fences_cmd=fences_cmd)
+ 
+     @expose("luci.templates.fence")

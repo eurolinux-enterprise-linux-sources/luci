@@ -1,0 +1,128 @@
+diff --git a/luci/templates/admin.html b/luci/templates/admin.html
+index f82ee34..7c33f12 100644
+--- a/luci/templates/admin.html
++++ b/luci/templates/admin.html
+@@ -189,7 +189,7 @@
+                <td>
+                  <select name="log_level_tg.i18n"
+                    py:with="cur_level=logging.getLogger('tg.i18n').getEffectiveLevel()">
+-                   <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
++                   <option value="NOTSET" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+                    <option value="DEBUG" py:attrs="cur_level in (10, 'DEBUG') and {'selected':'selected'} or None">debug</option>
+                    <option value="INFO" py:attrs="cur_level in (20, 'INFO') and {'selected':'selected'} or None">info</option>
+                    <option value="WARNING" py:attrs="cur_level in (30, 'WARNING', 'WARN') and {'selected':'selected'} or None">warning</option>
+@@ -203,7 +203,7 @@
+                <td>
+                  <select name="log_level_sqlalchemy"
+                    py:with="cur_level=logging.getLogger('sqlalchemy').getEffectiveLevel()">
+-                   <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
++                   <option value="NOTSET" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+                    <option value="DEBUG" py:attrs="cur_level in (10, 'DEBUG') and {'selected':'selected'} or None">debug</option>
+                    <option value="INFO" py:attrs="cur_level in (20, 'INFO') and {'selected':'selected'} or None">info</option>
+                    <option value="WARNING" py:attrs="cur_level in (30, 'WARNING', 'WARN') and {'selected':'selected'} or None">warning</option>
+@@ -217,7 +217,7 @@
+                <td>
+                  <select name="log_level_luci"
+                    py:with="cur_level=logging.getLogger('luci').getEffectiveLevel()">
+-                   <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
++                   <option value="NOTSET" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+                    <option value="DEBUG" py:attrs="cur_level in (10, 'DEBUG') and {'selected':'selected'} or None">debug</option>
+                    <option value="INFO" py:attrs="cur_level in (20, 'INFO') and {'selected':'selected'} or None">info</option>
+                    <option value="WARNING" py:attrs="cur_level in (30, 'WARNING', 'WARN') and {'selected':'selected'} or None">warning</option>
+@@ -231,7 +231,7 @@
+                <td>
+                  <select name="log_level_root"
+                    py:with="cur_level=logging.getLogger('').getEffectiveLevel()">
+-                   <option value="0" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
++                   <option value="NOTSET" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+                    <option value="DEBUG" py:attrs="cur_level in (10, 'DEBUG') and {'selected':'selected'} or None">debug</option>
+                    <option value="INFO" py:attrs="cur_level in (20, 'INFO') and {'selected':'selected'} or None">info</option>
+                    <option value="WARNING" py:attrs="cur_level in (30, 'WARNING', 'WARN') and {'selected':'selected'} or None">warning</option>
+diff --git a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+index fe4624c..e79dd59 100644
+--- a/luci/validation/validate_cluster_prop.py
++++ b/luci/validation/validate_cluster_prop.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2011 Red Hat, Inc.
++# Copyright (C) 2009-2012 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -1310,13 +1310,28 @@ def validate_user_perms(name, **kw):
+ 
+ def validate_luci_log_levels(**kw):
+     errors = []
++    loggermap = {
++        'NOTSET':   logging.NOTSET,
++        'DEBUG':    logging.DEBUG,
++        'INFO':     logging.INFO,
++        'WARNING':  logging.WARNING,
++        'ERROR':    logging.ERROR,
++        'CRITICAL': logging.CRITICAL,
++
++        str(logging.NOTSET):    logging.NOTSET,
++        str(logging.DEBUG):     logging.DEBUG,
++        str(logging.INFO):      logging.INFO,
++        str(logging.WARNING):   logging.WARNING,
++        str(logging.ERROR):     logging.ERROR,
++        str(logging.CRITICAL):  logging.CRITICAL,
++    }
+ 
+     log_root = kw.get('log_level_root')
+     if log_root:
+         log_root = log_root.upper()
+         cur_logger = logging.getLogger('')
+         try:
+-            cur_logger.setLevel(log_root)
++            cur_logger.setLevel(loggermap[log_root])
+         except ValueError:
+             errors.append(_("Invalid log level for root: %s") % log_root)
+         except:
+@@ -1328,7 +1343,7 @@ def validate_luci_log_levels(**kw):
+         log_tg_i18n = log_tg_i18n.upper()
+         cur_logger = logging.getLogger('tg.i18n')
+         try:
+-            cur_logger.setLevel(log_tg_i18n)
++            cur_logger.setLevel(loggermap[log_tg_i18n])
+         except ValueError:
+             errors.append(_("Invalid log level for tg.i18n: %s") % log_tg_i18n)
+         except:
+@@ -1340,14 +1355,14 @@ def validate_luci_log_levels(**kw):
+         log_sqlalchemy = log_sqlalchemy.upper()
+         cur_logger = logging.getLogger('sqlalchemy')
+         try:
+-            cur_logger.setLevel(log_sqlalchemy)
++            cur_logger.setLevel(loggermap[log_sqlalchemy])
+             try:
+                 # Change child and related loggers to match
+                 log_manager = cur_logger.manager
+                 for i in log_manager.loggerDict.keys():
+-                    if i[:11] == "sqlalchemy." or i in ('txn'):
++                    if i.startswith("sqlalchemy") or i in ('txn'):
+                         cur_logger = logging.getLogger(i)
+-                        cur_logger.setLevel(log_sqlalchemy)
++                        cur_logger.setLevel(loggermap[log_sqlalchemy])
+             except:
+                 log.exception("Updating child loggers for sqlalchemy")
+         except ValueError:
+@@ -1361,16 +1376,16 @@ def validate_luci_log_levels(**kw):
+         log_luci = log_luci.upper()
+         cur_logger = logging.getLogger('luci')
+         try:
+-            cur_logger.setLevel(log_luci)
++            cur_logger.setLevel(loggermap[log_luci])
+             try:
+                 # Change child loggers to match
+                 log_manager = cur_logger.manager
+                 for i in log_manager.loggerDict.keys():
+-                    if i[:5] == "luci.":
++                    if i.startswith("luci."):
+                         cur_logger = logging.getLogger(i)
+-                        cur_logger.setLevel(log_sqlalchemy)
++                        cur_logger.setLevel(loggermap[log_luci])
+             except:
+-                log.exception("Updating child loggers for sqlalchemy")
++                log.exception("Updating child loggers for luci")
+         except ValueError:
+             errors.append(_("Invalid log level for luci: %s") % log_luci)
+         except:

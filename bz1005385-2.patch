@@ -1,0 +1,63 @@
+diff -urN a/input_files/initscript/initscript.in b/input_files/initscript/initscript.in
+--- a/input_files/initscript/initscript.in	2013-09-16 02:01:29.336718479 +0200
++++ b/input_files/initscript/initscript.in	2013-09-16 01:57:31.779922363 +0200
+@@ -63,8 +63,8 @@
+ 
+ STATE_DIR="@STATEDIR@"
+ DB_FILE="@DBFILE@"
+-DB_DIR="$(dirname $DB_FILE)"
+-BACKUP_DIR="$(dirname $DB_FILE)"
++DB_DIR=$(dirname "$DB_FILE")
++BACKUP_DIR=$(dirname "$DB_FILE")
+ DB_PERMS=0640
+ BACKUP_PERMS=0640
+ 
+@@ -77,9 +77,10 @@
+ CERT_KEY_LIFE_DAYS=1825
+ CERT_CONFIG="@CERTCONFIG@"
+ CERT_PEM="@CERTPEM@"
++CERT_DIR=$(dirname "$CERT_PEM")
+ 
+-# Run $exec in a subshell with changed umask
+-do_exec() { (umask 027 && $exec "$@"); }
++# Run $exec in a subshell with changed umask and with sane CWD
++do_exec() { (cd / && umask 027 && $exec "$@"); }
+ 
+ 
+ # Check some conditions and return respective return code
+@@ -195,7 +196,7 @@
+     # Generate the SSL certificate (PEM file containing also private key)
+     # Note: Explicit specification of file containing random data is needed
+     #       to suppress complaints (and we also control where this file is)
+-    export RANDFILE="$(mktemp -q "cert_rnd.XXXXXX")"
++    export RANDFILE=$(mktemp -q --tmpdir="$CERT_DIR" "cert_rnd.XXXXXX")
+     out="$(/usr/bin/openssl req -new -x509 -nodes -sha1        \
+                                 -newkey rsa:"$CERT_KEY_BITS"   \
+                                 -config "$CERT_CONFIG"         \
+@@ -278,7 +279,7 @@
+ 
+ dump_database() {
+     if [ -n "$1" ]; then
+-        output_file="$1"
++        output_file=$(readlink -f -- "$1")  # normalize path (for output)
+     else
+         output_file="$BACKUP_DIR/@SERVICENAME@-backup$(/bin/date +%Y%m%d%H%M%S).db"
+     fi
+@@ -307,7 +308,7 @@
+ }
+ 
+ load_database() {
+-    db_dump_file=$1
++    db_dump_file=$(readlink -f "$1")  # normalize path (for output)
+     if [ ! "$db_dump_file" ]; then
+         $ECHOFUNC "No database backup file was specified. Run \`$0 list-backups' to get a list of known existing backup files." >&2
+         return 1
+@@ -318,7 +319,7 @@
+         return 1
+     fi
+ 
+-    tmp_db="$(mktemp --tmpdir=$DB_DIR)"
++    tmp_db=$(mktemp -q --tmpdir="$DB_DIR")
+     if [ $? -ne 0 ]; then
+         $ECHOFUNC "Unable to create a temporary file in \`$DB_DIR'." >&2
+         return 1

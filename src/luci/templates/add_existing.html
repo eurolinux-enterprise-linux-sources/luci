@@ -1,0 +1,61 @@
+<div>
+<div id="add_existing_dialog">
+<div id="add_existing_inner">
+   <form name="add_existing_dialog" action="/add_existing_cmd">
+   <div class="row">
+   <p>Enter credentials for a node in the cluster you would like to add.</p>
+   </div>
+   <div class="row">
+   <table id="addclusternode">
+      <tr>
+         <td>Node Hostname</td>
+         <td>Password</td>
+         <td>Ricci Port</td>
+      </tr>
+      <tr>
+         <td><input type="text" class="text" name="hostname" id="node0host" value="" /></td>
+         <td><input type="password" class="text" name="password" id="node0passwd" autocomplete="off" /></td>
+         <td><input type="text" class="text" name="port" maxlength="5" size="5" value="${app_globals.DEFAULT_RICCI_PORT}" /></td>
+      </tr>
+    </table>
+    </div>
+    <input type="button" class="button formsubmit blue" value="Connect" onclick="add_existing_async(this.form)" />
+    <input type="button" class="button formsubmit silver" value="Cancel"
+        onclick="$('#add_existing_dialog').dialog('close');reset_form(this.form)" />
+   </form>
+   </div>
+</div>
+<div id="add_existing_dialog_final">
+   <form name="add_existing_final_form" action="/add_existing_cmd">
+   <div class="row">
+   <p>Cluster Name: <strong><span id="cluster_name_span" /></strong>
+                  <input type="hidden" id="clustername" name="clustername" value="" />
+                  <input type="hidden" id="num_nodes" name="num_nodes" value="" />
+   </p>
+   </div>
+   <div class="row">
+   <input type="checkbox" class="checkbox"
+          name="allSameCheckBox" onclick="allPasswdsSame(this)" />
+          <label class="choice">Use the Same Password for All Nodes</label>
+   </div>
+   <div class="row">
+      <table class="clusternodes">
+         <thead>
+            <tr>
+               <td>Node Name</td>
+               <td>Password</td>
+               <td>Ricci Hostname</td>
+               <td>Ricci Port</td>
+            </tr>
+         </thead>
+         <tbody id="sys_tbody"></tbody>
+      </table>
+   </div>
+   <div class="row">
+    <input type="submit" class="button formsubmit blue" value="Add Cluster" />
+    <input type="button" class="button formsubmit silver" value="Cancel"
+        onclick="window.location.reload()" />
+    </div>
+   </form>
+</div>
+</div>

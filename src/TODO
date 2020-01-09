@@ -1,0 +1,11 @@
+Files with outdated content (they are outside to what is needed for package):
+..
+
+
+General TODO:
+..
+
+
+Known (not so big) issues:
+- upon uninstall, one has to remove /var/run/luci directory (presumably empty
+  that time) manually

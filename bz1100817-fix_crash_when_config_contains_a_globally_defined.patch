@@ -1,0 +1,90 @@
+From 9d8d11ca91553840a75d7264353b84c563b647b0 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 15:21:16 -0400
+Subject: [PATCH] luci: Fix crash when config contains a globally defined
+ vm resource
+
+When a vm tag was a child of the resources tag of cluster.conf, the
+luci server would crash, giving error 500. This patch fixes the
+crash and allows the vm resource to be properly viewed and edited.
+
+Resolves: rhbz#1100817
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/Vm.py           | 8 +++++++-
+ luci/templates/resource_list.html    | 7 +++++++
+ luci/validation/validate_resource.py | 4 ++--
+ 3 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/Vm.py b/luci/lib/ClusterConf/Vm.py
+index 2163500..05e6897 100644
+--- a/luci/lib/ClusterConf/Vm.py
++++ b/luci/lib/ClusterConf/Vm.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2012 Red Hat, Inc.
++# Copyright (C) 2006-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -8,7 +8,10 @@
+ from Service import Service
+ from BaseResource import BaseResource
+ 
++from gettext import gettext as _
++
+ TAG_NAME = "vm"
++RESOURCE_TYPE = _('Virtual Machine')
+ 
+ vm_attributes = ('migration_mapping', 'xmlfile', 'migrate',
+                  'path', 'snapshot', 'hypervisor_uri',
+@@ -18,6 +21,9 @@ class Vm(Service, BaseResource):
+   def __init__(self):
+     Service.__init__(self)
+     self.TAG_NAME = TAG_NAME
++    self.refcount = 1
++    self.reflist = []
++    self.resource_type = RESOURCE_TYPE
+ 
+   def getResourceAttributes(self):
+     attrs = self.getAttributes()
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 5ca7777..a195f3c 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1722,6 +1722,13 @@
+   <input name="type" type="hidden" value="vm" />
+ 
+   <table class="formtable">
++    <tr py:if="res">
++      <td>Name</td>
++      <td>
++        <input type="text" class="text" name="resourcename"
++          py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
+     <tr>
+       <td>Migration Type</td>
+       <td>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index a5e86a7..c3187cd 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2011 Red Hat, Inc.
++# Copyright (C) 2009-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -586,7 +586,7 @@ def create_resource(res_type, model, **kw):
+ 
+ 	if res_type == 'ip':
+ 		rname = kw.get('address')
+-	elif res_type == 'vm':
++	elif res_type == 'vm' and not resource_edit:
+ 		rname = ''
+ 		res = BaseResource()
+ 	else:
+-- 
+1.9.3
+

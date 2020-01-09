@@ -1,0 +1,207 @@
+diff --git a/luci/lib/ClusterConf/Device.py b/luci/lib/ClusterConf/Device.py
+index 12758c5..9ab9219 100644
+--- a/luci/lib/ClusterConf/Device.py
++++ b/luci/lib/ClusterConf/Device.py
+@@ -44,11 +44,14 @@ class Device(TagObject):
+       if self.getAttribute('port') == unfence.getAttribute('port'):
+         return True
+     elif agent_type == 'fence_egenera':
+-       if (self.getAttribute('pserver') == unfence.getAttribute('pserver')
+-           and self.getAttribute('lpan') == unfence.getAttribute('lpan')):
+-         return True
++      if (self.getAttribute('pserver') == unfence.getAttribute('pserver')
++          and self.getAttribute('lpan') == unfence.getAttribute('lpan')):
++        return True
++    elif agent_type == 'fence_sanlock':
++      if self.getAttribute('host_id') == unfence.getAttribute('host_id'):
++        return True
+     return False
+-    
++
+   def hasNativeOptionSet(self):
+     return self.has_native_option_set
+ 
+diff --git a/luci/lib/ClusterConf/FenceDeviceAttr.py b/luci/lib/ClusterConf/FenceDeviceAttr.py
+index 33a2564..bf11d20 100644
+--- a/luci/lib/ClusterConf/FenceDeviceAttr.py
++++ b/luci/lib/ClusterConf/FenceDeviceAttr.py
+@@ -54,6 +54,7 @@ FENCE_OPTS = {
+ 	'fence_eps':			'ePowerSwitch',
+ 	'fence_virsh':			'virsh fence agent',
+ 	'fence_rhevm':			'RHEV-M fence agent',
++	'fence_sanlock':		'Sanlock fencing (watchdog and shared storage leases)',
+ }
+ 
+ FENCE_SHARED = {
+@@ -87,6 +88,7 @@ FENCE_SHARED = {
+ 	'fence_intelmodular':	True,
+ 	'fence_virsh':			True,
+ 	'fence_rhevm':			True,
++	'fence_sanlock':		True,
+ 	'fence_ilo':			False,
+ 	'fence_ilo_mp':			False,
+ 	'fence_ipmilan':		False,
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index c2d86b3..561fe16 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -499,6 +499,41 @@
+   <input type="hidden" name="fence_type" value="fence_sanbox2" />
+ </div>
+ 
++<div py:def="fence_sanlock(cur_fencedev, ni)" id="fence_sanlock" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>Sanlock</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>The path to shared storage with sanlock leases</td>
++      <td>
++        <input name="path" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('path')} or {}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="sharable" value="1" />
++  <input type="hidden" name="num_instances" value="${ni}"/>
++  <input type="hidden" name="fence_type" value="fence_sanlock" />
++</div>
++
+ <div py:def="fence_vixel(cur_fencedev, ni)" id="fence_vixel" class="fencedevform row"
+    py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+   <table class="formtable">
+@@ -3450,6 +3485,7 @@ ${fence_zvm(None,0)}
+ ${fence_ibmblade(None,0)}
+ ${fence_hpblade(None,0)}
+ ${fence_eaton_snmp(None,0)}
++${fence_sanlock(None,0)}
+ ${fence_unknown(None,0)}
+ </div>
+ 
+@@ -3499,6 +3535,7 @@ ${fence_unknown(None,0)}
+         <py:when test="3">
+           <option name="fence_virt" value="fence_virt">Fence virt (Tech Preview)</option>
+           <option name="fence_xvm" value="fence_xvm">Fence virt (Multicast Mode)</option>
++          <option name="fence_sanlock" value="fence_sanlock">Sanlock (Tech Preview)</option>
+         </py:when>
+       </py:choose>
+       <option py:if="cluster_version == 2" name="fence_xvm" value="fence_xvm">Fence xvm</option>
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index 8032cd2..cb6d0f7 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -430,6 +430,39 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
++<div py:def="fence_sanlock_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_sanlock_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++  <table class="detailstable">
++    <tr>
++      <td>Host id</td>
++      <td>
++        <input name="host_id" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('host_id')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Unfencing</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="unfencing"
++          py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
++        <label class="choice">Enable</label>
++        <input type="hidden" name="unfence_action" value="on" />
++      </td>
++    </tr>
++    <tr><td colspan="2">
++      <div>
++        <input type="button" name="remove_fence" value="Remove this instance"
++          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
++      </div>
++    </td></tr>
++  </table>
++
++  <input type="hidden" name="fence_type" value="fence_sanlock" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
+ <div py:def="fence_mcdata_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_mcdata_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+   <table class="detailstable">
+@@ -1172,6 +1205,7 @@ ${fence_rsb_instance(None, None, None)}
+ ${fence_xcat_instance(None, None, None)}
+ ${fence_zvm_instance(None, None, None)}
+ ${fence_scsi_instance(None, None, None, nodename=nodename)}
++${fence_sanlock_instance(None, None, None)}
+ ${fence_unknown_instance(None, None, None)}
+ </div>
+ </html>
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index 64ddc00..6f5f7bc 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -331,6 +331,14 @@ def val_bullpap_fd(fencedev, fence_name, **kw):
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+ 	return errors
+ 
++def val_sanlock_fd(fencedev, fence_name, **kw):
++	params = (
++		('path', True),
++	)
++
++	errors = config_fence_attr(params, fencedev, fence_name, **kw)
++	return errors
++
+ def val_noop_fd(fencedev, fence_name, **kw):
+ 	return []
+ 
+@@ -745,6 +853,7 @@ FD_VALIDATE = {
+ 	'fence_rsa':			val_rsa_fd,
+ 	'fence_rsb':			val_rsb_fd,
+ 	'fence_sanbox2':		val_sanbox2_fd,
++	'fence_sanlock':		val_sanlock_fd,
+ 	'fence_scsi':			val_scsi_fd,
+ 	'fence_virsh':			val_virsh_fd,
+ 	'fence_virt':			val_virt_fd,
+@@ -1079,6 +1088,14 @@ def val_eaton_snmp_fi(fenceinst, parent_name, **kw):
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+ 	return errors
++def val_sanlock_fi(fenceinst, parent_name, **kw):
++	params = (
++		('host_id', True),
++	)
++
++	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
++	return errors
++
+ def val_noop_fi(fenceinst, parent_name, **kw):
+ 	return []
+ 
+@@ -1116,6 +1133,7 @@ FI_VALIDATE = {
+ 	'fence_rsa':			val_noop_fi,
+ 	'fence_rsb':			val_noop_fi,
+ 	'fence_sanbox2':		val_sanbox2_fi,
++	'fence_sanlock':		val_sanlock_fi,
+ 	'fence_scsi':			val_scsi_fi,
+ 	'fence_virsh':			val_virsh_fi,
+ 	'fence_virt':			val_virt_fi,

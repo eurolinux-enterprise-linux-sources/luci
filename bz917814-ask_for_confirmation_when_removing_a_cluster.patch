@@ -1,0 +1,154 @@
+From ce0e40cea64a46425ea3ec200b70c190f28ece47 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 12 Aug 2013 16:44:31 -0400
+Subject: [PATCH] luci: Ask for confirmation when removing a cluster
+
+Ask for user confirmation when removing a cluster from the
+luci interface.
+
+Resolves: rhbz#917814
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/js/cluster_list.js   | 95 ++++++++++++++++++++++++++++++++++++++++
+ luci/templates/cluster_list.html |  7 ++-
+ 2 files changed, 100 insertions(+), 2 deletions(-)
+
+diff --git a/luci/public/js/cluster_list.js b/luci/public/js/cluster_list.js
+index 83e591e..c11af16 100644
+--- a/luci/public/js/cluster_list.js
++++ b/luci/public/js/cluster_list.js
+@@ -1,4 +1,99 @@
+ $(function() {
++	var dialog_txt = "Remove the selected clusters from the luci interface?";
++    $('#confirm_cluster_dialog').dialog({
++        modal: true,
++        autoOpen: false,
++        draggable: false,
++        resizable: false,
++        closeOnEscape: false,
++        open: function(event, ui) { 
++            $(this).parent().children().children('.ui-dialog-titlebar-close').hide();
++        },
++        buttons: {
++            "Proceed": function() {
++                $(this).dialog("close");
++            },
++            "Cancel": function() {
++                $(this).dialog("close");
++            }
++        }
++    });
++
++    $(".confirm_link").click(function(e) {
++        e.preventDefault();
++        var targetUrl = $(this).attr("href");
++        var trigger_elem_id = $(this).attr("id");
++        var cur_action = null;
++
++        if (trigger_elem_id == 'dh_delete')
++            cur_action = 'Delete';
++        else
++            return true;
++
++        $("#confirm_cluster_dialog").dialog({
++            open: function(event, ui) { 
++                $(this).parent().children().children('.ui-dialog-titlebar-close').hide();
++            },
++            closeOnEscape: false,
++            buttons: {
++                "Proceed": function() {
++                    window.location.href = targetUrl;
++                    $(this).dialog("close");
++                },
++                "Cancel" : function() {
++                    $(this).dialog("close");
++                }
++            }
++        });
++        try {
++          $('#cluster_confirm_span').empty();
++          $('#cluster_confirm_span').append(dialog_txt);
++        } catch (e) {}
++        $("#confirm_cluster_dialog").dialog("open");
++    });
++
++    $("[type=submit],[type=image]").bind("click", function(e) {
++        $(this).attr("trigger_elem", "True");
++    });
++
++    $(".confirm_form").submit(function(e) {
++        var cur_form = this;
++        var cur_action = null;
++
++        var trigger_elem = $("[trigger_elem=True]").get(0);
++        if (trigger_elem.id == 'tb_delete')
++            cur_action = 'Remove';
++        else
++            return true;
++        trigger_elem.removeAttribute('trigger_elem');
++        e.preventDefault();
++        var ret = $("#confirm_cluster_dialog").dialog({
++            closeOnEscape: false,
++            open: function(event, ui) { 
++                $(this).parent().children().children('.ui-dialog-titlebar-close').hide();
++            },
++            buttons: {
++                "Proceed": function() {
++                    $(this).dialog("close");
++                    $(cur_form).append('<input type="hidden" name="MultiAction" value="' + cur_action  + '"/>');
++                    cur_form.submit();
++                    return true;
++                },
++                "Cancel" : function() {
++                    $(this).dialog("close");
++                    return false;
++                }
++            }
++        });
++        try {
++          $('#cluster_confirm_span').empty();
++          $('#cluster_confirm_span').append(dialog_txt);
++        } catch (e) {}
++        $("#confirm_cluster_dialog").dialog("open");
++    });
++})
++
++$(function() {
+     $('#add_existing_dialog').dialog({
+         modal: true,
+         title: 'Add Existing Cluster',
+diff --git a/luci/templates/cluster_list.html b/luci/templates/cluster_list.html
+index f4551ca..a82e5bf 100644
+--- a/luci/templates/cluster_list.html
++++ b/luci/templates/cluster_list.html
+@@ -19,14 +19,14 @@
+   <script type="text/javascript" src="/js/cluster_list.js"></script>
+   <script type="text/javascript" src="/js/add_existing.js"></script>
+ 
+-  <form action="${tg.url('/' + page + '/delete_cmd')}" method="post">
++  <form class="confirm_form" action="${tg.url('/' + page + '/delete_cmd')}" method="post">
+ 
+   <div class="sectionblock">
+   <xi:include href="submenu.html"/>
+   <div id="toolbar">
+     <a href="#" onclick="$('#add_existing_dialog').dialog('open')" class="toolbar_button" id="tb_add">Add</a>
+     <a href="#" onclick="$('#create_cluster_dialog').dialog('open')" class="toolbar_button" id="tb_create">Create</a>
+-    <input type="submit" name="MultiAction" value="${_('Remove')}" class="toolbar_button MultiAction" id="tb_delete" disabled="disabled"/>
++    <input type="submit" name="MultiAction" value="${_('Remove')}" class="confirm_form toolbar_button MultiAction" id="tb_delete" disabled="disabled"/>
+    </div>
+ 
+   <!--! OVERVIEW SECTION. -->
+@@ -120,6 +120,9 @@
+   </form>
+ 
+   <div id="form_container" class="hidden">
++   <div id="confirm_cluster_dialog" title="Confirm Action">
++    <span id="cluster_confirm_span"></span>
++   </div>
+    <xi:include href="add_existing.html" />
+ 
+    <div id="create_cluster_dialog">
+-- 
+1.8.3.1
+

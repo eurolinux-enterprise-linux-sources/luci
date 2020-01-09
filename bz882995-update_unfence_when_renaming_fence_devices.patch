@@ -1,0 +1,66 @@
+From 9374af9e6e5f682d3d0cf2844608f7a5db105fa7 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 3 Dec 2012 20:54:52 -0500
+Subject: [PATCH] luci: Update unfence when renaming fence devices
+
+If a fence device is renamed, update any unfence instances
+that refer to its old name.
+
+Resolves: rhbz#882995
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/ClusterNode.py  |  8 ++++++++
+ luci/lib/ClusterConf/ModelBuilder.py | 15 +++++++++++----
+ 2 files changed, 19 insertions(+), 4 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/ClusterNode.py b/luci/lib/ClusterConf/ClusterNode.py
+index 5223160..f04a403 100644
+--- a/luci/lib/ClusterConf/ClusterNode.py
++++ b/luci/lib/ClusterConf/ClusterNode.py
+@@ -34,6 +34,14 @@ class ClusterNode(TagObject):
+         self.addChild(ret)
+     return ret
+ 
++  def getUnfenceNode(self):
++    ret = None
++    for child in self.children:
++        if child.getTagName() == 'unfence':
++            ret = child
++            break
++    return ret
++
+   def getFenceMethods(self):
+     # This method returns the set of 'method' objs.
+     ret = list()
+diff --git a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+index 817551c..c26bbb0 100644
+--- a/luci/lib/ClusterConf/ModelBuilder.py
++++ b/luci/lib/ClusterConf/ModelBuilder.py
+@@ -1088,12 +1088,19 @@ class ModelBuilder:
+   def rectifyNewFencedevicenameWithFences(self, oldname, newname):
+     nodes = self.getNodes()
+     for node in nodes:
+-      methods = node.getFenceMethods()
+-      for method in methods:
+-        fences = method.getMethodDevices()
+-        for fence in fences:
++      updated_name = False
++      for method in node.getFenceMethods():
++        for fence in method.getMethodDevices():
+           if fence.getName() == oldname:
+             fence.setName(newname)
++            updated_name = True
++
++      if updated_name:
++        unfence_node = node.getUnfenceNode()
++        if unfence_node:
++          for u in unfence_node.getChildren():
++            if u.getName() == oldname:
++              u.setName(newname)
+ 
+   ###Method for removing fence instances if a fence device
+   ###has been deleted from the configuration
+-- 
+1.7.11.7
+

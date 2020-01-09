@@ -1,0 +1,21 @@
+diff -up luci-0.26.0/luci/templates/resource_list.html.orig luci-0.26.0/luci/templates/resource_list.html
+--- luci-0.26.0/luci/templates/resource_list.html.orig	2012-12-12 15:40:20.754929026 -0500
++++ luci-0.26.0/luci/templates/resource_list.html	2012-12-12 15:40:43.225928659 -0500
+@@ -1406,13 +1406,13 @@
+         <select name="oracletype" class="serviceformselect"
+           py:attrs="{'disabled':global_resource and 'disabled' or None}">
+           <option value=""
+-            py:attrs="(not res or not res.getAttribute('oracletype')) and {'selected':'selected'} or {}">Default</option>
++            py:attrs="(not res or not res.getAttribute('type')) and {'selected':'selected'} or {}">Default</option>
+           <option value="base"
+-            py:attrs="res and res.getAttribute('oracletype') == 'base' and {'selected':'selected'} or {}">Database Instance and Listener Only</option>
++            py:attrs="res and res.getAttribute('type') == 'base' and {'selected':'selected'} or {}">Database Instance and Listener Only</option>
+           <option value="base-em"
+-            py:attrs="res and res.getAttribute('oracletype') == 'base-em' and {'selected':'selected'} or {}">Database, Listener, Enterprise Manager, and iSQL*Plus</option>
++            py:attrs="res and res.getAttribute('type') == 'base-em' and {'selected':'selected'} or {}">Database, Listener, Enterprise Manager, and iSQL*Plus</option>
+           <option value="ias"
+-            py:attrs="res and res.getAttribute('oracletype') == 'ias' and {'selected':'selected'} or {}">Internet Application Server (Infrastructure)</option>
++            py:attrs="res and res.getAttribute('type') == 'ias' and {'selected':'selected'} or {}">Internet Application Server (Infrastructure)</option>
+         </select>
+       </td>
+     </tr>

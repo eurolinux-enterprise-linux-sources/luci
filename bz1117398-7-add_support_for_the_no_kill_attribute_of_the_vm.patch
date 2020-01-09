@@ -1,0 +1,77 @@
+From 927d6869cfb2a29267bfec913960a74777ceddb3 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 28 Jul 2014 08:46:00 -0400
+Subject: [PATCH] luci: Add support for the no_kill attribute of the VM
+ resource
+
+Add support for the no_kill attribute of the VM resource.
+
+Resolves: rhbz#1117398
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/Vm.py           |  2 +-
+ luci/templates/resource_list.html    |  7 +++++++
+ luci/validation/validate_resource.py | 13 ++++---------
+ 3 files changed, 12 insertions(+), 10 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/Vm.py b/luci/lib/ClusterConf/Vm.py
+index 05e6897..97a86eb 100644
+--- a/luci/lib/ClusterConf/Vm.py
++++ b/luci/lib/ClusterConf/Vm.py
+@@ -15,7 +15,7 @@ RESOURCE_TYPE = _('Virtual Machine')
+ 
+ vm_attributes = ('migration_mapping', 'xmlfile', 'migrate',
+                  'path', 'snapshot', 'hypervisor_uri',
+-                 'migration_uri', 'status_program', 'tunnelled')
++                 'migration_uri', 'status_program', 'tunnelled', 'no_kill')
+ 
+ class Vm(Service, BaseResource):
+   def __init__(self):
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 52d85ac..9fbaaca 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1850,6 +1850,13 @@
+             py:attrs="{'checked':(res and res.getBinaryAttribute('tunnelled')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}"/>
+         </td>
+     </tr>
++    <tr py:if="cluster_os != 'RHEL' or os_version &gt; 6.5">
++        <td>Do Not Force Kill VM During Stop</td>
++        <td>
++          <input type="checkbox" class="checkbox" name="no_kill"
++            py:attrs="{'checked':(res and res.getBinaryAttribute('no_kill')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}"/>
++        </td>
++    </tr>
+     ${res_footer(res)}
+   </table>
+ </div>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 4693076..e95356e 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -241,18 +241,13 @@ def addVM(res, rname, model, **kw):
+ 		('migration_uri', '', False, None),
+ 		('status_program', '', False, None),
+ 		('tunnelled', '', False, None),
++		('no_kill', '', False, None),
+ 	)
+ 
+-	if not kw.has_key('tunnelled'):
+-		kw['tunnelled'] = '0'
+-	else:
+-		kw['tunnelled'] = '1'
+-
+ 	errors = config_resource(params, res, rname, **kw)
+-	if res.getBinaryAttribute('tunnelled') is True:
+-		res.addAttribute('tunnelled', 'on')
+-	else:
+-		res.removeAttribute('tunnelled')
++	for a in ('tunnelled', 'no_kill',):
++		if res.getAttribute(a) == 'on':
++			res.addAttribute(a, '1')
+ 	return errors
+ 
+ def addNFSClient(res, rname, model, **kw):
+-- 
+1.9.3
+

@@ -1,0 +1,16 @@
+diff -urN a/setup.py b/setup.py
+--- a/setup.py	2013-09-26 19:13:59.991782326 +0200
++++ b/setup.py	2013-09-26 19:23:08.900756887 +0200
+@@ -18,6 +18,12 @@
+ from distutils.command.install import install
+ from collections import Callable
+ 
++# bail out if any code is not valid (http://stackoverflow.com/a/2240549)
++import py_compile
++orig_py_compile = py_compile.compile
++def doraise_py_compile(file, cfile=None, dfile=None, doraise=False):
++    orig_py_compile(file, cfile=cfile, dfile=dfile, doraise=True)
++py_compile.compile = doraise_py_compile
+ 
+ 
+ DEBUG = False

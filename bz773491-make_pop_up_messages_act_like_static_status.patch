@@ -1,0 +1,32 @@
+From a6a02ea13e0e821703889a77e9d1ea725187663f Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 12 Aug 2013 16:44:31 -0400
+Subject: [PATCH] luci: Make pop-up messages act like static status
+ messages
+
+Additional fix to remove the pop-up status messages and
+instead add the messages so that they look the same way
+static status messages look.
+
+Resolves: rhbz#773491
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/master.html | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/luci/templates/master.html b/luci/templates/master.html
+index 16ad632..7b59c9b 100644
+--- a/luci/templates/master.html
++++ b/luci/templates/master.html
+@@ -58,7 +58,9 @@
+   <div id="content">
+     <py:with vars="flash=tg.flash_obj.render('flash', use_js=False)">
+       <div py:if="flash" py:content="XML(flash)" class="message"/>
+-      <div py:if="not flash" id="flash"/>
++      <div py:if="not flash" class="message">
++        <div id="flash"/>
++      </div>
+     </py:with>
+     <py:if test="'stern_warning' in dir(tmpl_context) and tmpl_context.stern_warning">
+       <div id="stern_warning" title="Warning">

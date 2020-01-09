@@ -1,0 +1,53 @@
+--- config.tmpl.in	2010-12-21 11:15:00.704302797 +0100
++++ config.tmpl.in-dev	2010-12-22 11:53:01.667270944 +0100
+@@ -136,7 +136,8 @@
+ 
+ who.config_file = %(base_config)s
+ who.log_file = stdout
+-who.log_level = warning
++#who.log_level = warning
++who.log_level = debug
+ who.auth_tkt_timeout = %(def.auth_tkt_timeout)s
+ 
+ ricci.cert_pem = %(def.cert_pem)s
+@@ -222,22 +223,26 @@
+ # Loggers (to be added as a key to [loggers])
+ 
+ [logger_root]
+-level = INFO
++#level = INFO
++level = DEBUG
+ handlers = console
+ 
+ [logger_@PKGNAME@]
+-level = INFO
++#level = INFO
++level = DEBUG
+ handlers =
+ qualname = @PKGNAME@
+ 
+ [logger_tgi18n]
+-level = WARN
++#level = WARN
++level = DEBUG
+ handlers =
+ qualname = tg.i18n
+ 
+ [logger_sqlalchemy]
+ # level: DEBUG -> log queries+results, INFO -> queries only, WARN -> neither
+-level = WARN
++#level = WARN
++level = INFO
+ handlers =
+ qualname = sqlalchemy.engine
+ 
+@@ -247,7 +252,8 @@
+ [handler_console]
+ class = StreamHandler
+ args = (sys.stderr,)
+-level = NOTSET
++#level = NOTSET
++level = DEBUG
+ formatter = generic
+ 
+ # ---------------------------------------------------------------------------

@@ -1,0 +1,45 @@
+diff -ur a/luci/lib/ClusterConf/Rm.py b/luci/lib/ClusterConf/Rm.py
+--- a/luci/lib/ClusterConf/Rm.py	2014-07-28 09:03:31.703389956 -0400
++++ b/luci/lib/ClusterConf/Rm.py	2014-07-28 09:03:49.654959061 -0400
+@@ -66,6 +66,15 @@
+   def delDisabled(self):
+     return self.removeAttribute('disabled')
+ 
++  def getRebootOnPIDExhaustion(self):
++    return self.getBinaryAttribute('reboot_on_pid_exhaustion')
++
++  def setRebootOnPIDExhaustion(self, val):
++    return self.addBinaryAttribute('reboot_on_pid_exhaustion', val, (None, '1'))
++
++  def delRebootOnPIDExhaustion(self):
++    return self.removeAttribute('reboot_on_pid_exhaustion')
++
+   def removeDefaults(self):
+     if self.getCentralProcessing() == int(self.DEFAULTS.get('central_processing')):
+         self.delCentralProcessing()
+diff -ur a/luci/templates/configure.html b/luci/templates/configure.html
+--- a/luci/templates/configure.html	2014-07-28 09:03:31.712389740 -0400
++++ b/luci/templates/configure.html	2014-07-28 09:03:49.655959037 -0400
+@@ -1018,6 +1018,11 @@
+                     py:attrs="rm_ptr and rm_ptr.getDisabled() and {'checked':'checked'} or {}"/>
+               </div>
+               <div class="row">
++                <label class="wide">Reboot Node on PID Exhaustion</label>
++                <input name="reboot_on_pid_exhaustion" type="checkbox" class="checkbox"
++                    py:attrs="rm_ptr and rm_ptr.getRebootOnPIDExhaustion() and {'checked':'checked'} or {}"/>
++              </div>
++              <div class="row">
+                 <label class="wide">Maximum Number of Status Check Threads</label>
+                 <input name="status_child_max" type="text" class="text"
+                     py:attrs="rm_ptr and {'value':rm_ptr.getStatusChildMax()} or {}"/>
+diff -ur a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+--- a/luci/validation/validate_cluster_prop.py	2014-07-28 09:03:31.736389163 -0400
++++ b/luci/validation/validate_cluster_prop.py	2014-07-28 09:04:36.517834195 -0400
+@@ -921,6 +921,7 @@
+     else:
+         rm.delTransitionThrottling()
+ 
++    rm.setRebootOnPIDExhaustion(kw.get('reboot_on_pid_exhaustion') is not None)
+     rm.setCentralProcessing(kw.get('central_processing') is not None)
+     
+     if kw.get('rgmanager_disabled') is not None:

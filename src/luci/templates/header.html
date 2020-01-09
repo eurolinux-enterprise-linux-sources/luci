@@ -1,0 +1,20 @@
+<html xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude"
+  py:strip="">
+<py:def function="header">
+  <div id="header">
+    <h1><img src="/images/logo.png" alt="High Availability management logo"/></h1>
+    <ul class="headermenu">
+      <li><a href="${tg.url('/about')}" class="${('', 'active')[defined('page') and page==page=='about']}">About</a></li>
+      <span py:if="tg.auth_stack_enabled" py:strip="True">
+        <py:if test="request.identity">
+          <li class="loginlogout"><a href="${tg.url('/admin')}" class="${('', 'active')[defined('page') and page==page=='admin']}">Admin</a></li>
+          <li class="loginlogout"><a href="${tg.url('/prefs')}" class="${('', 'active')[defined('page') and page==page=='prefs']}">Preferences</a></li>
+          <li id="login" class="loginlogout"><a href="${tg.url('/logout_handler')}">Logout</a></li>
+        </py:if>
+       <li py:if="not request.identity" id="login" class="loginlogout"><a href="${tg.url('/login')}">Login</a></li>
+      </span>
+    </ul>
+  </div>
+</py:def>
+</html>

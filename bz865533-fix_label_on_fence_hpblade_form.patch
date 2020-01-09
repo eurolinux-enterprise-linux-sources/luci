@@ -1,0 +1,30 @@
+From f99f555d21a43b2243c2b71c0917b3f5b68c79cc Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 15 Oct 2012 12:52:14 -0400
+Subject: [PATCH] luci: Fix label on fence_hpblade form
+
+Fix bad label on the fence_hpblade config form to read
+"HP BladeSystem"
+
+Resolves: rhbz#865533
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/fence_devices.html | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index eb56b96..d0a2b4c 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -3326,7 +3326,7 @@
+   <table class="formtable">
+     <tr>
+       <td>Fence Type</td>
+-      <td>WTI Power Switch</td>
++      <td>HP BladeSystem</td>
+     </tr>
+     <tr>
+       <td>Name</td>
+-- 
+1.7.11.7
+

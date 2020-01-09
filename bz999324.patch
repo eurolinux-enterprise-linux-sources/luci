@@ -1,0 +1,96 @@
+--- a/luci/controllers/cluster.py	2014-08-01 15:30:49.195999568 +0200
++++ b/luci/controllers/cluster.py	2014-08-01 16:34:20.189000083 +0200
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2014 Red Hat, Inc.
++# Copyright 2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -13,7 +13,7 @@
+ 
+ # third party imports
+ from repoze.what.predicates import not_anonymous, in_any_group, is_user, Any, NotAuthorizedError
+-from luci.lib.helpers import quote_plus, unquote_plus, ugettext as _
++from luci.lib.helpers import quote_plus, unquote_plus, unquote_plus_term_traverse, ugettext as _
+ 
+ # project specific imports
+ from luci.lib.base import BaseController
+@@ -632,16 +632,8 @@
+         base_url = '/cluster/%s/services' % self.name
+         services_cmd = '/cluster/%s/services_cmd' % self.name
+ 
+-        if args:
+-            if len(args) >= 1:
+-                servicename = '/'.join([unquote_plus(a) for a in args])
+-            if request.response_ext:
+-                servicename = '%s%s' % (servicename, request.response_ext)
+-        else:
+-            servicename = None
+-
+-        if 'name' in request.params:
+-            servicename = request.params['name']
++        servicename = (request.params['name'] if 'name' in request.params else
++                       unquote_plus_term_traverse(request.response_ext, args))
+ 
+         try:
+             self.get_model()
+@@ -807,16 +799,8 @@
+             flash(e, status="warning")
+             redirect("/")
+- 
+-        if len(args) == 1:
+-            if request.response_ext:
+-                failovername = '%s%s' % (args[0], request.response_ext)
+-            else:
+-                failovername = args[0]
+-        else:
+-            failovername = None
+-
+-        if 'name' in request.params:
+-            failovername = request.params['name']
++
++        failovername = (request.params['name'] if 'name' in request.params else
++                        unquote_plus_term_traverse(request.response_ext, args))
+ 
+         try:
+             self.get_model()
+@@ -1080,15 +1064,17 @@
+         redirect(tmpl_context.cluster_url)
+ 
+     @expose()
+-    def lookup(self, nodename, *args):
++    def lookup(self, *args):
+         try:
+             permission_view(self.name)
+         except NotAuthorizedError, e:
+             flash(e, status="warning")
+             redirect("/")
+- 
+-        inc = IndividualNodeController(self.name, self.data, unquote_plus(nodename))
+-        return inc, args
++
++        # nodename not supposed to contain a slash within
++        nodename = unquote_plus_term_traverse(request.response_ext, args[:1])
++        inc = IndividualNodeController(self.name, self.data, nodename)
++        return inc, args[1:]
+ 
+ class IndividualNodeController(BaseController):
+     def __init__(self, name, iccdata, nodename):
+--- a/luci/lib/helpers.py	2014-08-01 16:09:52.266999814 +0200
++++ b/luci/lib/helpers.py	2014-08-08 17:09:05.548266623 +0200
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2010 Red Hat, Inc.
++# Copyright 2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -65,3 +65,9 @@
+     """urllib's unquote_plus, but return unicode."""
+     ret = unquote_plus_impl(s)
+     return ret if isinstance(ret, unicode) else unicode(ret, 'UTF-8')
++
++
++def unquote_plus_term_traverse(resp_ext, ps):
++    """Normalize single traversal-like entity at URL tail (no such -> None)"""
++    resp_ext = resp_ext or u''
++    return '/'.join([unquote_plus(p) for p in ps]) + resp_ext if ps else None

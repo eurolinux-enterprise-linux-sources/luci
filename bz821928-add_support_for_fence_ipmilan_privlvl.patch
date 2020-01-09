@@ -1,0 +1,75 @@
+From f62b9bb456895d443c599d6d3324ee0c5c7e4b1b Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Fri, 5 Oct 2012 09:30:05 -0400
+Subject: [PATCH] luci: Add support for fence_ipmilan privlvl
+
+Add support for the fence_ipmilan privlvl attribute
+
+Resolves: rhbz#821928
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/fence_devices.html | 21 ++++++++++++++++++++-
+ luci/validation/validate_fence.py |  1 +
+ 2 files changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index 2046c0d..c740f0b 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -1711,6 +1711,25 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cipher')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Privilege Level</td>
++      <td>
++        <py:with vars="privlvl = cur_fencedev and cur_fencedev.getAttribute('privlvl')">
++        <select name="privlvl">
++          <option value=""
++            py:attrs="not privlvl and {'selected':'selected'} or {}">Default</option>
++          <option value="CALLBACK"
++            py:attrs="privlvl and privlvl.upper() == 'CALLBACK' and {'selected':'selected'} or {}">CALLBACK</option>
++          <option value="USER"
++            py:attrs="privlvl and privlvl.upper() == 'USER' and {'selected':'selected'} or {}">USER</option>
++          <option value="OPERATOR"
++            py:attrs="privlvl and privlvl.upper() == 'OPERATOR' and {'selected':'selected'} or {}">OPERATOR</option>
++          <option value="ADMINISTRATOR"
++            py:attrs="privlvl and privlvl.upper() == 'ADMINISTRATOR' and {'selected':'selected'} or {}">ADMINISTRATOR</option>
++        </select>
++        </py:with>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -3110,7 +3129,6 @@ ${fence_unknown(None,0)}
+         <option name="fence_intelmodular" value="fence_intelmodular">Intel Modular</option>
+       </py:if>
+ 
+-      <option name="fence_rhevm" value="fence_rhevm">RHEV-M fencing</option>
+       <option name="fence_ipmilan" value="fence_ipmilan">IPMI Lan</option>
+       <option py:if="cluster_version == 2" name="fence_lpar" value="fence_lpar">LPAR Fencing</option>
+       <option py:if="cluster_version == 2" name="fence_mcdata" value="fence_mcdata">McData SAN Switch</option>
+@@ -3119,6 +3137,7 @@ ${fence_unknown(None,0)}
+       <option py:if="cluster_version == 3" name="fence_sanbox2" value="fence_sanbox2">QLogic SANbox2 (Deprecated)</option>
+ 
+       <option py:if="cluster_version == 3 and cluster_os != 'RHEL'" name="fence_rackswitch" value="fence_rackswitch">RackSaver RackSwitch</option>
++      <option name="fence_rhevm" value="fence_rhevm">RHEV-M fencing</option>
+       <option py:if="cluster_version == 2" name="fence_rps10" value="fence_rps10">RPS10 Serial Switch</option>
+       <option name="fence_scsi" value="fence_scsi">SCSI Reservation Fencing</option>
+ 
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index b6ee463..142f71b 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -426,6 +426,7 @@ def val_ipmilan_fd(fencedev, fence_name, **kw):
+ 		('auth', False),
+ 		('lanplus', False),
+ 		('cipher', False),
++		('privlvl', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+-- 
+1.7.11.4
+

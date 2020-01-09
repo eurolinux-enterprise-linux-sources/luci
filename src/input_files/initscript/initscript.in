@@ -1,0 +1,514 @@
+#!/bin/bash
+#
+# @SERVICENAME@    high availability management application
+#
+# chkconfig: - 99 01
+# description: Starts and stops @SERVICENAME@
+#
+#
+### BEGIN INIT INFO
+# Provides:        @SERVICENAME@
+# Required-Start:  $named $network $time
+# Required-Stop:   $network $time
+# Default-Start:
+# Default-Stop:
+# Short-Description:  Starts and stops @SERVICENAME@
+# Description:  Starts and stops the @SERVICENAME@ high availability management application
+### END INIT INFO
+
+# For messages capture/debugging on systemd-enabled system use, e.g., syslog
+ECHOFUNC=echo
+#ECHOFUNC="logger -t @SERVICENAME@ --"
+
+USEFUNCS=1
+# Source function library.
+if [ -e /etc/rc.d/init.d/functions ]; then
+    . /etc/rc.d/init.d/functions
+else
+    PATH="/sbin:/usr/sbin:/bin:/usr/bin"
+    export PATH
+    success() { return; }
+    failure() { return; }
+    USEFUNCS=0
+fi
+
+
+prog="@SERVICENAME@"
+config="@BASECONFIG@"
+sysconfig="@SYSCONFIG@"
+exec="@LAUNCHER@"
+sqlite_bin="/usr/bin/sqlite3"
+
+
+# Defaults that can be overridden by the content of $sysconfig
+LOG_FILE="@LOGFILE@"
+KEEP_RUNTIME_DATA=0
+
+# Override defaults with values from initscript configuration file
+[ -e "$sysconfig" ] && . "$sysconfig"
+
+
+lockfile="@LOCKFILE@"
+
+# Following values are not intended to be overridden by $sysconfig
+
+PKG_NAME="@PKGNAME@"
+DAEMON_USER="@USERNAME@"
+DAEMON_GROUP="@GROUPNAME@"
+# These are only used to inform user and only when the port a/o host is not
+# redefined in initscript configuration file ($sysconfig), otherwise these
+# values are obtained from this file
+HOST=0.0.0.0
+PORT=@PORT@
+
+STATE_DIR="@STATEDIR@"
+DB_FILE="@DBFILE@"
+DB_DIR="$(dirname $DB_FILE)"
+BACKUP_DIR="$(dirname $DB_FILE)"
+DB_PERMS=0640
+BACKUP_PERMS=0640
+
+RUNTIMEDATA_DIR="@RUNTIMEDATADIR@"
+CACHE_DIR="@CACHEDIR@"
+SESSIONS_DIR="@SESSIONSDIR@"
+PID_FILE="@PIDFILE@"
+
+CERT_KEY_BITS=2048
+CERT_KEY_LIFE_DAYS=1825
+CERT_CONFIG="@CERTCONFIG@"
+CERT_PEM="@CERTPEM@"
+
+
+# Check some conditions and return respective return code
+entry_check() {
+    this_identity=$(whoami)
+    if [ "$this_identity" != "root" -a "$this_identity" != "$DAEMON_USER" ]; then
+        # Must be either root or the @USERNAME@ user to run this
+        $ECHOFUNC "Insufficient permissions" >&2
+        return 4
+    fi
+}
+
+
+# Automatically adds subjectAltName values for hostname domain names and/or IP
+# addresses to the configuration of self-managed self-signed certificate
+certconfig_complete() {
+    if [ "$(tail -n 1 "$CERT_CONFIG")" == "###" ]; then
+        $ECHOFUNC "Adding following auto-detected host IDs (IP addresses/domain" \
+                  "names), corresponding to \`$HOST' address, to the"            \
+                  "configuration of self-managed certificate \`$CERT_CONFIG'"    \
+                  "(you can change them by editing \`$CERT_CONFIG', removing"    \
+                  "the generated certificate \`$CERT_PEM' and restarting"        \
+                  "$prog):" >&2
+        CNT_DOM_NAME=16
+        CNT_IP_ADDR=16
+        IP_ADDRS=$(ip addr show scope global | sed '/^[ \t]*inet/!d; s/[ \t]*inet[^ \t]*[ \t]\+\([^ \t/]\+\).*$/\1/')
+        CUSTOM_HOST=$(echo "$INIT_CONFIG" | sed 's/\$/\n/g' | sed '/^[ \t]*host[ \t]*=/!d; s/[^=]*=[ \t]*\([^$]\+\)$/\1/')
+        [ -n "$CUSTOM_HOST" ] && HOST="$CUSTOM_HOST"
+        if [ "$HOST" == "0.0.0.0" ]; then
+            # Use only resolved names of all global host IP addresses for
+            # identification within the certificate, no information about
+            # these IPs added (for confidentality reasons)
+            for IP_ADDR in $IP_ADDRS; do
+                DOM_NAME=$(/usr/bin/python -Es -c "from socket import getfqdn; print(getfqdn('$IP_ADDR'))" 2>/dev/null)
+                if [ -n "$DOM_NAME" -a "$DOM_NAME" != "$IP_ADDR" ]; then
+                    echo "DNS.$CNT_DOM_NAME = $DOM_NAME" >>"$CERT_CONFIG"
+                    $ECHOFUNC -e "\tDNS: $DOM_NAME" >&2
+                    let CNT_DOM_NAME++
+                fi
+            done
+        else
+            # Use only resolved names of particular global host IP address
+            # corresponding to the host IP address @PKGNAME@ binds at, together
+            # with this IP
+            for IP_ADDR in $IP_ADDRS; do
+                if [ "$IP_ADDR" == "$HOST" ]; then
+                    echo "IP.$CNT_IP_ADDR = $IP_ADDR" >>"$CERT_CONFIG"
+                    $ECHOFUNC -e "\tIP: $IP_ADDR" >&2
+                    let CNT_IP_ADDR++
+                    DOM_NAME=$(/usr/bin/python -Es -c "from socket import getfqdn; print(getfqdn('$IP_ADDR'))" 2>/dev/null)
+                    if [ -n "$DOM_NAME" -a "$DOM_NAME" != "$IP_ADDR" ]; then
+                        echo "DNS.$CNT_DOM_NAME = $DOM_NAME" >>"$CERT_CONFIG"
+                        $ECHOFUNC -e "\tDNS: $DOM_NAME" >&2
+                        let CNT_DOM_NAME++
+                    fi
+                fi
+            done
+        fi
+        if [ $CNT_DOM_NAME -eq 16 -a $CNT_IP_ADDR -eq 16 ]; then
+            $ECHOFUNC -e "\t(none suitable found, you can still do it manually" \
+                         "as mentioned above)" >&2
+        fi
+        $ECHOFUNC -ne "\n" >&2
+    fi
+}
+
+prepare_config() {
+    # Touching $config first and then using ``.. make-config .. --overwrite''
+    # does not work now (see http://trac.pythonpaste.org/pythonpaste/ticket/450)
+    $exec make-config $PKG_NAME "$config" --no-default-sysconfig --no-install &>/dev/null
+    if [ $? -ne 0 ]; then
+        rm -f -- "$config" &>/dev/null
+        $ECHOFUNC "Unable to create the $PKG_NAME base configuration file (\`$config')." >&2
+        return 6
+    fi
+    chown $DAEMON_USER:$DAEMON_GROUP "$config" \
+    && chmod 0640 "$config"
+    if [ $? -ne 0 ]; then
+        rm -f -- "$config" &>/dev/null
+        $ECHOFUNC "Unable to change ownership/attributes of the $PKG_NAME base configuration file (\`$config')." >&2
+        return 1
+    fi
+}
+
+prepare_db() {
+    touch "$DB_FILE"
+    chown $DAEMON_USER:$DAEMON_GROUP "$DB_FILE" \
+    && chmod -- $DB_PERMS "$DB_FILE"
+    if [ $? -ne 0 ]; then
+        rm -f -- "$DB_FILE" &>/dev/null
+        $ECHOFUNC "Unable to change ownership/attributes of the $PKG_NAME database file (\`$DB_FILE')." >&2
+        return 1
+    fi
+    $exec setup-app "$config" --no-default-sysconfig &>/dev/null
+    if [ $? -ne 0 ]; then
+        rm -f -- "$DB_FILE" &>/dev/null
+        $ECHOFUNC "Unable to create the $PKG_NAME database file (\`$DB_FILE')." >&2
+        return 6
+    fi
+}
+
+# Prepare self-managed self-signed certificate (@CERTPEM@)
+prepare_cert() {
+    touch "$CERT_PEM"
+    chown $DAEMON_USER:$DAEMON_GROUP "$CERT_PEM" \
+    && chmod 0600 "$CERT_PEM"
+    if [ $? -ne 0 ]; then
+        rm -f -- "$CERT_PEM" &>/dev/null
+        $ECHOFUNC "Unable to change ownership/attributes of the $PKG_NAME host certificate file (\`$CERT_PEM')." >&2
+        return 1
+    fi
+    certconfig_complete
+    [ -x /usr/bin/openssl ] || exit 6
+    # Generate the SSL certificate (PEM file containing also private key)
+    # Note: Explicit specification of file containing random data is needed
+    #       to suppress complaints (and we also control where this file is)
+    export RANDFILE="$(mktemp -q "cert_rnd.XXXXXX")"
+    out="$(/usr/bin/openssl req -new -x509 -nodes -sha1        \
+                                -newkey rsa:"$CERT_KEY_BITS"   \
+                                -config "$CERT_CONFIG"         \
+                                -days "$CERT_KEY_LIFE_DAYS"    \
+                                -set_serial "$(/bin/date +%s)" \
+                                -keyout "$CERT_PEM"            \
+                                -out "$CERT_PEM" 2>&1)"
+    ret=$?
+    rm -f -- "$RANDFILE" &>/dev/null
+    $ECHOFUNC "$out" | sed "/^[.+-]/d" >&2
+    if [ $ret -ne 0 ]; then
+        rm -f -- "$CERT_PEM" &>/dev/null
+        $ECHOFUNC "Unable to generate the $PKG_NAME host certificate file (\`$CERT_PEM')." >&2
+        return 6
+    fi
+}
+
+initialize() {
+    # Ensure the existence of base configuration file
+    if [ ! -f "$config" ]; then
+        prepare_config || return $?
+    fi
+    # Ensure the existence of database file
+    if [ ! -f "$DB_FILE" ]; then
+        prepare_db || return $?
+    fi
+    # Ensure existence of SSL certificate (also check the state of custom
+    # certificate possibly defined in $sysconfig)
+    # TODO: When @PKGNAME@ is able to handle the change of certificate used for
+    #       connections to ricci conveniently via its GUI, there will be no need
+    #       to generate it if custom one provided (double "if" -> "if - elif")
+    CUSTOM_CERT_PEM=$(echo "$INIT_CONFIG" | sed 's/\$/\n/g' | sed '/^[ \t]*ssl_pem[ \t]*=/!d; s/[^=]*=[ \t]*\([^$]\+\)$/\1/')
+    if [ -n "$CUSTOM_CERT_PEM" ]; then
+        if [ ! -r "$CUSTOM_CERT_PEM" ]; then
+            $ECHOFUNC "ERROR: Custom certificate \`$CUSTOM_CERT_PEM' (defined in \`$sysconfig'): cannot read" >&2
+            return 6
+        fi
+    fi
+    if [ ! -f "$CERT_PEM" ]; then
+        prepare_cert || return $?
+    fi
+    # Ensure the existence of log file (and also the parent directory)
+    if [ ! -f "$LOG_FILE" ]; then
+        install -o $DAEMON_USER -g $DAEMON_GROUP -d "$(dirname "$LOG_FILE")"
+        touch "$LOG_FILE"
+        chown $DAEMON_USER:$DAEMON_GROUP "$LOG_FILE" \
+        && chmod 0640 "$LOG_FILE"
+        if [ $? -ne 0 ]; then
+            $ECHOFUNC "Unable to change ownership/attributes of the $PKG_NAME log file (\`$LOG_FILE')." >&2
+            return 1
+        fi
+    fi
+    # Ensure the existence of directory for run-time data
+    # Note: As our rule is the directories for cache and sessions data are
+    #       direct subdirectories of run-time data dir, we only check that
+    #       this holds and do not care about them further as they are created
+    #       automatically in run-time with the correct attributes when needed:
+    #       - 0750 perms.     ~ /usr/lib*/python*/site-packages/beaker/util.py
+    #       - owner           ~ user running luci
+    #       - SELinux context ~ selinux-policy (process context)
+    if [ "$(dirname "$CACHE_DIR")" != "$RUNTIMEDATA_DIR" \
+         -o "$(dirname "$SESSIONS_DIR")" != "$RUNTIMEDATA_DIR" ]; then
+        $ECHOFUNC -n "(Internal error) " >&2
+        $ECHOFUNC "Directories for both cache and sessions data have to be direct subdirectories of run-time data directory." >&2
+        return 1
+    elif [ ! -d "$RUNTIMEDATA_DIR" ]; then
+        install -m 0755 -o $DAEMON_USER -g $DAEMON_GROUP -d -- "$RUNTIMEDATA_DIR" \
+        && restorecon -- "$RUNTIMEDATA_DIR" &>/dev/null
+        if [ $? -ne 0 ]; then
+            $ECHOFUNC "Unable to create the $PKG_NAME directory for run-time data (\`$RUNTIMEDATA_DIR')." >&2
+            return 1
+        fi
+    fi
+}
+
+list_database_dumps() {
+    /bin/ls -1 -- $BACKUP_DIR/@SERVICENAME@-backup*.db 2>/dev/null
+    return 0
+}
+
+dump_database() {
+    if [ -n "$1" ]; then
+        output_file="$1"
+    else
+        output_file="$BACKUP_DIR/@SERVICENAME@-backup$(/bin/date +%Y%m%d%H%M%S).db"
+    fi
+
+    if [ -e "$output_file" ]; then
+        if [ "$2" != "--force" ] && [ "$2" != "-f" ]; then
+            $ECHOFUNC "A file named \`$output_file' already exists. Pass the additional argument of --force to overwrite it." >&2
+            return 1
+        fi
+    fi
+    $sqlite_bin "$DB_FILE" '.dump' > "$output_file"
+    if [ $? -ne 0 ]; then
+        $ECHOFUNC "Failed to create \`$output_file' properly." >&2
+        rm -f -- "$output_file"
+        return 1
+    fi
+    chown $DAEMON_USER:$DAEMON_GROUP "$output_file" \
+    && chmod -- $BACKUP_PERMS "$output_file"
+    if [ $? -ne 0 ]; then
+        $ECHOFUNC "Unable to change ownership/attributes of the $PKG_NAME database backup file (\`$output_file')." >&2
+        rm -f -- "$output_file" >&/dev/null
+        return 1
+    fi
+    restorecon -R -- "$DB_DIR" "$BACKUP_DIR" >&/dev/null
+    return 0
+}
+
+load_database() {
+    db_dump_file=$1
+    if [ ! "$db_dump_file" ]; then
+        $ECHOFUNC "No database backup file was specified. Run \`$0 list-backups' to get a list of known existing backup files." >&2
+        return 1
+    fi
+
+    if [ ! -r "$db_dump_file" ]; then
+        $ECHOFUNC "The database backup in \`$db_dump_file' cannot be read." >&2
+        return 1
+    fi
+
+    tmp_db="$(mktemp --tmpdir=$DB_DIR)"
+    if [ $? -ne 0 ]; then
+        $ECHOFUNC "Unable to create a temporary file in \`$DB_DIR'." >&2
+        return 1
+    fi
+    $sqlite_bin $tmp_db ".read $db_dump_file"
+    if [ $? -ne 0 ] || [ ! -s "$tmp_db" ]; then
+        # sqlite will return 0 even if you feed it non-sql input. In the case
+        # of bad input, the database file will have size 0.
+        $ECHOFUNC "Unable to restore the database from the backup file \`$db_dump_file'" >&2
+        rm -f -- "$tmp_db" >&/dev/null
+        return 1
+    fi
+    chown $DAEMON_USER:$DAEMON_GROUP "$tmp_db" \
+    && chmod -- $DB_PERMS "$tmp_db"
+    if [ $? -ne 0 ]; then
+        $ECHOFUNC "Unable to change ownership/attributes of the $PKG_NAME database file (\`$tmp_db')." >&2
+        rm -f -- "$tmp_db" >&/dev/null
+        return 1
+    fi
+
+    old_exists=0
+    if [ -e "$DB_FILE" ]; then
+        old_exists=1
+        bknum=0
+        while [ -e "$DB_FILE".$bknum ]; do
+            bknum=$(($bknum+1))
+        done
+        old_db_name="$DB_FILE".$bknum
+
+        mv -n -- "$DB_FILE" "$old_db_name"
+        if [ $? -ne 0 ]; then
+            # it appeared out of nowhere
+            $ECHOFUNC "Unable to move the existing database file to \`$old_db_name'." >&2
+            rm -f -- "$tmp_db" >&/dev/null
+            return 1
+        fi
+    fi
+
+    ret_code=0
+    mv -- "$tmp_db" "$DB_FILE"
+    if [ $? -ne 0 ]; then
+        rm -f -- "$tmp_db" >&/dev/null
+        if [ $old_exists -eq 1 ]; then
+            $ECHOFUNC "Unable to move the newly created database file to \`$DB_FILE'. Trying to restore database from \`$old_db_name'." >&2
+            mv -- "$old_db_name" "$DB_FILE"
+        else
+            $ECHOFUNC "Unable to move the newly created database file to \`$DB_FILE'." >&2
+        fi
+        ret_code=1
+    fi
+
+    restorecon -R -- "$DB_DIR" "$BACKUP_DIR" >&/dev/null
+    return $ret_code
+}
+
+start_server() {
+    # TODO: Can the dependency on saslauthd running be solved in a better way?
+    #       LSB header doesn't seem to help there.
+    /sbin/service saslauthd start || return 1
+
+    $exec serve --daemon --user "$DAEMON_USER" --group "$DAEMON_GROUP" \
+                --log-file="$LOG_FILE" --pid-file="$PID_FILE"          \
+                --server-name=init --app-name=init "$config" @RELOAD@ >/dev/null
+}
+
+start() {
+    step=$"Start $prog..."
+
+    CUSTOM_HOST=$(echo "$INIT_CONFIG" | sed 's/\$/\n/g' | sed '/^[ \t]*host[ \t]*=/!d; s/[^=]*=[ \t]*\([^$]\+\)$/\1/')
+    [ -n "$CUSTOM_HOST" ] && HOST="$CUSTOM_HOST"
+    [ "$HOST" == "0.0.0.0" ] && HOST=$(/usr/bin/python -Es -c "from socket import getfqdn; print(getfqdn())" 2>/dev/null)
+    [ -z "$HOST" ] && HOST="127.0.0.1"
+
+    CUSTOM_PORT=$(echo "$INIT_CONFIG" | sed 's/\$/\n/g' | sed '/^[ \t]*port[ \t]*=/!d; s/[^=]*=[ \t]*\([^$]\+\)$/\1/')
+    [ -n "$CUSTOM_PORT" ] && PORT="$CUSTOM_PORT"
+    [ "$PORT" != "443" ] && PRINT_PORT=":$PORT"
+
+    if [ "$KEEP_RUNTIME_DATA" -eq "0" ]; then
+        rm -rf -- "$CACHE_DIR" "$SESSIONS_DIR" &>/dev/null
+    fi
+
+    if [ "$DAEMON_USER" != "root" -a "$PORT" -lt "1024" ]; then
+        $ECHOFUNC "Unable to use privileged port (<1024) because $PKG_NAME runs as a non-root user." >&2
+        return 1
+    fi
+
+    ret=0
+    initialize || ret=$?
+    start_server || ret=$?
+
+    [ $ret -eq 0 ] && touch "$lockfile"
+    [ $ret -eq 0 ] && success || failure; $ECHOFUNC -n "$step"
+    [ $USEFUNCS -eq 0 ] && $ECHOFUNC " $ret" || $ECHOFUNC
+    if [ $ret -eq 0 ]; then
+        $ECHOFUNC "Point your web browser to https://$HOST$PRINT_PORT (or equivalent) to access $PKG_NAME" >&2
+    fi
+    return $ret
+}
+
+stop() {
+    step=$"Stop $prog..."
+
+    # If PID file does not exist, paster returns 1 otherwise 0
+    $exec serve --stop-daemon --pid-file="$PID_FILE" >/dev/null
+    ret=$?
+    if [ $ret -eq 0 ]; then
+        if [ "$KEEP_RUNTIME_DATA" -eq "0" ]; then
+            rm -rf -- "$CACHE_DIR" "$SESSIONS_DIR" &>/dev/null
+        fi
+        rm -f -- "$lockfile"
+    fi
+    [ $ret -eq 0 ] && success || failure; $ECHOFUNC -n "$step"
+    [ $USEFUNCS -eq 0 ] && $ECHOFUNC " $ret" || $ECHOFUNC
+    return $ret
+}
+
+restart() {
+    stop
+    start
+}
+
+status() {
+    # If PID file exists and contains valid PID, paster returns 0 otherwise 1
+    out=$($exec serve --status --pid-file="$PID_FILE" "$config" 2>&1)
+    ret=$?
+    echo "$out" | tail -1
+    if [ $ret -ne 0 ]; then
+        # Check the existence of the PID file to choose the right return code
+        [ -e "$PID_FILE" ] && ret=1 || ret=3
+    fi
+    return $ret
+}
+
+
+case "$1" in
+    start)
+        entry_check || exit $?
+        status &>/dev/null && exit 0
+        $1
+        ;;
+    stop)
+        entry_check || exit $?
+        status &>/dev/null || exit 0
+        $1
+        ;;
+    restart)
+        entry_check || exit $?
+        $1
+        ;;
+    reload|force-reload)
+        entry_check || exit $?
+        status &>/dev/null || exit 7
+        restart
+        ;;
+    condrestart|try-restart)
+        entry_check || exit $?
+        status &>/dev/null || exit 0
+        restart
+        ;;
+    status)
+        entry_check || exit 4
+        $1
+        ;;
+    backup-db)
+        entry_check || exit $?
+        status &>/dev/null
+        if [ $? -eq 0 ]; then
+            $ECHOFUNC "The database backup operation can proceed only when @SERVICENAME@ is stopped. Stop @SERVICENAME@, then try again." >&2
+            exit 1
+        fi
+        shift
+        dump_database $*
+        exit $?
+        ;;
+    restore-db)
+        entry_check || exit $?
+        status &>/dev/null
+        if [ $? -eq 0 ]; then
+            $ECHOFUNC "The database restore operation can proceed only when @SERVICENAME@ is stopped. Stop @SERVICENAME@, then try again." >&2
+            exit 1
+        fi
+        shift
+        load_database $*
+        exit $?
+        ;;
+    list-backups)
+        entry_check || exit $?
+        list_database_dumps
+        exit $?
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|reload|restart|condrestart|try-restart|backup-db|restore-db|list-backups}"
+        exit 2
+esac
+exit $?

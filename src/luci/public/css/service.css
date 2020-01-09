@@ -1,0 +1,76 @@
+/*============================= S E R V I C E S ============================= */
+
+/* -------------------------------- overview -------------------------------- */
+
+.service_tlist_status {
+}
+
+th.service_tlist_status {
+}
+
+.service_tlist_enabled {
+  text-align: center;
+  padding: 1px 15px;
+}
+
+.service_tlist_fdom {
+}
+
+th.service_tlist_fdom {
+}
+
+/* --------------------------------- details -------------------------------- */
+
+/* details */
+
+/* list of resources */
+
+#service_tresources {
+  margin-top: -20px;
+}
+
+#service_tresources thead tr {
+  background-color: inherit;
+}
+
+#service_tresources tr {
+  background-color: #f4f4f4;
+  border-bottom: 2px solid white;
+}
+
+th.service_tresources_name {
+  text-align: left;
+}
+
+td.service_tresources_name {
+  width: 18%;
+  min-width: 18%;
+}
+
+th.service_tresources_type {
+  text-align: left;
+}
+
+.service_tresources_type {
+  width: 20%;
+  min-width: 20%;
+}
+
+/* --------------------------------- dialog -------------------------------- */
+
+.serviceformselect {
+  width: 75%;
+}
+
+#service_form_area table.formtable {
+  margin-top: 1em;
+}
+
+#service_form_area table.formtable td {
+  padding: 0 1em 1em 0;
+  min-width: 150px;
+}
+
+#service_form_area {
+  min-height: 6em;
+}

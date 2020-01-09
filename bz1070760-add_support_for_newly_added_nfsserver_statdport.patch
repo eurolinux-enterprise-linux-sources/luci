@@ -1,0 +1,61 @@
+From 3c02159fecb5bd18f21b0c46daafcb11fe9b90d3 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 14:05:52 -0400
+Subject: [PATCH] luci: Add support for newly added nfsserver statdport
+ attr
+
+Add support for configuring the newly-added "statdport"
+attribute of the nfsserver.sh resource agent.
+
+Resolves: rhbz#bz1070760
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html    | 11 ++++++++++-
+ luci/validation/validate_resource.py |  1 +
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 3cfd829..b15c153 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -451,7 +451,9 @@
+ </div>
+ 
+ <div py:def="nfsserver_resource(res, form_id, parent_id, isref)" name="NFSSERVER" id="nfsserver_resource" class="row rescfg"
+-  py:with="global_resource = res and isref != 0"
++  py:with="global_resource = res and isref != 0;
++      cluster_os = tmpl_context.cluster.get_OS();
++      os_version = tmpl_context.cluster.get_OSVersion()"
+   py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+   <input name="global" type="hidden" value="1" py:if="global_resource"/>
+   <input name="parent_id" type="hidden" value="${parent_id}"/>
+@@ -470,6 +472,13 @@
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
++    <tr py:if="cluster_os != 'RHEL' or os_version &gt; 6.5">
++      <td>NFS statd listening port (optional)</td>
++      <td>
++        <input type="text" class="text" name="statdport"
++          py:attrs="res and {'value':res.getAttribute('statdport'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
+     <tr py:if="expertMode">
+       <td>Override Inherited Path</td>
+       <td>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 9c06e25..9b9a531 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -265,6 +265,7 @@ def addNFSExport(res, rname, model, **kw):
+ def addNFSServer(res, rname, model, **kw):
+ 	params = (
+ 		('nfspath', '', False, None),
++		('statdport', '', False, None),
+ 	)
+ 
+ 	errors = config_resource(params, res, rname, **kw)
+-- 
+1.9.3
+

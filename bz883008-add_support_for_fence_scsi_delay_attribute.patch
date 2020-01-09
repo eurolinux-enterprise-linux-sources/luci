@@ -1,0 +1,47 @@
+From fc467686fc8420048888cdd4f3ea5982790b4008 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 7 Aug 2013 12:05:00 -0400
+Subject: [PATCH] luci: Add support for fence_scsi 'delay' attribute
+
+Add support for configuring fence_scsi's newly added "delay"
+attribute.
+
+Resolves: rhbz#883008
+---
+ luci/templates/fence_instances.html | 7 +++++++
+ luci/validation/validate_fence.py   | 1 +
+ 2 files changed, 8 insertions(+)
+
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index b10c4ec..ba7fc23 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -1209,6 +1209,13 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('key')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index 019dfac..e866a83 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -1201,6 +1201,7 @@ def val_scsi_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('nodename', False),
+ 		('key', False),
++		('delay', False),
+ 		('unfencing', True),  # just a template sanity-check
+ 	)
+ 
+-- 
+1.8.3.1
+

@@ -1,0 +1,27 @@
+diff -ur a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+--- a/luci/validation/validate_cluster_prop.py	2014-06-23 09:28:35.854282608 -0400
++++ b/luci/validation/validate_cluster_prop.py	2014-06-23 09:29:26.838082797 -0400
+@@ -923,6 +923,11 @@
+ 
+     rm.setCentralProcessing(kw.get('central_processing') is not None)
+     
++    if kw.get('rgmanager_disabled') is not None:
++        rm.setDisabled()
++    else:
++        rm.delDisabled()
++
+     return (len(errors) < 1, {'errors': errors})
+ 
+ def validate_dlm_config(model, **kw):
+@@ -1264,11 +1269,6 @@
+             # block
+             fence_node.addChild(fence_method)
+ 
+-    if kw.get('rgmanager_disabled') is not None:
+-        rm.setDisabled()
+-    else:
+-        rm.delDisabled()
+-
+     return (len(errors) < 1, {'errors': errors})
+ 
+ def validate_node_fence_form(model, **kw):

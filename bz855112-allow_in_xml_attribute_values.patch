@@ -1,0 +1,77 @@
+From b20deb51aab4379623a4744214a592cf3a546dd5 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 10 Aug 2014 23:10:39 -0400
+Subject: [PATCH] luci: Allow & in XML attribute values
+
+Allow the & character in XML attribute values. Also do not error out
+when reading an existing cluster.conf file that contains illegal characters
+in XML attribute values.
+
+Resolves: rhbz#855112
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/ModelBuilder.py | 14 ++++++++++++--
+ luci/lib/ClusterConf/TagObject.py    |  6 +++---
+ 2 files changed, 15 insertions(+), 5 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+index 262229d..ca3599b 100644
+--- a/luci/lib/ClusterConf/ModelBuilder.py
++++ b/luci/lib/ClusterConf/ModelBuilder.py
+@@ -226,7 +226,12 @@ class ModelBuilder:
+       new_object.comments = [c.data for c in comment_nodes]
+ 
+       for k, v in parent_node.attributes.items():
+-        new_object.addAttribute(k, v)
++        try:
++          new_object.addAttribute(k, v)
++        except ValueError, e:
++          # This should only be thrown when illegal characters are used.
++          # Allow it when reading in an existing configuration.
++          pass
+ 
+       if unknown_element is True:
+         self.unknown_elements.append((parent_object, new_object))
+@@ -394,7 +399,12 @@ class ModelBuilder:
+       if entity_attr is not None:
+         for i in entity_attr.iterkeys():
+           if not rf.attr_hash.has_key(i):
+-            rf.addAttribute(i, entity_attr[i])
++            try:
++              rf.addAttribute(i, entity_attr[i])
++            except ValueError, e:
++              # This should only be thrown when illegal characters are used.
++              # Allow it when reading in an existing configuration.
++              pass
+     except:
+       pass
+ 
+diff --git a/luci/lib/ClusterConf/TagObject.py b/luci/lib/ClusterConf/TagObject.py
+index fec05d9..ae92495 100644
+--- a/luci/lib/ClusterConf/TagObject.py
++++ b/luci/lib/ClusterConf/TagObject.py
+@@ -17,7 +17,7 @@ class TagObject(object):
+     self.element_text = None
+     self.errors = False
+     self.parent = None
+-    self.badchars = set('<>&"')
++    self.badchars = set('<>"')
+ 
+   def getParent(self):
+     return self.parent
+@@ -40,9 +40,9 @@ class TagObject(object):
+     if value is None:
+         return self.removeAttribute(name)
+     uvalue = unicode(value)
+-    if any((c in self.badchars) for c in uvalue):
+-      raise ValueError, 'Attributes may not contain the following characters: > < " &'
+     self.attr_hash[name] = uvalue
++    if any((c in self.badchars) for c in uvalue):
++      raise ValueError, 'Attributes may not contain the following characters: > < "'
+     return value
+ 
+   def addIntegerAttribute(self, name, val, bounds=(None, None)):
+-- 
+1.9.3
+

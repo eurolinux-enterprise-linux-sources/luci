@@ -1,0 +1,192 @@
+From c7e16ed530f120b34f7db0c39a8abafb72b127fc Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 28 Jul 2014 08:40:54 -0400
+Subject: [PATCH] luci: Add support for the bind-mount resource
+
+Add support for the new bind-mount resource type.
+
+Resolves: rhbz#1117398
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/BindMount.py    | 24 ++++++++++++++++++++++
+ luci/lib/ClusterConf/ModelBuilder.py | 11 +++++-----
+ luci/templates/resource_list.html    | 40 ++++++++++++++++++++++++++++++++++++
+ luci/validation/validate_resource.py | 18 ++++++++++++++++
+ 4 files changed, 88 insertions(+), 5 deletions(-)
+ create mode 100644 luci/lib/ClusterConf/BindMount.py
+
+diff --git a/luci/lib/ClusterConf/BindMount.py b/luci/lib/ClusterConf/BindMount.py
+new file mode 100644
+index 0000000..afd40dc
+--- /dev/null
++++ b/luci/lib/ClusterConf/BindMount.py
+@@ -0,0 +1,24 @@
++# Copyright (C) 2014 Red Hat, Inc.
++#
++# This program is free software; you can redistribute
++# it and/or modify it under the terms of version 2 of the
++# GNU General Public License as published by the
++# Free Software Foundation.
++
++from BaseResource import BaseResource
++from gettext import gettext as _
++
++TAG_NAME = 'bind-mount'
++RESOURCE_TYPE = _('bind mount')
++
++class BindMount(BaseResource):
++  def __init__(self):
++    BaseResource.__init__(self)
++    self.TAG_NAME = TAG_NAME
++    self.resource_type = RESOURCE_TYPE
++
++  def getName(self):
++    try:
++      return self.attr_hash['mountpoint']
++    except KeyError, e:
++      return ''
+diff --git a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+index 8e878df..262229d 100644
+--- a/luci/lib/ClusterConf/ModelBuilder.py
++++ b/luci/lib/ClusterConf/ModelBuilder.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2012 Red Hat, Inc.
++# Copyright (C) 2006-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -62,10 +62,10 @@ import FailoverDomainNode
+ import Event
+ 
+ # Children of <resources> and <service>
+-import Ip, Script, NFSClient, NFSExport, NFSServer, Fs, Samba, Smb, Apache, Named, \
+-       Condor, DRBD, LVM, MySQL, OpenLDAP, Postgres8, Tomcat5, Tomcat6, \
+-       SAPDatabase, SAPInstance, SybaseASE, Netfs, Clusterfs, \
+-       OracleDB, OracleListener, OracleInstance
++import Ip, Script, NFSClient, NFSExport, NFSServer, Fs, Samba, Smb, Apache, \
++       Named, Condor, DRBD, LVM, MySQL, OpenLDAP, Postgres8, Tomcat5, \
++       Tomcat6, SAPDatabase, SAPInstance, SybaseASE, Netfs, Clusterfs, \
++       OracleDB, OracleListener, OracleInstance, BindMount
+ 
+ # Children of resource types
+ import Action
+@@ -133,6 +133,7 @@ TAGNAMES = {
+     OracleDB.TAG_NAME:              OracleDB.OracleDB,
+     OracleListener.TAG_NAME:        OracleListener.OracleListener,
+     OracleInstance.TAG_NAME:        OracleInstance.OracleInstance,
++    BindMount.TAG_NAME:             BindMount.BindMount,
+     Action.TAG_NAME:                Action.Action,
+ }
+ 
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 983023e..579d4d5 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -433,6 +433,43 @@
+   </table>
+ </div>
+ 
++<div py:def="bindmount_resource(res, form_id, parent_id, isref)" name="BIND-MOUNT" id="bindmount_resource" class="row rescfg"
++  py:with="global_resource = res and isref != 0"
++  py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
++  <input name="global" type="hidden" value="1" py:if="global_resource"/>
++  <input name="parent_id" type="hidden" value="${parent_id}"/>
++  <input name="form_id" type="hidden" value="${form_id}"/>
++  <input name="oldname" type="hidden"
++    py:attrs="res and {'value':res.getName()} or {}" />
++  <input name="type" type="hidden" value="bind-mount" />
++
++  <h3>Bind Mount</h3>
++  <table class="formtable">
++    <tr>
++      <td>Mount Point</td>
++      <td>
++        <input type="text" class="text" name="resourcename"
++          py:attrs="res and {'value':res.getAttribute('mountpoint'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    <tr>
++      <td>Source of the Bind Mount</td>
++      <td>
++        <input type="text" class="text" name="source"
++          py:attrs="res and {'value':res.getAttribute('source'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
++    <tr>
++      <td>Force Unmount</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="force_unmount"
++          py:attrs="{'checked':(res and res.getBinaryAttribute('force_unmount')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}" />
++      </td>
++    </tr>
++    ${res_footer(res)}
++  </table>
++</div>
++
+ <div py:def="nfsexport_resource(res, form_id, parent_id, isref)" name="NFSEXPORT" id="nfsexport_resource" class="row rescfg"
+   py:with="global_resource = res and isref != 0"
+   py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+@@ -1836,6 +1873,7 @@ ${named_resource(None,None,None,0)}
+ ${drbd_resource(None,None,None,0)}
+ ${vm_resource(None,None,None,0)}
+ ${condor_resource(None,None,None,0)}
++${bindmount_resource(None,None,None,0)}
+ 
+ <py:if test="model">
+   <py:for each="res in model.getResources()">
+@@ -1871,6 +1909,8 @@ ${condor_resource(None,None,None,0)}
+     <option selected="selected" disabled="disabled">-- Select a Resource Type --</option>
+     <option name="apache_resource" value="apache_resource">Apache</option>
+     <py:if test="cluster_version >= 3">
++      <option py:if="cluster_os != 'RHEL' or os_version &gt; 6.5"
++        name="bindmount" value="bindmount_resource">Bind Mount</option>
+       <option py:if="cluster_os != 'RHEL' or os_version &gt; 6.2"
+         name="condor" value="condor_resource">Condor Instance</option>
+       <option name="drbd_resource" value="drbd_resource">DRBD Resource</option>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 70b29ee..394b1e5 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -35,6 +35,7 @@ from luci.lib.ClusterConf.Service import Service
+ from luci.lib.ClusterConf.RefObject import RefObject
+ from luci.lib.ClusterConf.OracleInstance import OracleInstance
+ from luci.lib.ClusterConf.OracleListener import OracleListener
++from luci.lib.ClusterConf.BindMount import BindMount
+ 
+ from luci.lib.helpers import ugettext as _
+ from xml.dom import minidom
+@@ -211,6 +212,22 @@ def addNetfs(res, rname, model, **kw):
+ 		if res.getAttribute(a) == 'on':
+ 			res.addAttribute(a, '1')
+ 	return errors
++
++def addBindMount(res, rname, model, **kw):
++	params = (
++		('source', _('Source of the bind mount'), True, None),
++		('force_unmount', '', False, None),
++	)
++
++	errors = config_resource(params, res, rname, **kw)
++
++	# Primary attribute is mountpoint, not name
++	res.removeAttribute('name')
++	res.addAttribute('mountpoint', rname)
++
++	for a in ('force_unmount',):
++		if res.getAttribute(a) == 'on':
++			res.addAttribute(a, '1')
+ 	return errors
+ 
+ def addVM(res, rname, model, **kw):
+@@ -535,6 +552,7 @@ resource_table = {
+ 	'ip':				( addIp,				Ip				),
+ 	'fs':				( addFs,				Fs				),
+ 	'clusterfs':		( addClusterfs,			Clusterfs		),
++	'bind-mount':		( addBindMount,			BindMount		),
+ 	'netfs':			( addNetfs,				Netfs			),
+ 	'nfsexport':		( addNFSExport,			NFSExport		),
+ 	'nfsclient':		( addNFSClient,			NFSClient		),
+-- 
+1.9.3
+

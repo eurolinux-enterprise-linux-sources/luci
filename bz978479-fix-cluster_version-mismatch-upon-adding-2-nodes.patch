@@ -1,0 +1,77 @@
+From 0df9824db47e1888d66a7a1a618675a90a2efe1e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jan=20Pokorn=C3=BD?= <jpokorny@redhat.com>
+Date: Wed, 26 Jun 2013 18:51:30 +0200
+Subject: [PATCH] Fix cluster_version mismatch upon adding 2+ nodes
+ (rhbz#978479)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Resolves: rhbz#978479
+
+Reported-by: Radek Steiger <rsteiger@redhat.com>
+Signed-off-by: Jan Pokorný <jpokorny@redhat.com>
+---
+ luci/lib/ricci_queries.py                       | 3 +--
+ luci/validation/validate_create_cluster_form.py | 7 ++++---
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/luci/lib/ricci_queries.py b/luci/lib/ricci_queries.py
+index 40820b5..2f5ae4d 100644
+--- a/luci/lib/ricci_queries.py
++++ b/luci/lib/ricci_queries.py
+-# Copyright (C) 2006-2010 Red Hat, Inc.
++# Copyright 2013 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -12,7 +12,7 @@ from ricci_communicator import batch_status
+ class RicciQueriesError(Exception):
+ 	pass
+ 
+-def addClusterNodeBatch(model,
++def addClusterNodeBatch(clusterconf,
+ 						install_base,
+ 						install_services,
+ 						install_shared_storage,
+@@ -20,7 +20,6 @@ def addClusterNodeBatch(model,
+ 						reboot_nodes=False):
+ 	batch = list()
+ 
+-	clusterconf = model.exportModelAsString()
+ 	conf = clusterconf.replace('<?xml version="1.0"?>', '')
+ 	conf = conf.replace('<?xml version="1.0" ?>', '')
+ 	conf = conf.replace('<? xml version="1.0"?>', '')
+diff --git a/luci/validation/validate_create_cluster_form.py b/luci/validation/validate_create_cluster_form.py
+index 3d7ae2f..6fa2774 100644
+--- a/luci/validation/validate_create_cluster_form.py
++++ b/luci/validation/validate_create_cluster_form.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2011 Red Hat, Inc.
++# Copyright 2013 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -323,15 +323,16 @@ def validate_node_add_form(model, db_obj, **kw):
+             % (cluster_name, ', '.join(errors)), 'error')
+         DBSession.rollback()
+         return
+-    
++
+     for i in node_db_obj.values():
+         DBSession.add(i)
+     db_obj.nodes.extend(node_db_obj.values())
+ 
+     host_triples = []
++    clusterconf = model.exportModelAsString()
+     for n in node_list:
+-        host_triples.append((n, rq.create_cluster_nodes, 
+-                [ model, enable_storage, download_pkgs, reboot_nodes ]))
++        host_triples.append((n, rq.create_cluster_nodes,
++                            [clusterconf, enable_storage, download_pkgs, reboot_nodes]))
+     ret = send_batch_parallel(host_triples, 10)
+ 
+     for i in ret.iterkeys():
+-- 
+1.8.1.4
+

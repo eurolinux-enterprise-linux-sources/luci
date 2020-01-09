@@ -1,0 +1,200 @@
+==============================================================
+ luci: Web-based high availability administration application
+==============================================================
+
+``luci`` is a web-based high availability administration application built
+on the TurboGears 2 framework.
+
+
+
+1. Installation and Setup
+=========================
+
+
+1.1 Using upstream code
+-----------------------
+
+You can get newest luci code using::
+
+    $ git clone git://git.fedorahosted.org/luci.git
+
+
+Prerequisities for successful build/installation/deployment:
+
+    * python (2.6, 2.7 should be also fine)
+    * Cyrus SASL v2 (2.1.22+) libraries and header files
+    * to use bundled initscript, check the additional requirements
+      in the SPEC file (mostly common utilities that are found everywhere)
+
+Any missing Python package might be installed with ``setuptools`` automatically
+(if even ``setuptools`` is missing, ``ez_setup`` is there to handle it).
+
+
+Following items describe the steps to get it running (instructions contain some
+example values that should be modified to fit the environment, needs etc.;
+also you might need to do some of the commands as a root):
+
+0.  Make sure you are navigated to the directory containing this ``README``.
+    If you have just cloned luci from the git repository as shown above,
+    you may need to move here:
+
+        $ cd luci
+
+1.  Edit ``pkg_prepare`` section in ``setup.cfg`` according to your needs
+    (using ``vim``, for instance).  The names of configuration items there
+    should be self-explainatory::
+
+        $ vim setup.cfg
+
+    Note: Following steps use default values in ``setup.cfg`` so if you have
+          changed anything there, you might have to modify commands
+          accordingly.
+
+    Note: It is also possible to define (in an overriding manner) all these
+          options directly as command-line arguments preceded by
+          ``prepare_pkg'' which are as a whole appended to ``install`` command
+          in the step 2., see also ``python setup.py pkg_prepare --help``.
+
+2.  Install ``luci`` using the ``setup.py`` script which also includes
+    prior compilation of C extensions and some files preparation::
+
+        $ python setup.py install
+
+3.  Optionally, you can change the certificate configuration file, especially
+    you can fill concrete hostname or IP address under which the machine
+    running luci will be accessible by other computers in the network, which
+    will prevent some (not all, there is still a problem that the generated
+    certificate is self-signed) of the warnings about the certificate::
+
+        $ vim /var/lib/luci/etc/cacert.config
+
+4.  Now, there are two ways how to continue...  The easier way is to use
+    bundled initscript -- just run two immediately following commands and you
+    are ready, having luci started (at worst, some little tweaking required).
+    If you want "expert-mode" way, just skip them and continue starting with
+    point 3b.  This way follows the sequence of commands effectively used in
+    the initscript, although initscript is more fine-tuned so refer to it
+    if something gets stuck.
+
+4a. Edit configuration file that comes with initscript according to your needs
+    (``vim`` used as an example here again):
+
+        $ vim /etc/sysconfig/luci
+
+5a. Start the ``paste`` http(s) server using bundled initscript::
+
+        $ service luci start
+
+    Note: Before the first run of this command, it is good to do following::
+
+        $ chkconfig --add luci
+
+6a. Luci should be running, check respective address (echoed by initscript).
+    To stop it, use::
+
+        $ service luci stop
+
+
+4b. To achieve the same as with 5a. but using direct commands, start with
+    generating base configuration file from implicit template::
+
+        $ paster make-config luci /var/lib/luci/etc/luci.ini
+
+5b. Similarly, create the database used by ``luci``::
+
+        $ paster setup-app /var/lib/luci/etc/luci.ini
+
+    Note: If you use preconfigured ``pkg_prepare`` section in ``setup.cfg``,
+          don't forget to create ``/var/lib/luci/data`` first (missing parts
+          of paths like this are not created automatically unless you use
+          initscript).
+
+6b. Generate self-signed certificate for luci using originally installed
+    configuration file (installation location depends on ``certconfig`` value
+    in ``setup.cfg`` which is ``/var/lib/luci/etc/cacert.config`` by default)::
+
+        $ export RANDFILE=$(mktemp -q cert_rnd.XXXXXX)
+        $ openssl req -new -x509 -nodes -sha1                            \
+        >                        -newkey rsa:2048                        \
+        >                        -config /var/lib/luci/etc/cacert.config \
+        >                        -days 1825                              \
+        >                        -set_serial "$(/bin/date +%s)"          \
+        >                        -keyout /var/lib/luci/certs/host.pem    \
+        >                        -out /var/lib/luci/certs/host.pem
+        $ rm -f cert_rnd.*
+
+    Note: If you use preconfigured ``pkg_prepare`` section in ``setup.cfg``,
+          don't forget to create ``/var/lib/luci/certs`` first (missing parts
+          of paths like this are not created automatically unless you use
+          initscript).
+
+    Note: Do not forget to set the permissions for generated certificate
+          (``/var/lib/luci/certs/host.pem`` was used in the example) such that
+          it is only accessible by the user which then effectively runs luci.
+
+7b. Compared to point 4a. from a straightforward "initscript" way, you have no
+    other way (unless you will find out how to use config. file that comes
+    with initscript directly from initscript) then to edit base configuration
+    file immediately (``/var/lib/luci/etc/luci.ini`` by default).  Especially
+    if you have used another path for the output certificate in the step 6b.,
+    this configuration item should be edited respectively::
+
+    $ vim /var/lib/luci/etc/luci.ini
+
+8b. Finally, start the SASL daemon and then ``paste`` http(s) server...::
+
+        $ saslauthd -a pam
+        $ paster serve /var/lib/luci/etc/luci.ini
+
+    Note: The former command might be replaced with equivalent if applicable
+          (``MECH=pam`` in respective configuration) ::
+
+        $ service start saslauthd
+
+    Note: To run luci on background, refer to the ``--daemon'' option
+          for ``paster'' command.
+
+9b. Luci should be running, check respective address (can be found in
+    configuration file used such as ``/var/lib/luci/etc/luci.ini`` from
+    the example).  To stop it, press Ctrl-C.
+
+
+Please note that these steps do not cover everything -- initscript and maybe
+the SPEC file might give you a better idea.
+
+
+
+1.2 Using package in your preferred distribution
+------------------------------------------------
+
+Currently, this project is recognized only in RHEL 6 and Fedora [#distros]_.
+Using them, you can get latest ``luci`` package using::
+
+    $ yum install luci
+
+
+.. [#distros] on these distros, ``luci`` has an official status
+
+
+
+1.3 Post-installation procedures
+--------------------------------
+
+Please refer to
+http://sources.redhat.com/cluster/wiki/Luci#Post-installation_procedures
+
+
+
+2. About/Contact
+================
+
+:Authors/Contributors:
+    Ryan McCabe <rmccabe@redhat.com>
+    Chris Feist <cfeist@redhat.com>
+    Jan Pokorný
+
+    Eve McGlynn
+    Jeremy Perry
+
+
+:Homepage: http://sources.redhat.com/cluster/wiki/Luci

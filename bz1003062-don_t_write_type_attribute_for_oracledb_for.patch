@@ -1,0 +1,48 @@
+From 9eff07d5bd9f7dce695d8a65c9694973f78c2aac Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 14:53:32 -0400
+Subject: [PATCH] luci: Don't write type attribute for oracledb for
+ default
+
+Don't write the type attribute for oracledb resources if the
+user has selected the default entry from the pulldown menu.
+
+Resolves: rhbz#1003062
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/validation/validate_resource.py | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index e7676ba..dfaa264 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -448,16 +448,20 @@ def addOracleDB(res, rname, model, **kw):
+ 		('home', _('Oracle Home Directory'), True, None),
+ 		('tns_admin', _('Value for TNS_ADMIN'), False, None),
+ 		('listener_name', '', False, None),
+-		('oracletype', _('Oracle Installation Type'), True, '10g'),
++		('oracletype', _('Oracle Installation Type'), False, None),
+ 		('vhost', _('Virtual Hostname'), False, None)
+ 	)
++
+ 	errors = config_resource(params, res, rname, **kw)
+ 	dbtype = res.getAttribute('oracletype')
+-	if not dbtype.lower() in ('base', 'base-11g', 'base-em-11g', 'base-em', 'ias', '10g', '11g', '10g-ias'):
+-		errors.append(_('Invalid Oracle database type "%s"') % dbtype)
++	res.removeAttribute('oracletype')
+ 	if dbtype:
+-		res.removeAttribute('oracletype')
++		if not dbtype.lower() in ('base', 'base-11g', 'base-em-11g', 'base-em', 'ias', '10g', '11g', '10g-ias'):
++			errors.append(_('Invalid Oracle database type "%s"') % dbtype)
+ 		res.addAttribute('type', dbtype)
++	else:
++		res.removeAttribute('type')
++
+ 	return errors
+ 
+ def addOracleInstance(res, rname, model, **kw):
+-- 
+1.9.3
+

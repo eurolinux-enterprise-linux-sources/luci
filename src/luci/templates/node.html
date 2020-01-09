@@ -1,0 +1,545 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<xi:include href="master.html" />
+
+<head>
+  <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+  <title>${title()}</title>
+</head>
+
+<?python
+    from luci.lib import db_helpers
+    from luci.lib.ricci_helpers import node_get_daemon_states
+?>
+
+<body py:with="cluster_data = tmpl_context.cluster.get_model();
+               cluster_status = tmpl_context.cluster.get_status();
+               nodename = (cluster_data and cluster_data.cluster_version &lt;= 2 and name) and name or None;">
+               <!--!  "nodename" parameter is spread to fence_scsi only under
+                      given conditions  -->
+
+  <script type="text/javascript" src="/js/add_nodes.js"></script>
+  <script type="text/javascript" src="/js/node.js"></script>
+
+  <py:if test="name is not None">
+   <script type="text/javascript" src="/js/fence.js"></script>
+  </py:if>
+
+
+  <py:if test="name is not None">
+   <xi:include href="fence_devices.html" />
+   <xi:include href="fence_instances.html" />
+   ${fence_instance_container(nodename)}
+   ${fence_device_container()}
+
+   <div id="existing_fencedev" class="hidden" py:if="cluster_data">
+    <py:for each="fencedev in cluster_data.getFenceDevices()">
+        <py:if test="fencedev.isShared() or len(cluster_data.getNodesUsingFence(fencedev.getName())) == 0">
+            <?python
+                agent_type = fencedev.getAgentType()
+                try:
+                    agent_fn = eval(agent_type)
+                except NameError:
+                    agent_fn = eval("fence_unknown")
+            ?>
+            ${agent_fn(fencedev,0)}
+        </py:if>
+    </py:for>
+   </div>
+  </py:if>
+
+  <form action="${tg.url('%snodes_cmd' % tmpl_context.cluster_url)}" class="confirm_form" method="post">
+  <div class="sectionblock">
+  <xi:include href="submenu.html"/>
+  <div id="toolbar">
+    <a href="#" onclick="$('#add_nodes_dialog').dialog('open')" class="toolbar_button" id="tb_add">Add</a>
+    <input type="submit" name="MultiAction" value="${_('Reboot')}" class="confirm_form toolbar_button MultiAction" id="tb_reboot" disabled="disabled"/>
+    <input type="submit" name="MultiAction" value="${_('Join Cluster')}" class="toolbar_button MultiAction" id="tb_join" disabled="disabled"/>
+    <input type="submit" name="MultiAction" value="${_('Leave Cluster')}" class="confirm_form toolbar_button MultiAction" id="tb_leave" disabled="disabled"/>
+    <input type="submit" name="MultiAction" value="${_('Delete')}" class="confirm_form toolbar_button MultiAction" id="tb_delete" disabled="disabled"/>
+  </div>
+
+  <!--! OVERVIEW SECTION. -->
+  <div id="overview">
+    <table id="node_tlist" class="maintable">
+      <thead>
+        <tr>
+          <th class="checkbox"></th>
+          <th class="icon">!</th>
+          <th class="main_id">Node Name</th>
+          <th class="node_tlist_id">Node ID</th>
+          <th class="node_tlist_votes">Votes</th>
+          <th class="node_tlist_status">Status</th>
+          <th class="node_tlist_uptime">Uptime</th>
+          <th class="node_tlist_ip">Hostname</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!--! List all the nodes. -->
+        <py:if test="cluster_status and cluster_status.nodes">
+        <py:with vars="nodes=cluster_status.nodes.items();
+                       noop=nodes.sort(key=lambda x:x[1].nodeid)">
+        <tr py:for="i, (entity_name, node_data) in enumerate(nodes)"
+            py:attrs="entity_name==name and {'class': 'chosen'} or (not i%2 and {'class': 'even'} or None)"
+            py:with="identifier = entity_name;
+                     nodeobj = cluster_data and cluster_data.getNodeByName(entity_name) or None;
+                     is_clustered = node_data['clustered'];
+                     nodedbobj = db_helpers.get_cluster_node(tmpl_context.cluster_name, entity_name);">
+          <td class="checkbox">
+            <input type="checkbox" name="${identifier}"
+                onclick="update_multi_action(this)" class="MultiActionItem"/>
+          </td>
+          <!--! Branch according to the status of the node. -->
+          <?python
+            if nodeobj == None:
+              is_clustered = "Removing"
+          ?>
+          <py:choose test="is_clustered">
+          <!--! 1) Node is active. -->
+          <py:when test="'true'">
+          <td class="icon"></td>
+          <td class="main_id">
+            <a href="${tmpl_context.cluster_url + entity_name}">
+              <span class="entity_ok">${entity_name}</span>
+            </a>
+          </td>
+          <td class="node_tlist_id">${nodeobj and nodeobj.getNodeID()}</td>
+          <td class="node_tlist_votes">${nodeobj and nodeobj.getVotes()}</td>
+          <td class="node_tlist_status">${_('Cluster Member')}</td>
+          <td class="node_tlist_uptime">${node_data and node_data.uptime_str}</td>
+          </py:when>
+          <!--! 2) Node is inactive. -->
+          <py:when test="'false'">
+          <td class="icon">
+            <img src="${tg.url('/images/exclamation.png')}" alt="Node is not a cluster member." />
+          </td>
+          <td class="main_id">
+            <a href="${tmpl_context.cluster_url + entity_name}">
+              <span class="entity_fail">${entity_name}</span>
+            </a>
+          </td>
+          <td class="node_tlist_id">${nodeobj and nodeobj.getNodeID()}</td>
+          <td class="node_tlist_votes">${nodeobj and nodeobj.getVotes()}</td>
+          <td class="node_tlist_status">${_('Not a cluster member')}</td>
+          <td class="node_tlist_uptime">${node_data and node_data.uptime_str}</td>
+          </py:when>
+          <!--! 3) Status of the node is unknown. -->
+          <py:when test="'unknown'">
+          <td class="icon">
+            <img src="${tg.url('/images/question.png')}" alt="Status of the node is unknown." />
+          </td>
+          <td class="main_id">
+            <a href="${tmpl_context.cluster_url + entity_name}">
+              <span class="entity_unknown">${entity_name}</span>
+            </a>
+          </td>
+          <td class="node_tlist_id">${nodeobj and nodeobj.getNodeID()}</td>
+          <td class="node_tlist_votes">${nodeobj and nodeobj.getVotes()}</td>
+          <td class="node_tlist_status">${_('The status of this node is unknown')}</td>
+          <td class="node_tlist_uptime">${node_data and node_data.uptime_str}</td>
+          </py:when>
+          <py:when test="'Removing'">
+          <td class="icon">
+            <img src="${tg.url('/images/exclamation.png')}" alt="Node is being deleted." />
+          </td>
+          <td class="main_id">
+            <a href="${tmpl_context.cluster_url + entity_name}">
+              <span class="entity_fail">${entity_name}</span>
+            </a>
+          </td>
+          <td class="node_tlist_id">${nodeobj and nodeobj.getNodeID()}</td>
+          <td class="node_tlist_votes">${nodeobj and nodeobj.getVotes()}</td>
+          <td class="node_tlist_status">${_('Node is being removed')}</td>
+          <td class="node_tlist_uptime"></td>
+          </py:when>
+          </py:choose>
+          <td class="node_tlist_ip">
+            <py:if test="nodedbobj">
+                ${nodedbobj.hostname}
+            </py:if>
+          </td>
+        </tr>
+          </py:with>
+        <tr py:for="i in nodes" py:with="hostname = i.node_name">
+        <py:if test="cluster_status.nodes.keys().count(i.node_name) == 0">
+          <td class="checkbox">
+            <input type="checkbox" name="${hostname}"
+                onclick="update_multi_action(this)" class="MultiActionItem"/>
+          </td>
+          <td class="icon">
+            <img src="${tg.url('/images/question.png')}" alt="Status of the node is unknown." />
+          </td>
+          <td class="main_id">
+            <a href="${tmpl_context.cluster_url + hostname}">
+              <span class="entity_unknown">${hostname}</span>
+            </a>
+          </td>
+          <td class="node_tlist_id"></td>
+          <td class="node_tlist_votes"></td>
+          <td class="node_tlist_status">${_('This node is currently being added')}</td>
+          <td class="node_tlist_uptime"></td>
+        </py:if>
+        </tr>
+        </py:if>
+      </tbody>
+    </table>
+  </div>
+  </div>
+  </form>
+
+  <div id="bad_conf" class="sectionblock" py:if="cluster_data and cluster_data.errors">
+      <img alt="Errors parsing cluster.conf XML" src="/images/exclamation.png"/>
+      <span class="error">Luci was not able to parse this cluster's configuration without errors. Your configuration may be invalid.</span>
+
+      <py:if test="cluster_data.errmsg">
+        The following errors occurred:<br/>
+        <ul>
+            <li py:for="m in cluster_data.errmsg">${m}</li>
+        </ul>
+      </py:if>
+      <span class="error">
+        Fixing this may require you to log into one of the cluster nodes, edit the cluster.conf file to fix the error, and propagate the new configuration.
+      </span>
+  </div>
+
+  <!--! DETAILS SECTION. -->
+  <div class="sectionblock sectionblock2">
+  <div id="details" py:choose="name">
+
+    <py:when test="None">
+    <div id="details_header">
+      <div id="not_selected" py:choose="cluster_status and len(cluster_status.nodes) or 'unknown'">
+        <py:when test="'unknown'">
+            Unable to contact any of the nodes in this cluster.
+        </py:when>
+        <py:when test="0">No item to display</py:when>
+        <py:otherwise>
+             Select an item to view details
+        </py:otherwise>
+      </div>
+    </div>
+    </py:when>
+
+    <py:otherwise py:with="details = cluster_status.getNodeStatus(name)">
+
+    <!--! DETAILS - header section. -->
+    <div id="details_header">
+      <h3 py:content="name"/>
+      <div id="details_header_buttons">
+        <a class="confirm_link" href="${tg.url('%snodes_cmd?command=Reboot&amp;name=%s' % (tmpl_context.cluster_url, name))}" id="dh_reboot" title="reboot"><span class="hide">reboot</span></a>
+        <a href="${tg.url('%snodes_cmd?command=Join+Cluster&amp;name=%s' % (tmpl_context.cluster_url, name))}" id="dh_join" title="join"><span class="hide">join</span></a>
+        <a class="confirm_link" href="${tg.url('%snodes_cmd?command=Leave+Cluster&amp;name=%s' % (tmpl_context.cluster_url, name))}" id="dh_leave" title="leave cluster"><span class="hide">leave cluster</span></a>
+        <py:if test="details['clustered'] != 'true'">
+            <a class="confirm_link" href="${tg.url('%snodes_cmd?command=Delete&amp;name=%s' % (tmpl_context.cluster_url, name))}" id="dh_delete" title="delete"><span class="hide">delete</span></a>
+        </py:if>
+        <py:if test="details['clustered'] == 'true'">
+            <a href="javascript:void(0)" id="dh_delete" title="node must be stopped first"><span class="hide">delete</span></a>
+        </py:if>
+      </div>
+      <span class="details_header_info_label">Status</span>
+      <span class="details_header_info" py:choose="details['clustered']">
+        <py:when test="'true'">${_('Cluster Member')}</py:when>
+        <py:when test="'false'">${_('Not a cluster member')}</py:when>
+        <py:when test="'unknown'">${_('The status of this node is unknown')}</py:when>
+      </span>
+    </div>
+
+    <!--! DETAILS - attributes section. -->
+    <div class="details_section">
+      <h4>Properties</h4>
+      <div class="details_inner">
+        <form action="${tg.url('%snodes_cmd?command=Update+Attributes' % tmpl_context.cluster_url)}" method="post"
+         py:with="node_data = cluster_data and cluster_data.getNodeByName(name);
+                  nodedbobj = db_helpers.get_cluster_node(tmpl_context.cluster_name, name)">
+          <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+          <input type="hidden" name="name" value="${name}"/>
+          <input type="submit" value="Update Properties" class="float_button"/>
+          <table id="node_tattr">
+            <tr>
+              <td class="node_tattr_caption">
+                Number of votes
+              </td><td class="node_tattr_input">
+                <input type="text" name="votes" py:attrs="{'value': node_data and node_data.getVotes()}"/>
+              </td>
+            </tr>
+            <tr>
+              <td class="node_tattr_caption">ricci host</td>
+              <td class="node_tattr_input">
+                <input type="text" name="ricci_host"
+                    py:attrs="{'value': nodedbobj and nodedbobj.hostname}"/>
+              </td>
+            </tr>
+            <tr>
+              <td class="node_tattr_caption">ricci port</td>
+              <td class="node_tattr_input">
+                <input type="text" name="ricci_port"
+                    py:attrs="{'value': nodedbobj and nodedbobj.port}"/>
+              </td>
+            </tr>
+            <tr py:if="expertMode">
+              <td class="node_tattr_caption">DLM locking weight</td>
+              <td class="node_tattr_input">
+                <input type="text" name="weight"
+                    py:attrs="{'value': node_data and node_data.getWeight()}"/>
+              </td>
+            </tr>
+          </table>
+        </form>
+
+      </div>
+    </div>
+
+    <!--! DETAILS - services section. -->
+    <div class="details_section">
+      <h4>Services</h4>
+      <div class="details_inner">
+        <table id="node_tservices" class="detailstable">
+          <tbody>
+            <tr py:for="svc_name, svc_obj in details['services'].items()" class="grid_row">
+              <py:with vars="running = svc_obj.running == 'true'">
+              <td class="icon">
+                <img py:if="not running" src="${tg.url('/images/exclamation.png')}" alt="Service has a problem." />
+              </td>
+              <td class="node_tservices_service"><span py:attrs="running and {'class': 'entity_ok'} or {'class': 'entity_fail'}">${svc_name}</span></td>
+              </py:with>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="details_section">
+      <h4>Failover Domains</h4>
+      <div class="details_inner">
+        <table id="node_tfdoms" class="detailstable">
+          <thead>
+            <tr class="grid_row">
+              <th class="node_tfdoms_name"></th>
+              <th class="node_tfdoms_priority">Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr py:for="fdom in (cluster_data and cluster_data.getFailoverDomainsForNode(name) or [])"
+                class="grid_row">
+              <td class="node_tfdoms_name">
+                <a href="${tmpl_context.cluster_url + 'failovers/' + fdom.getName()}">${fdom.getName()}</a>
+              </td>
+              <td class="node_tfdoms_priority">
+                <py:if test="fdom.getOrdered()">
+                    ${fdom.get_member_node(name).getPriority()}
+                </py:if>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DETAILS - fence devices section. -->
+    <div class="details_section">
+      <h4>Fence Devices</h4><br/>
+      <?python
+        from luci.validation.validate_fence import getFenceInfo
+        fence_info = getFenceInfo(cluster_data, name)
+        fenceinst_num = 0
+      ?>
+      <div class="details_inner">
+        <form method="post" name="node_fence_form" id="node_fence_form" action="${tg.url('%snodes_fence_cmd' % tmpl_context.cluster_url)}">
+        <input py:if="expertMode" type="hidden" name="expert_mode" value="1"/>
+        <input type="hidden" name="method_to_remove" value=""/>
+        <input type="hidden" name="fenceinst_to_remove" value=""/>
+        <input type="hidden" name="fenceinst_to_remove_method" value=""/>
+        <input type="hidden" name="moveup_method" value=""/>
+        <input type="hidden" name="movedown_method" value=""/>
+        <table id="node_tfences" class="detailstable">
+          <thead>
+            <tr class="grid_row">
+          <th width="5">Method</th>
+          <th width="98%"></th>
+          <th colspan="3"></th>
+            </tr>
+          </thead>
+          <tbody>
+        <py:for each="order,(method,instances) in enumerate(fence_info)"
+        py:with="cur_dev_id=method">
+        <tr py:with="method_name = method.getName()">
+          <td colspan="2">${method_name.replace(' ','&nbsp;')}</td>
+          <td align="right">
+        <a py:if="order != 0" href="javascript:void(0);" onclick="fence_method_moveup('node_fence_form', '${method_name}')">Move&nbsp;Up</a>
+          </td>
+          <td align="right">
+        <a py:if="order != len(fence_info)-1" href="javascript:void(0);" onclick="fence_method_movedown('node_fence_form', '${method_name}')">Move&nbsp;Down</a>
+          </td>
+          <td align="right">
+        <a href="javascript:void(0);" onclick="fence_method_remove('node_fence_form', '${method_name}')">Remove</a>
+          </td>
+
+        </tr>
+        <tr>
+          <td></td>
+          <td colspan="4">
+        <table class="fence_instances">
+          <tr>
+            <th class="fence_instances">Name</th>
+            <th>Type/Values</th>
+            <th></th>
+          </tr>
+          <py:for each="instancenum,(fin,fd,unfencing) in enumerate(instances)">
+            <?python
+                agent_type = fd.getAgentType()
+                agent_name = fd.getPrettyName()
+                agent_alias = fd.getName()
+                fenceinst_num += 1
+                instance_id = "%s-%s" % (order, instancenum)
+            ?>
+          <tr><td>
+              <div class="hidden">
+            <div id="edit_fencedev_dialog_${instance_id}">
+              <form name="filler"/>
+              <form name="edit_fence_device_${instance_id}" method="post" action="${tg.url('%snodes_fence_cmd?command=EditFence' % tmpl_context.cluster_url)}">
+                <input type="hidden" name="node" value="${name}"/>
+                <input type="hidden" name="instance_id" value="${instance_id}"/>
+                <input type="hidden" name="fencedev" value="${agent_alias}"/>
+
+                <div id="fence_instance_area">
+                    <?python
+                        try:
+                            inst_fn = eval(agent_type + '_instance')
+                        except NameError:
+                            inst_fn = eval('fence_unknown_instance')
+                        inst_fn(fin, instance_id, None, nodename=nodename)
+                    ?>
+                    ${inst_fn(fin, cur_dev_id, '%s_%s' % (cur_dev_id, cur_dev_id), unfencing=unfencing, nodename=nodename)}
+                </div>
+                <div class="row">
+                  <input type="submit" value="Submit" class="button formsubmit blue" />
+                  <input type="button" class="button formsubmit silver" value="Cancel"
+                  onclick="$('#edit_fencedev_dialog_${instance_id}').dialog('close');reset_form(this.form)" />
+                </div>
+              </form>
+            </div>
+              </div>
+            <script type="text/javascript">
+              $('#edit_fencedev_dialog_${instance_id}').dialog({
+                modal: true,
+            title: 'Edit Fence Instance',
+            width: '520px',
+            autoOpen: false,
+            draggable: false,
+            resizable: false,
+                  });
+          </script>
+          </td></tr>
+          <tr>
+            <td><a href="#" onclick="$('#edit_fencedev_dialog_${instance_id}').dialog('open')">${agent_alias}</a></td>
+            <td>${agent_name}</td>
+            <td align="right">
+              <a href="javascript:void(0);" onclick="fence_instance_remove('node_fence_form', '${method.getName()}', '${fenceinst_num}')">
+            <img src="/images/delete-grey.png"/>
+              </a>
+            </td>
+          </tr>
+          <tr py:for="key,val in fin.attr_hash.items()">
+            <py:if test="key != 'obj' and key != 'name'">
+            <td></td>
+            <td>
+              ${key} : ${val}
+            </td>
+            </py:if>
+          </tr>
+          <tr py:if="unfencing == True">
+            <td></td>
+            <td>unfencing enabled</td>
+          </tr>
+          </py:for>
+          <tr>
+            <td colspan="3">
+              <input type="button" py:if="len(cluster_data.getFenceDevices()) > 0" value="Add Fence Instance" class="button small silver" onclick="$('#create_fence_device_form input[name=methodname]').attr('value','${method.getName()}');$('#create_fencedev_dialog').dialog('open')"/>
+            </td>
+          </tr>
+        </table>
+          </td>
+        </tr>
+        </py:for>
+          </tbody>
+        </table>
+    <div>
+      <input type="button" value="Add Fence Method" class="button small silver" onclick="$('#create_fencemethod_dialog').dialog('open')"/>
+    </div>
+        <input type="hidden" name="node" value="${name}"/>
+       </form>
+      </div>
+    </div>
+
+    <!-- DETAILS - cluster daemons section. -->
+    <div class="details_section"
+        py:with="dstates = node_get_daemon_states(name, ['cman', 'rgmanager', 'ricci', 'modclusterd', 'clvmd', 'fence_virt'])">
+      <h4>Cluster Daemons</h4>
+      <div class="details_inner">
+        <table id="node_tdaemons" class="detailstable">
+          <thead>
+            <tr class="grid_row">
+              <th></th>
+              <th></th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr py:for="daemon in ['cman', 'rgmanager', 'ricci', 'modclusterd', 'clvmd', 'fence_virt']" class="grid_row"
+                py:if="dstates.has_key(daemon)">
+              <td class="icon"></td>
+              <td class="node_tdaemons_name">${daemon}</td>
+              <td class="node_tdaemons_status"
+               py:with="running = dstates[daemon].get('running', None)">${running is None and _('Unknown') or running == 'true' and _('Running') or _('Not running') }</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    </py:otherwise>
+  </div>
+  </div>
+
+  <div id="form_container" class="hidden">
+    <div id="add_nodes_dialog">
+        <xi:include href="add_node.html" />
+    </div>
+  </div>
+
+  <div py:if="name is not None" class="hidden">
+    <div id="create_fencedev_dialog">
+      <form name="create_fence_device" id="create_fence_device_form" method="post" action="${tg.url('%snodes_fence_cmd?command=AddFence' % tmpl_context.cluster_url)}">
+    <input type="hidden" name="node" value="${name}"/>
+    <input type="hidden" name="methodname" value=""/>
+    ${fence_device_select(cluster_data, 'fence_form_area')}
+    <div id="fence_form_area" />
+      <div class="row">
+        <input type="submit" value="Submit" class="button formsubmit blue" />
+        <input type="button" class="button formsubmit silver" value="Cancel"
+        onclick="$('#create_fencedev_dialog').dialog('close');reset_form(this.form)" />
+      </div>
+    </form>
+      </div>
+    </div>
+  <div class="hidden">
+    <div id="confirm_vanilla_dialog" title="Confirm Action">
+      <span id="vanilla_confirm_span"></span>
+    </div>
+    <div id="create_fencemethod_dialog">
+      <form name="create_fence_method" method="post" action="${tg.url('%snodes_fence_cmd?command=AddFenceMethod' % tmpl_context.cluster_url)}">
+    <input type="hidden" name="node" value="${name}"/>
+    Method Name:<input type="text" name="newmethodname" value="Method"/>
+      <div class="row">
+        <input type="submit" value="Submit" class="button formsubmit blue" />
+        <input type="button" class="button formsubmit silver" value="Cancel"
+        onclick="$('#create_fencemethod_dialog').dialog('close');reset_form(this.form)" />
+      </div>
+    </form>
+      </div>
+    </div>
+</body>
+</html>

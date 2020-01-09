@@ -1,0 +1,31 @@
+From ffc4ba6a3fa121b8c5639be4fdc3e70bfbfb8fe5 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 16:29:08 -0400
+Subject: [PATCH] luci: Fix broken display on permissions page
+
+Fix an issue that could cause the user roles
+lists on the permissions page to be staggered.
+
+Resolves: rhbz#988446
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/css/style.css | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/luci/public/css/style.css b/luci/public/css/style.css
+index 076cc91..0425734 100644
+--- a/luci/public/css/style.css
++++ b/luci/public/css/style.css
+@@ -241,7 +241,7 @@ form>label, label {
+ }
+ 
+ label.wide {
+-    width: 260px;
++    width: 50%;
+ }
+ 
+ label.choice {
+-- 
+1.9.3
+

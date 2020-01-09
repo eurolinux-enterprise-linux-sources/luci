@@ -1,0 +1,190 @@
+From cc1452e01504725f01bc5636f5e17335d5d1fad0 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 8 Oct 2012 09:52:45 -0400
+Subject: [PATCH] luci: Fix unfence display on node page
+
+When looking for <device> blocks that match <unfence> blocks, only
+compare attributes that are pertinent for determining whether
+one blocks corresponds to the other.
+
+Resolves: rhbz#815666
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/Device.py          | 27 ++++++++++++++++++++++++++-
+ luci/lib/ClusterConf/FenceDeviceAttr.py |  2 ++
+ luci/templates/fence_instances.html     | 31 +++++++++++++++++++++++++++----
+ luci/validation/validate_fence.py       |  4 ++--
+ 4 files changed, 57 insertions(+), 7 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/Device.py b/luci/lib/ClusterConf/Device.py
+index a991318..12758c5 100644
+--- a/luci/lib/ClusterConf/Device.py
++++ b/luci/lib/ClusterConf/Device.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2010 Red Hat, Inc.
++# Copyright (C) 2006-2012 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -24,6 +24,31 @@ class Device(TagObject):
+   def setAgentType(self, agent_type):
+     self.agent_type = agent_type
+ 
++  def matchesUnfence(self, unfence):
++    if self.getName() != unfence.getName():
++      return False
++
++    agent_type = self.getAgentType()
++    if agent_type == 'fence_scsi':
++      # key overrides nodename
++      key_attr = self.getAttribute('key')
++      if key_attr:
++        if key_attr == unfence.getAttribute('key'):
++          return True
++      else:
++        if self.getAttribute('nodename') == unfence.getAttribute('nodename'):
++          return True
++    elif (agent_type == 'fence_sanbox2'
++          or agent_type == 'fence_brocade'
++          or agent_type == 'fence_mcdata'):
++      if self.getAttribute('port') == unfence.getAttribute('port'):
++        return True
++    elif agent_type == 'fence_egenera':
++       if (self.getAttribute('pserver') == unfence.getAttribute('pserver')
++           and self.getAttribute('lpan') == unfence.getAttribute('lpan')):
++         return True
++    return False
++    
+   def hasNativeOptionSet(self):
+     return self.has_native_option_set
+ 
+diff --git a/luci/lib/ClusterConf/FenceDeviceAttr.py b/luci/lib/ClusterConf/FenceDeviceAttr.py
+index 91f8e9e..9775b00 100644
+--- a/luci/lib/ClusterConf/FenceDeviceAttr.py
++++ b/luci/lib/ClusterConf/FenceDeviceAttr.py
+@@ -28,6 +28,7 @@ FENCE_OPTS = {
+ 	'fence_scsi':			'SCSI Reservation Fencing',
+ 	'fence_ilo':			'HP iLO Device',
+ 	'fence_ipmilan':		'IPMI Lan',
++	'fence_ipdu':			'IBM iPDU',
+ 	'fence_drac':			'Dell DRAC',
+ 	'fence_drac5':			'Dell DRAC 5',
+ 	'fence_rsa':			'IBM RSA II Device',
+@@ -78,6 +79,7 @@ FENCE_SHARED = {
+ 	'fence_eps':			True,
+ 	'fence_ibmblade':		True,
+ 	'fence_ifmib':			True,
++	'fence_ipdu':			True,
+ 	'fence_intelmodular':	True,
+ 	'fence_virsh':			True,
+ 	'fence_rhevm':			True,
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index c619982..9bfada3 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -73,6 +73,15 @@
+           py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('pserver')}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Unfencing</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="unfencing"
++          py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
++        <label class="choice">Enable</label>
++        <input type="hidden" name="unfence_action" value="on" />
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -347,7 +356,7 @@
+         <input type="checkbox" class="checkbox" name="unfencing"
+           py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
+         <label class="choice">Enable</label>
+-        <input type="hidden" name="unfence_action" value="enable" />
++        <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>
+     <tr><td colspan="2">
+@@ -404,7 +413,7 @@
+         <input type="checkbox" class="checkbox" name="unfencing"
+           py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
+         <label class="choice">Enable</label>
+-        <input type="hidden" name="unfence_action" value="enable" />
++        <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>
+     <tr><td colspan="2">
+@@ -437,7 +446,7 @@
+         <input type="checkbox" class="checkbox" name="unfencing"
+           py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
+         <label class="choice">Enable</label>
+-        <input type="hidden" name="unfence_action" value="enable" />
++        <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>
+     <tr><td colspan="2">
+@@ -1002,6 +1011,21 @@
+         <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>
++    <tr>
++      <td>Node name</td>
++      <td>
++        <input py:if="cur_fence_inst" type="text" class="text" name="nodename"
++          value="${cur_fence_inst.getAttribute('nodename')}"/>
++        <input py:if="not cur_fence_inst and kw.get('nodename')" type="text" class="text" name="nodename" value="${kw.get('nodename')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Key for current action (overrides node name)</td>
++      <td>
++        <input type="text" class="text" name="key"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('key')} or {}"/>
++      </td>
++    </tr>
+     <tr><td colspan="2">
+       <div>
+         <input type="button" name="remove_fence" value="Remove this instance"
+@@ -1009,7 +1033,6 @@
+       </div>
+     </td></tr>
+   </table>
+-  <input py:if="kw.get('nodename')" type="hidden" name="nodename" value="${kw['nodename']}" />
+   <input type="hidden" name="fence_type" value="fence_scsi" />
+   <input type="hidden" name="fence_instance" value="1" />
+   <input type="hidden" name="parent_fencedev"
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index db9161a..2ea032e 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -300,7 +300,6 @@ def val_vmware_fd(fencedev, fence_name, **kw):
+ def val_scsi_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('devices', False),
+-		('key', False),
+ 		('aptpl', False),
+ 	)
+ 
+@@ -1012,6 +1011,7 @@ def val_intelmodular_fi(fenceinst, parent_name, **kw):
+ def val_scsi_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('nodename', False),
++		('key', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1244,7 +1244,7 @@ def getFenceInfo(model, nodename):
+ 					for child_device in unfence.getChildren():
+ 						# Try to find existing unfence device that mirrored fence device instance
+ 						# to be removed and remove it, too.
+-						if len(set(instance.getAttributes().items()).difference(child_device.getAttributes().items())) == 0:
++						if instance.matchesUnfence(child_device):
+ 							unfencing_flag = True
+ 							break
+ 					break
+-- 
+1.7.11.4
+

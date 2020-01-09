@@ -1,0 +1,20 @@
+commit 3957c3eeb6df24e62d24309913c6f988568d5422
+Author: Ryan McCabe <rmccabe@redhat.com>
+Date:   Wed Mar 14 15:34:30 2012 -0400
+
+    Show the logger level class for sqlalchemy.engine instead
+    of sqlalchemy on the admin/log configuration screen.
+
+diff --git a/luci/templates/admin.html b/luci/templates/admin.html
+index 7c33f12..5c1f44e 100644
+--- a/luci/templates/admin.html
++++ b/luci/templates/admin.html
+@@ -202,7 +202,7 @@
+                <td>sqlalchemy</td>
+                <td>
+                  <select name="log_level_sqlalchemy"
+-                   py:with="cur_level=logging.getLogger('sqlalchemy').getEffectiveLevel()">
++                   py:with="cur_level=logging.getLogger('sqlalchemy.engine').getEffectiveLevel()">
+                    <option value="NOTSET" py:attrs="not cur_level and {'selected':'selected'} or None">unset</option>
+                    <option value="DEBUG" py:attrs="cur_level in (10, 'DEBUG') and {'selected':'selected'} or None">debug</option>
+                    <option value="INFO" py:attrs="cur_level in (20, 'INFO') and {'selected':'selected'} or None">info</option>

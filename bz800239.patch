@@ -1,0 +1,103 @@
+diff --git a/luci/lib/ClusterConf/Vm.py b/luci/lib/ClusterConf/Vm.py
+index 17e4600..2163500 100644
+--- a/luci/lib/ClusterConf/Vm.py
++++ b/luci/lib/ClusterConf/Vm.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2011 Red Hat, Inc.
++# Copyright (C) 2006-2012 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -12,7 +12,7 @@ TAG_NAME = "vm"
+ 
+ vm_attributes = ('migration_mapping', 'xmlfile', 'migrate',
+                  'path', 'snapshot', 'hypervisor_uri',
+-                 'migration_uri', 'status_program')
++                 'migration_uri', 'status_program', 'tunnelled')
+ 
+ class Vm(Service, BaseResource):
+   def __init__(self):
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 03c1415..ebcd2a7 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1644,7 +1644,9 @@
+ </div>
+ 
+ <div py:def="vm_resource(res, form_id, parent_id, isref)" name="VM" id="vm_resource" class="row rescfg"
+-  py:with="global_resource = res and isref != 0"
++  py:with="global_resource = res and isref != 0;
++      cluster_os = tmpl_context.cluster.get_OS();
++      os_version = tmpl_context.cluster.get_OSVersion()"
+   py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+   <input name="global" type="hidden" value="1" py:if="global_resource"/>
+   <input name="parent_id" type="hidden" value="${parent_id}"/>
+@@ -1715,6 +1717,13 @@
+           py:attrs="res and {'value':res.getAttribute('migration_uri')} or {}" />
+       </td>
+     </tr>
++    <tr py:if="cluster_os != 'RHEL' or os_version &gt; 6.2">
++        <td>Tunnel data over ssh during migration</td>
++        <td>
++          <input type="checkbox" class="checkbox" name="tunnelled"
++            py:attrs="{'checked':(res and res.getAttribute('tunnelled')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}"/>
++        </td>
++    </tr>
+     ${res_footer(res)}
+   </table>
+ </div>
+diff --git a/luci/templates/service.html b/luci/templates/service.html
+index bf623bb..eb4d8df 100644
+--- a/luci/templates/service.html
++++ b/luci/templates/service.html
+@@ -195,7 +195,7 @@
+       </form>
+     </div>
+ 
+-    <div id="edit_service_dialog">
++    <div id="edit_service_dialog" py:if="svc">
+       <form
+         style="padding-left: 24px; "
+         name="edit_service_dialog" method="post" action="${tg.url(services_cmd + '?command=Edit')}">
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 3c2210b..f499d47 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -186,10 +186,20 @@ def addVM(res, rname, model, **kw):
+ 		('snapshot', '', False, None),
+ 		('hypervisor_uri', '', False, None),
+ 		('migration_uri', '', False, None),
+-		('status_program', '', False, None)
++		('status_program', '', False, None),
++		('tunnelled', '', False, None),
+ 	)
+ 
++	if not kw.has_key('tunnelled'):
++		kw['tunnelled'] = '0'
++	else:
++		kw['tunnelled'] = '1'
++
+ 	errors = config_resource(params, res, rname, **kw)
++	if res.getBinaryAttribute('tunnelled') is True:
++		res.addAttribute('tunnelled', 'on')
++	else:
++		res.removeAttribute('tunnelled')
+ 	return errors
+ 
+ def addNFSClient(res, rname, model, **kw):
+@@ -748,10 +758,11 @@ def validate_clusvc_form(model, **kw):
+ 				else:
+ 					dummy_form['resourcename'] = dummy_form['address_nominal']
+ 				dummy_form['address'] = dummy_form['resourcename']
+-			if dummy_form['resourcename'] in existing_res_names:
+-				return (False, { 'errors': [ _('A resource named "%s" already exists') % dummy_form['resourcename'] ]})
+-			else:
+-				existing_res_names.append(dummy_form['resourcename'])
++			if dummy_form.has_key('resourcename'):
++				if dummy_form['resourcename'] in existing_res_names:
++					return (False, { 'errors': [ _('A resource named "%s" already exists') % dummy_form['resourcename'] ]})
++				else:
++					existing_res_names.append(dummy_form['resourcename'])
+ 		except:
+ 			log.exception('no ipaddr')
+ 			return (False, { 'errors': [ _('No IP address was given') ]})

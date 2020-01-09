@@ -1,0 +1,4 @@
+# Configuration of Cyrus SASL for @PKGNAME@
+
+pwcheck_method: saslauthd
+mech_list: PLAIN

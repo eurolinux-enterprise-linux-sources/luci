@@ -1,0 +1,61 @@
+diff -ur a/luci/lib/ClusterConf/Rm.py b/luci/lib/ClusterConf/Rm.py
+--- a/luci/lib/ClusterConf/Rm.py	2012-01-23 11:20:32.000000000 -0500
++++ b/luci/lib/ClusterConf/Rm.py	2014-06-22 17:40:44.770017644 -0400
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2011 Red Hat, Inc.
++# Copyright (C) 2006-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -57,6 +57,15 @@
+   def delTransitionThrottling(self):
+     return self.removeAttribute('transition_throttling')
+ 
++  def getDisabled(self):
++    return self.getBinaryAttribute('disabled')
++
++  def setDisabled(self):
++    return self.addAttribute('disabled', '1')
++
++  def delDisabled(self):
++    return self.removeAttribute('disabled')
++
+   def removeDefaults(self):
+     if self.getCentralProcessing() == int(self.DEFAULTS.get('central_processing')):
+         self.delCentralProcessing()
+diff -ur a/luci/templates/configure.html b/luci/templates/configure.html
+--- a/luci/templates/configure.html	2014-06-22 17:40:17.143677011 -0400
++++ b/luci/templates/configure.html	2014-06-22 17:40:44.770017644 -0400
+@@ -1009,6 +1009,11 @@
+             <input type="hidden" name="page" value="rm"/>
+             <h2>Resource Manager Properties</h2>
+               <div class="row">
++                <label class="wide">Completely Disable Rgmanager</label>
++                <input name="rgmanager_disabled" type="checkbox" class="checkbox"
++                    py:attrs="rm_ptr and rm_ptr.getDisabled() and {'checked':'checked'} or {}"/>
++              </div>
++              <div class="row">
+                 <label class="wide">Maximum Number of Status Check Threads</label>
+                 <input name="status_child_max" type="text" class="text"
+                     py:attrs="rm_ptr and {'value':rm_ptr.getStatusChildMax()} or {}"/>
+diff -ur a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+--- a/luci/validation/validate_cluster_prop.py	2014-06-22 17:40:17.109677823 -0400
++++ b/luci/validation/validate_cluster_prop.py	2014-06-22 17:40:44.771017620 -0400
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2012 Red Hat, Inc.
++# Copyright (C) 2009-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -1228,6 +1228,11 @@
+             # block
+             fence_node.addChild(fence_method)
+ 
++    if kw.get('rgmanager_disabled') is not None:
++        rm.setDisabled()
++    else:
++        rm.delDisabled()
++
+     return (len(errors) < 1, {'errors': errors})
+ 
+ def validate_node_fence_form(model, **kw):

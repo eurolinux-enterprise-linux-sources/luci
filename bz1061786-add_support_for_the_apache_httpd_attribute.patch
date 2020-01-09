@@ -1,0 +1,60 @@
+From 5ea0a255f1b6df4c2c368d0cd7b3e12bc1484350 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 15:14:41 -0400
+Subject: [PATCH] luci: Add support for the apache "httpd" attribute
+
+Support configuration of the apache "httpd" attribute
+that lets users specify the path to the httpd binary.
+
+Resolves: rhbz#bz1061786
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html    | 11 ++++++++++-
+ luci/validation/validate_resource.py |  1 +
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 0737726..5ca7777 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -668,7 +668,9 @@
+ </div>
+ 
+ <div py:def="apache_resource(res, form_id, parent_id, isref)" name="APACHE" id="apache_resource" class="row rescfg"
+-  py:with="global_resource = res and isref != 0"
++  py:with="global_resource = res and isref != 0;
++      cluster_os = tmpl_context.cluster.get_OS();
++      os_version = tmpl_context.cluster.get_OSVersion()"
+   py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+   <input name="global" type="hidden" value="1" py:if="global_resource"/>
+   <input name="parent_id" type="hidden" value="${parent_id}"/>
+@@ -710,6 +712,13 @@
+           py:attrs="res and {'value':res.getAttribute('httpd_options'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
++    <tr py:if="cluster_os != 'RHEL' or os_version &gt; 6.5">
++      <td>Path to httpd binary</td>
++      <td>
++        <input type="text" class="text" name="httpd"
++          py:attrs="res and {'value':res.getAttribute('httpd'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
+     <tr>
+       <td>Shutdown Wait (seconds)</td>
+       <td>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 4ac129e..a5e86a7 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -308,6 +308,7 @@ def addApache(res, rname, model, **kw):
+ 		('config_file', _('Path to configuration file'), False, None),
+ 		('server_root', '', False, None),
+ 		('httpd_options', '', False, None),
++		('httpd', '', False, None),
+ 		('shutdown_wait', '', False, None)
+ 	)
+ 	errors = config_resource(params, res, rname, **kw)
+-- 
+1.9.3
+

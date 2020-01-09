@@ -1,0 +1,233 @@
+From bc8e34fc30ad45ce8e48e903ff82244cbf0c7ac1 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 10 Aug 2014 23:17:18 -0400
+Subject: [PATCH] luci: Remove ssh_options fields from fence agents that do
+ not yet support it
+
+Remove the ssh_options GUI fields for fence agents that do not yet support
+it in RHEL.
+
+Resolves: rhbz#1117398
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/fence_devices.html   |  8 ++++----
+ luci/templates/fence_instances.html | 14 +++++++-------
+ luci/validation/validate_fence.py   | 24 ++++++++++++------------
+ 3 files changed, 23 insertions(+), 23 deletions(-)
+
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index 0d34910..f7b154c 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -2703,7 +2703,7 @@
+         <label class="choice">Use SSH</label>
+       </td>
+     </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+@@ -3238,7 +3238,7 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
+       </td>
+     </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+@@ -3689,7 +3689,7 @@
+         <label class="choice">Use SSH</label>
+       </td>
+     </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+@@ -4081,7 +4081,7 @@
+         <label class="choice">Use SSH</label>
+       </td>
+     </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index fca35cc..6e45257 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -145,7 +145,7 @@
+           py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+       </td>
+     </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+@@ -198,7 +198,7 @@
+               py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+           </td>
+          </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+@@ -294,7 +294,7 @@
+               py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+           </td>
+          </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+@@ -423,7 +423,7 @@
+           py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+       </td>
+     </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+@@ -678,7 +678,7 @@
+               py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+           </td>
+          </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+@@ -751,7 +751,7 @@
+               py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+           </td>
+          </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+@@ -1264,7 +1264,7 @@
+               py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+           </td>
+          </tr>
+-    <tr>
++    <tr py:if="0">
+       <td>SSH Options</td>
+       <td>
+         <input type="text" class="text" name="ssh_options"
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index 91095a1..04996fa 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -429,7 +429,7 @@ def val_rsb_fd(fencedev, fence_name, **kw):
+ 		('login_timeout', False),
+ 		('retry_on', False),
+ 		('secure', False),
+-		('ssh_options', False),
++#		('ssh_options', False),
+ 		('identity_file', False),
+ 	)
+ 
+@@ -457,7 +457,7 @@ def val_drac5_fd(fencedev, fence_name, **kw):
+ 		('module_name', False),
+ 		('cmd_prompt', False),
+ 		('secure', False),
+-		('ssh_options', False),
++#		('ssh_options', False),
+ 		('identity_file', False),
+ 		('passwd', False),
+ 		('passwd_script', False),
+@@ -788,7 +788,7 @@ def val_ilo_mp_fd(fencedev, fence_name, **kw):
+ 		('passwd', False),
+ 		('passwd_script', False),
+ 		('secure', False),
+-		('ssh_options', False),
++#		('ssh_options', False),
+ 		('identity_file', False),
+ 		('cmd_prompt', False),
+ 		('power_wait', False),
+@@ -1011,7 +1011,7 @@ def val_wti_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
+ 		('secure', False),
+-		('ssh_options', False),
++#		('ssh_options', False),
+ 		('identity_file', False),
+ 		('delay', False),
+ 	)
+@@ -1037,7 +1037,7 @@ def val_brocade_fi(fenceinst, parent_name, **kw):
+ 		('delay', False),
+ 		('secure', False),
+ 		('identity_file', False),
+-		('ssh_options', False),
++#		('ssh_options', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+@@ -1073,7 +1073,7 @@ def val_bladecenter_fi(fenceinst, parent_name, **kw):
+ 		('port', True),
+ 		('switch', False),
+ 		('secure', False),
+-		('ssh_options', False),
++#		('ssh_options', False),
+ 		('identity_file', False),
+ 		('delay', False),
+ 	)
+@@ -1086,7 +1086,7 @@ def val_ipdu_fi(fenceinst, parent_name, **kw):
+ 		('port', True),
+ 		('switch', False),
+ 		('secure', False),
+-		('ssh_options', False),
++#		('ssh_options', False),
+ 		('identity_file', False),
+ 		('delay', False),
+ 	)
+@@ -1116,8 +1116,8 @@ def val_lpar_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('partition', True),
+ 		('managed', True),
+-		('secure', True),
+-		('ssh_options', False),
++		('secure', False),
++#		('ssh_options', False),
+ 		('identity_file', False),
+ 		('delay', False),
+ 	)
+@@ -1168,7 +1168,7 @@ def val_vmware_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
+ 		('secure', False),
+-		('ssh_options', False),
++#		('ssh_options', False),
+ 		('identity_file', False),
+ 		('delay', False),
+ 	)
+@@ -1188,7 +1188,7 @@ def val_ldom_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
+ 		('secure', False),
+-		('ssh_options', False),
++#		('ssh_options', False),
+ 		('identity_file', False),
+ 		('delay', False),
+ 	)
+@@ -1236,7 +1236,7 @@ def val_hpblade_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
+ 		('secure', False),
+-		('ssh_options', False),
++#		('ssh_options', False),
+ 		('identity_file', False),
+ 		('delay', False),
+ 	)
+-- 
+1.9.3
+

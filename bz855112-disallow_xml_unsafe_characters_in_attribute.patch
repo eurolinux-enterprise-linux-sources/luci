@@ -1,0 +1,124 @@
+From 76fa69f399e245471c026c20c03adbfe39a01d3f Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 17:19:16 -0400
+Subject: [PATCH] luci: Disallow XML-unsafe characters in attribute
+ values
+
+Disallow the use of the <, >, ", and & characters inside
+attribute values.
+
+Resolves: rhbz#855112
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/cluster.py          |  5 ++++-
+ luci/lib/ClusterConf/ModelBuilder.py |  1 +
+ luci/lib/ClusterConf/TagObject.py    |  8 ++++++--
+ luci/lib/db_helpers.py               | 17 +++++++++++------
+ 4 files changed, 22 insertions(+), 9 deletions(-)
+
+diff --git a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+index 0e3f043..3159145 100644
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2012 Red Hat, Inc.
++# Copyright (C) 2009-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -134,6 +134,9 @@ class IndividualClusterController(BaseController):
+         if not self.model:
+             try:
+                 self.model = get_model_for_cluster(self.name, self.get_agent())
++            except Exception, e:
++                flash('Error reading the cluster configuration: %s' % str(e), status="error")
++            try:
+                 if self.model:
+                     reconcile_db_with_conf(self.name, self.model.getNodeNames())
+             except:
+diff --git a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+index c26bbb0..8e878df 100644
+--- a/luci/lib/ClusterConf/ModelBuilder.py
++++ b/luci/lib/ClusterConf/ModelBuilder.py
+@@ -440,6 +440,7 @@ class ModelBuilder:
+       if self.lock_version is True:
+         self.getClusterPtr().is_cfg_version_dirty = True
+     except Exception, e:
++      log.exception("Error exporting cluster.conf XML")
+       strbuf = ""
+ 
+     return strbuf
+diff --git a/luci/lib/ClusterConf/TagObject.py b/luci/lib/ClusterConf/TagObject.py
+index dbd9b82..fec05d9 100644
+--- a/luci/lib/ClusterConf/TagObject.py
++++ b/luci/lib/ClusterConf/TagObject.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2011 Red Hat, Inc.
++# Copyright (C) 2006-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -17,6 +17,7 @@ class TagObject(object):
+     self.element_text = None
+     self.errors = False
+     self.parent = None
++    self.badchars = set('<>&"')
+ 
+   def getParent(self):
+     return self.parent
+@@ -38,7 +39,10 @@ class TagObject(object):
+   def addAttribute(self, name, value):
+     if value is None:
+         return self.removeAttribute(name)
+-    self.attr_hash[name] = unicode(value)
++    uvalue = unicode(value)
++    if any((c in self.badchars) for c in uvalue):
++      raise ValueError, 'Attributes may not contain the following characters: > < " &'
++    self.attr_hash[name] = uvalue
+     return value
+ 
+   def addIntegerAttribute(self, name, val, bounds=(None, None)):
+diff --git a/luci/lib/db_helpers.py b/luci/lib/db_helpers.py
+index 0b7daa3..2ec55b0 100644
+--- a/luci/lib/db_helpers.py
++++ b/luci/lib/db_helpers.py
+@@ -122,15 +122,14 @@ def get_model_for_cluster(cluster_name, rc=None):
+     try:
+         from luci.lib.ClusterConf.ModelBuilder import ModelBuilder
+         conf = rq.getClusterConf(rc)
+-        if conf is not None:
+-            model = ModelBuilder(conf, rc.cluster_version())
+-            return model
+     except Exception, e:
+         log.exception("Error getting cluster configuration for %s: %s"
+             % (cluster_name, e))
+ 
+-    # Couldn't get the conf from any nodes
+-    return None
++    model = None
++    if conf is not None:
++        model = ModelBuilder(conf, rc.cluster_version())
++    return model
+ 
+ def get_cluster_status(rc):
+     try:
+@@ -218,8 +217,14 @@ def get_cluster_list_full():
+                 'status': ClusterStatus(None)
+             }
+             continue
++
++        try:
++            model = get_model_for_cluster(cluster_name, rc)
++        except Exception, e:
++            model = None
++
+         cluster_list[cluster_name] = {
+-            'model': get_model_for_cluster(cluster_name, rc),
++            'model': model,
+             'status': get_status_for_cluster(cluster_name, rc)
+         }
+     return cluster_list
+-- 
+1.9.3
+

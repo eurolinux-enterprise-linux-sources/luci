@@ -1,0 +1,13 @@
+diff --git a/luci/templates/failover.html b/luci/templates/failover.html
+index 4d89dcb..4e512b3 100644
+--- a/luci/templates/failover.html
++++ b/luci/templates/failover.html
+@@ -244,7 +244,7 @@
+                 </td>
+                 <td class="fdom_tmembers_priority">
+                   <input id="${identifier_pri}" name="${identifier_pri}"
+-                   type="text" maxlength="3" class="input_priority"
++                   type="text" maxlength="3" class="input_priority_disabled"
+                    py:attrs="details.getOrdered() is not True and {'disabled':'disabled'} or None"/>
+                 </td>
+                 </py:otherwise>

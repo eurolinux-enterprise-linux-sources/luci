@@ -1,0 +1,30 @@
+From d3fa5ca0a3eaef1d2a31ca8a6425a03c41100d97 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 10 Aug 2014 23:11:53 -0400
+Subject: [PATCH] luci: Fix positioning of sort arrows
+
+Fix the positioning of the "this column can be sorted" icon.
+
+Resolves: rhbz#919225
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/css/style.css | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/luci/public/css/style.css b/luci/public/css/style.css
+index 9bcbaea..bfdb41b 100644
+--- a/luci/public/css/style.css
++++ b/luci/public/css/style.css
+@@ -651,7 +651,7 @@ display: none ! important;
+ }
+ 
+ table.tablesorter thead tr .header {
+-	background: transparent url(../images/bg.gif) no-repeat center right;
++	background: transparent url(../images/bg.gif) no-repeat +6em;
+ 	cursor: pointer;
+ }
+ 
+-- 
+1.9.3
+

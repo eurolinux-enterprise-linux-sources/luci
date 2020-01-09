@@ -1,0 +1,1037 @@
+<html xmlns:py="http://genshi.edgewall.org/"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      py:strip="">
+
+<div py:def="fence_apc_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_apc_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Switch (optional)</td>
+      <td>
+        <input name="switch" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('switch')}"/>
+      </td>
+    </tr>
+    <tr><td>
+      <fieldset>
+        <legend>SSH</legend>
+        <table class="detailstable">
+         <tr>
+          <td>
+            <span title="Enable SSH operation">Use SSH</span>
+          </td>
+          <td>
+            <input type="checkbox" class="checkbox" name="secure"
+              py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+          </td>
+         </tr>
+         <tr>
+          <td>Path to SSH Identity File</td>
+          <td>
+            <input type="text" class="text" name="identity_file"
+              py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('identity_file')}"/>
+          </td>
+         </tr>
+        </table>
+      </fieldset>
+    </td></tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_apc" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_egenera_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_egenera_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>lpan</td>
+      <td>
+        <input name="lpan" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('lpan')}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>pserver</td>
+      <td>
+        <input name="pserver" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('pserver')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_egenera" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_lpar_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_lpar_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Partition</td>
+      <td>
+        <input name="partition" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('partition')}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Managed System</td>
+      <td>
+        <input name="managed" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('managed')}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Path to SSH Identity File</td>
+      <td>
+        <input type="text" class="text" name="identity_file"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('identity_file')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_lpar" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="secure" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_vmware_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_vmware_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td>
+      <fieldset>
+        <legend>SSH</legend>
+        <table class="detailstable">
+         <tr>
+          <td>
+            <span title="Enable SSH operation">Use SSH</span>
+          </td>
+          <td>
+            <input type="checkbox" class="checkbox" name="secure"
+              py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+          </td>
+         </tr>
+         <tr>
+          <td>Path to SSH Identity File</td>
+          <td>
+            <input type="text" class="text" name="identity_file"
+              py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('identity_file')}"/>
+          </td>
+         </tr>
+        </table>
+      </fieldset>
+    </td></tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_vmware" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_vmware_soap_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_vmware_soap_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>VM name</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>VM UUID</td>
+      <td>
+        <input name="uuid" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('uuid')}"/>
+      </td>
+    </tr>
+    <tr>
+        <td>
+            <span title="Enable SSL operation">Use SSL</span>
+        </td>
+        <td>
+            <input type="checkbox" class="checkbox" name="ssl"
+              py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('ssl') and {'checked': 'checked'}"/>
+        </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_vmware_soap" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_wti_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_wti_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td>
+      <fieldset>
+        <legend>SSH</legend>
+        <table class="detailstable">
+         <tr>
+          <td>
+            <span title="Enable SSH operation">Use SSH</span>
+          </td>
+          <td>
+            <input type="checkbox" class="checkbox" name="secure"
+              py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+          </td>
+         </tr>
+         <tr>
+          <td>Path to SSH Identity File</td>
+          <td>
+            <input type="text" class="text" name="identity_file"
+              py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('identity_file')}"/>
+          </td>
+         </tr>
+        </table>
+      </fieldset>
+    </td></tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_wti" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_virsh_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_virsh_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>VM Domain</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td>
+      <fieldset>
+        <legend>SSH</legend>
+        <table class="detailstable">
+         <tr>
+          <td>
+            <span title="Enable SSH operation">Use SSH</span>
+          </td>
+          <td>
+            <input type="checkbox" class="checkbox" name="secure"
+              py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+          </td>
+         </tr>
+         <tr>
+          <td>Path to SSH Identity File</td>
+          <td>
+            <input type="text" class="text" name="identity_file"
+              py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('identity_file')}"/>
+          </td>
+         </tr>
+        </table>
+      </fieldset>
+    </td></tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_virsh" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_rhevm_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_rhevm_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port (Outlet) Number</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_rhevm" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_brocade_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_brocade_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Unfencing</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="unfencing"
+          py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
+        <label class="choice">Enable</label>
+        <input type="hidden" name="unfence_action" value="enable" />
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_brocade" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_vixel_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_vixel_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_vixel" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_sanbox2_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_sanbox2_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Unfencing</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="unfencing"
+          py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
+        <label class="choice">Enable</label>
+        <input type="hidden" name="unfence_action" value="enable" />
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_sanbox2" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_mcdata_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_mcdata_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr>
+      <td>Unfencing</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="unfencing"
+          py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
+        <label class="choice">Enable</label>
+        <input type="hidden" name="unfence_action" value="enable" />
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_mcdata" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_gnbd_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_gnbd_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>IP Address</td>
+      <td>
+        <input name="ipaddress" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('ipaddress')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_gnbd" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_bullpap_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_bullpap_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Domain</td>
+      <td>
+        <input name="domain" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('domain')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_bullpap" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_virt_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_virt_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Domain</td>
+      <td>
+        <input name="domain" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('domain')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_virt" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_xvm_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_xvm_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Domain</td>
+      <td>
+        <input name="domain" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('domain')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_xvm" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_bladecenter_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_bladecenter_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Blade</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td>
+      <fieldset>
+        <legend>SSH</legend>
+        <table class="detailstable">
+         <tr>
+          <td>
+            <span title="Enable SSH operation">Use SSH</span>
+          </td>
+          <td>
+            <input type="checkbox" class="checkbox" name="secure"
+              py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+          </td>
+         </tr>
+         <tr>
+          <td>Path to SSH Identity File</td>
+          <td>
+            <input type="text" class="text" name="identity_file"
+              py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('identity_file')}"/>
+          </td>
+         </tr>
+        </table>
+      </fieldset>
+    </td></tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_bladecenter" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_rackswitch_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_rackswitch_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port (Outlet) Number</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_rackswitch" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_ldom_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ldom_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port (Outlet) Number or Name of Virtual Machine</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td>
+      <fieldset>
+        <legend>SSH</legend>
+        <table class="detailstable">
+         <tr>
+          <td>
+            <span title="Enable SSH operation">Use SSH</span>
+          </td>
+          <td>
+            <input type="checkbox" class="checkbox" name="secure"
+              py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
+          </td>
+         </tr>
+         <tr>
+          <td>Path to SSH Identity File</td>
+          <td>
+            <input type="text" class="text" name="identity_file"
+              py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('identity_file')}"/>
+          </td>
+         </tr>
+        </table>
+      </fieldset>
+    </td></tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_ldom" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_cisco_mds_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_cisco_mds_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port (Outlet) Number</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_cisco_mds" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_cisco_ucs_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_cisco_ucs_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port (Outlet) Number</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_cisco_ucs" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_eps_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_eps_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port (Outlet) Number</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_eps" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_ibmblade_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ibmblade_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port (Outlet) Number</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_ibmblade" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_ifmib_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ifmib_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port (Outlet) Number</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_ifmib" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_intelmodular_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_intelmodular_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port (Outlet) Number</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_intelmodular" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_apc_snmp_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_apc_snmp_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Port (Outlet) Number</td>
+      <td>
+        <input name="port" type="text" class="text"
+          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+
+  <input type="hidden" name="fence_type" value="fence_apc_snmp" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_drac_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_drac_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_drac" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_drac5_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_drac5_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_drac5" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_ilo_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ilo_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_ilo" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_ilo_mp_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ilo_mp_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_ilo_mp" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_rsa_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_rsa_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_rsa" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_ipmilan_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_ipmilan_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_ipmilan" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_alom_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_alom_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_alom" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_cpint_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_cpint_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_cpint" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_rps10_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_rps10_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_rps10" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_rsb_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_rsb_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_rsb" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_xcat_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_xcat_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_xcat" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_zvm_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_zvm_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <div class="emptyfenceinst">No additional parameters</div>
+  <input type="hidden" name="fence_type" value="fence_zvm" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_scsi_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_scsi_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+  <table class="detailstable">
+    <tr>
+      <td>Unfencing</td>
+      <td>
+        <input type="checkbox" class="checkbox" name="unfencing"
+          py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
+        <label class="choice">Enable</label>
+        <input type="hidden" name="unfence_action" value="on" />
+      </td>
+    </tr>
+    <tr><td colspan="2">
+      <div>
+        <input type="button" name="remove_fence" value="Remove this instance"
+          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
+      </div>
+    </td></tr>
+  </table>
+  <input py:if="kw.get('nodename')" type="hidden" name="nodename" value="${kw['nodename']}" />
+  <input type="hidden" name="fence_type" value="fence_scsi" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_unknown_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_unknown_instance"
+  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+
+  <input type="hidden" name="fence_type" value="fence_unknown" />
+  <input type="hidden" name="fence_instance" value="1" />
+  <input type="hidden" name="parent_fencedev"
+    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+</div>
+
+<div py:def="fence_instance_container(nodename)"
+  id="fence_instance_container" class="hidden">
+${fence_apc_instance(None, None, None)}
+${fence_apc_snmp_instance(None, None, None)}
+${fence_egenera_instance(None, None, None)}
+${fence_lpar_instance(None, None, None)}
+${fence_vmware_instance(None, None, None)}
+${fence_vmware_soap_instance(None, None, None)}
+${fence_wti_instance(None, None, None)}
+${fence_brocade_instance(None, None, None)}
+${fence_vixel_instance(None, None, None)}
+${fence_sanbox2_instance(None, None, None)}
+${fence_mcdata_instance(None, None, None)}
+${fence_gnbd_instance(None, None, None)}
+${fence_bullpap_instance(None, None, None)}
+${fence_virt_instance(None, None, None)}
+${fence_xvm_instance(None, None, None)}
+${fence_bladecenter_instance(None, None, None)}
+${fence_rackswitch_instance(None, None, None)}
+${fence_ldom_instance(None, None, None)}
+${fence_cisco_mds_instance(None, None, None)}
+${fence_cisco_ucs_instance(None, None, None)}
+${fence_eps_instance(None, None, None)}
+${fence_ibmblade_instance(None, None, None)}
+${fence_ifmib_instance(None, None, None)}
+${fence_intelmodular_instance(None, None, None)}
+${fence_virsh_instance(None, None, None)}
+${fence_rhevm_instance(None, None, None)}
+${fence_drac_instance(None, None, None)}
+${fence_drac5_instance(None, None, None)}
+${fence_ilo_instance(None, None, None)}
+${fence_ilo_mp_instance(None, None, None)}
+${fence_rsa_instance(None, None, None)}
+${fence_ipmilan_instance(None, None, None)}
+${fence_alom_instance(None, None, None)}
+${fence_cpint_instance(None, None, None)}
+${fence_rps10_instance(None, None, None)}
+${fence_rsb_instance(None, None, None)}
+${fence_xcat_instance(None, None, None)}
+${fence_zvm_instance(None, None, None)}
+${fence_scsi_instance(None, None, None, nodename=nodename)}
+${fence_unknown_instance(None, None, None)}
+</div>
+</html>

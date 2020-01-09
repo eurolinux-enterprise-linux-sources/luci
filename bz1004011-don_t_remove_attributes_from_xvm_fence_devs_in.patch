@@ -1,0 +1,48 @@
+From 080e1b685dde98cbfcfd4f39a786b540afbb69d2 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 23 Jun 2014 09:40:30 -0400
+Subject: [PATCH] luci: Don't remove attributes from xvm fence devs in
+ non-expert mode
+
+If attributes are set on an xvm fence device that are only shown in
+expert mode, and the device is edited in non-expert mode, the
+attributes that are shown only in expert mode are removed. This patch
+corrects that.
+
+Resolves: rhbz#1004011
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/validation/validate_fence.py | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index eff2547..d102c51 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -562,6 +562,10 @@ def val_xcat_fd(fencedev, fence_name, **kw):
+ 
+ def val_xvm_fd(fencedev, fence_name, **kw):
+ 	params = (
++		('timeout', False),
++	)
++
++	params_expert = (
+ 		('auth', False),
+ 		('hash', False),
+ 		('ip_family', False),
+@@ -572,7 +576,10 @@ def val_xvm_fd(fencedev, fence_name, **kw):
+ 		('retrans', False),
+ 	)
+ 
+-	errors = config_fence_attr(params, fencedev, fence_name, **kw)
++	if kw.get('expert_mode'):
++		errors = config_fence_attr(params_expert, fencedev, fence_name, **kw)
++	else:
++		errors = config_fence_attr(params, fencedev, fence_name, **kw)
+ 	return errors
+ 
+ def val_zvm_fd(fencedev, fence_name, **kw):
+-- 
+1.9.3
+

@@ -1,0 +1,280 @@
+From 6f6f815618e096f21eed5e00a2c2d98ddce4dd6d Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Fri, 12 Oct 2012 00:00:27 -0400
+Subject: [PATCH] luci: Add support for fence_hpblade
+
+Add an interface for configuring and displaying
+fence_hpblade fence devices.
+
+Resolves: rhbz#865533
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/FenceDeviceAttr.py |  3 ++
+ luci/templates/fence_devices.html       | 88 +++++++++++++++++++++++++++++++++
+ luci/templates/fence_instances.html     | 48 ++++++++++++++++++
+ luci/validation/validate_fence.py       | 27 ++++++++++
+ 4 files changed, 166 insertions(+)
+
+diff --git a/luci/lib/ClusterConf/FenceDeviceAttr.py b/luci/lib/ClusterConf/FenceDeviceAttr.py
+index 135ed83..33a2564 100644
+--- a/luci/lib/ClusterConf/FenceDeviceAttr.py
++++ b/luci/lib/ClusterConf/FenceDeviceAttr.py
+@@ -20,6 +20,7 @@ FENCE_OPTS = {
+ 	'fence_gnbd':			'Global Network Block Device',
+ 	'fence_sanbox2':		'QLogic SANBox2',
+ 	'fence_bladecenter':	'IBM Blade Center',
++	'fence_hpblade':		'HP BladeSystem',
+ 	'fence_mcdata':			'McDATA SAN Switch',
+ 	'fence_eaton_snmp':		'Eaton Network Power Controller (SNMP Interface)',
+ 	'fence_egenera':		'Egenera SAN Controller',
+@@ -79,6 +80,8 @@ FENCE_SHARED = {
+ 	'fence_cisco_ucs':		True,
+ 	'fence_eps':			True,
+ 	'fence_ibmblade':		True,
++	'fence_hpblade':		True,
++	'fence_eaton_snmp':		True,
+ 	'fence_ifmib':			True,
+ 	'fence_ipdu':			True,
+ 	'fence_intelmodular':	True,
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index b76e6bf..eb56b96 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -3321,6 +3321,92 @@
+   <input type="hidden" name="fence_type" value="fence_eaton_snmp" />
+ </div>
+ 
++<div py:def="fence_hpblade(cur_fencedev, ni)" id="fence_hpblade" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>WTI Power Switch</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Address or Hostname</td>
++      <td>
++        <input name="ipaddr" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Port (optional)</td>
++      <td>
++        <input name="ipport" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login</td>
++      <td>
++        <input name="login" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Password</td>
++      <td>
++        <input name="passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
++      </td>
++      <td>
++        <input type="text" class="text" name="passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Force Command Prompt</td>
++      <td>
++        <input type="text" class="text" name="cmd_prompt"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('cmd_prompt')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Missing port returns OFF instead of failure</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="missing_as_off"
++          py:attrs="cur_fencedev and cur_fencedev.getBinaryAttribute('missing_as_off') and {'checked': 'checked'}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="sharable" value="1" />
++  <input type="hidden" name="num_instances" value="${ni}"/>
++  <input type="hidden" name="fence_type" value="fence_hpblade" />
++</div>
++
+ <div py:def="fence_device_container" id="fence_device_container" class="hidden">
+ ${fence_apc(None,0)}
+ ${fence_apc_snmp(None,0)}
+@@ -3362,6 +3448,7 @@ ${fence_rackswitch(None,0)}
+ ${fence_xcat(None,0)}
+ ${fence_zvm(None,0)}
+ ${fence_ibmblade(None,0)}
++${fence_hpblade(None,0)}
+ ${fence_eaton_snmp(None,0)}
+ ${fence_unknown(None,0)}
+ </div>
+@@ -3417,6 +3504,7 @@ ${fence_unknown(None,0)}
+       <option py:if="cluster_version == 2" name="fence_xvm" value="fence_xvm">Fence xvm</option>
+ 
+       <option name="fence_rsb" value="fence_rsb">Fujitsu Siemens RemoteView Service Board</option>
++      <option name="fence_hpblade" value="fence_hpblade">HP BladeSystem</option>
+       <option name="fence_ilo" value="fence_ilo">HP iLO Device</option>
+       <option name="fence_ilo_mp" value="fence_ilo_mp">HP iLO MP</option> <!-- needs work -->
+       <option name="fence_bladecenter" value="fence_bladecenter">IBM BladeCenter</option>
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index f2e3dde..66721c6 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -1063,6 +1063,53 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
++<div py:def="fence_hpblade_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_hpblade_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++  <table class="detailstable">
++    <tr>
++      <td>Port</td>
++      <td>
++        <input name="port" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
++      </td>
++    </tr>
++    <tr><td>
++      <fieldset>
++        <legend>SSH</legend>
++        <table class="detailstable">
++         <tr>
++          <td>
++            <span title="Enable SSH operation">Use SSH</span>
++          </td>
++          <td>
++            <input type="checkbox" class="checkbox" name="secure"
++              py:attrs="cur_fence_inst and cur_fence_inst.getAttribute('secure') and {'checked': 'checked'}"/>
++          </td>
++         </tr>
++         <tr>
++          <td>Path to SSH Identity File</td>
++          <td>
++            <input type="text" class="text" name="identity_file"
++              py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('identity_file')}"/>
++          </td>
++         </tr>
++        </table>
++      </fieldset>
++    </td></tr>
++    <tr><td colspan="2">
++      <div>
++        <input type="button" name="remove_fence" value="Remove this instance"
++          py:attrs="fi_id is not None and {'onclick': '$(\'#%s\').remove()' % fi_id} or {}"/>
++      </div>
++    </td></tr>
++  </table>
++
++  <input type="hidden" name="fence_type" value="fence_hpblade" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
+ <div py:def="fence_unknown_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_unknown_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+ 
+@@ -1087,6 +1134,7 @@ ${fence_apc_instance(None, None, None)}
+ ${fence_apc_snmp_instance(None, None, None)}
+ ${fence_eaton_snmp_instance(None, None, None)}
+ ${fence_egenera_instance(None, None, None)}
++${fence_hpblade_instance(None, None, None)}
+ ${fence_lpar_instance(None, None, None)}
+ ${fence_vmware_instance(None, None, None)}
+ ${fence_vmware_soap_instance(None, None, None)}
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index bb2e6af..af6c965 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -510,6 +510,21 @@ def val_ibmblade_fd(fencedev, fence_name, **kw):
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+ 	return errors
+ 
++def val_hpblade_fd(fencedev, fence_name, **kw):
++	params = (
++		('ipaddr', True),
++		('ipport', False),
++		('login', True),
++		('missing_as_off', False),
++		('cmd_prompt', False),
++		('passwd', False),
++		('passwd_script', False),
++		('power_wait', False),
++	)
++
++	errors = config_fence_attr(params, fencedev, fence_name, **kw)
++	return errors
++
+ def val_ifmib_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+@@ -712,6 +727,7 @@ FD_VALIDATE = {
+ 	'fence_egenera':		val_egenera_fd,
+ 	'fence_eps':			val_eps_fd,
+ 	'fence_gnbd':			val_gnbd_fd,
++	'fence_hpblade':		val_hpblade_fd,
+ 	'fence_ibmblade':		val_ibmblade_fd,
+ 	'fence_ifmib':			val_ifmib_fd,
+ 	'fence_ilo_mp':			val_ilo_mp_fd,
+@@ -1005,6 +1021,16 @@ def val_ibmblade_fi(fenceinst, parent_name, **kw):
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+ 	return errors
+ 
++def val_hpblade_fi(fenceinst, parent_name, **kw):
++	params = (
++		('port', True),
++		('secure', False),
++		('identity_file', False),
++	)
++
++	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
++	return errors
++
+ def val_ifmib_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
+@@ -1072,6 +1098,7 @@ FI_VALIDATE = {
+ 	'fence_egenera':		val_egenera_fi,
+ 	'fence_eps':			val_eps_fi,
+ 	'fence_gnbd':			val_gnbd_fi,
++	'fence_hpblade':		val_hpblade_fi,
+ 	'fence_ibmblade':		val_ibmblade_fi,
+ 	'fence_ifmib':			val_ifmib_fi,
+ 	'fence_ilo_mp':			val_noop_fi,
+-- 
+1.7.11.7
+

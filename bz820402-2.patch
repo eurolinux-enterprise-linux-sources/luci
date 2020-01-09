@@ -1,0 +1,20 @@
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index 87ab6df..e95c69b 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -558,6 +558,7 @@ def val_intelmodular_fd(fencedev, fence_name, **kw):
+ 		('snmp_priv_prot', False),
+ 		('snmp_priv_passwd', False),
+ 		('snmp_priv_passwd_script', False),
++		('power_wait', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+@@ -919,7 +920,6 @@ def val_apc_snmp_fi(fenceinst, parent_name, **kw):
+ def val_intelmodular_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
+-		('power_wait', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)

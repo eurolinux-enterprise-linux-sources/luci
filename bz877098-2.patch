@@ -1,0 +1,59 @@
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index cb6d0f7..8544988 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -2,6 +2,15 @@
+       xmlns:xi="http://www.w3.org/2001/XInclude"
+       py:strip="">
+ 
++<py:def function="unfence_alert(unfencing)">
++  <div class="message" py:if="not unfencing">
++     <div class="alert">
++          Unfencing seems not to be set, however it is expected to be.
++          Submitting this form will enforce this proper configuration.
++    </div>
++  </div>
++</py:def>
++
+ <div py:def="fence_apc_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_apc_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+   <table class="detailstable">
+@@ -432,6 +441,7 @@
+ 
+ <div py:def="fence_sanlock_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_sanlock_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++  ${unfence_alert(kw.get('unfencing', True))}
+   <table class="detailstable">
+     <tr>
+       <td>Host id</td>
+@@ -443,9 +443,10 @@
+     <tr>
+       <td>Unfencing</td>
+       <td>
+-        <input type="checkbox" class="checkbox" name="unfencing"
+-          py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
++        <input type="checkbox" class="checkbox" name="unfencing_dummy"
++               disabled="disabled" checked="checked"/>
+         <label class="choice">Enable</label>
++        <input type="hidden" name="unfencing" value="checked" />
+         <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>
+@@ -1034,13 +1034,15 @@
+ 
+ <div py:def="fence_scsi_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_scsi_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++  ${unfence_alert(kw.get('unfencing', True))}
+   <table class="detailstable">
+     <tr>
+       <td>Unfencing</td>
+       <td>
+-        <input type="checkbox" class="checkbox" name="unfencing"
+-          py:attrs="(not cur_fence_inst or kw.get('unfencing', True)) and {'checked': 'checked'}"/>
++        <input type="checkbox" class="checkbox" name="unfencing_dummy"
++               disabled="disabled" checked="checked"/>
+         <label class="choice">Enable</label>
++        <input type="hidden" name="unfencing" value="checked" />
+         <input type="hidden" name="unfence_action" value="on" />
+       </td>
+     </tr>

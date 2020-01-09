@@ -1,0 +1,39 @@
+From a4fa913be73bd1324944311b9d8c7f604ff88ac9 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 10 Aug 2014 23:19:17 -0400
+Subject: [PATCH] luci: Support newly added bind-mount "name" attribute
+
+Support the newly added bind-mount "name" attribute.
+
+Resolves: rhbz#1117398
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/validation/validate_resource.py | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 6058c76..0739495 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -238,16 +238,13 @@ def addNetfs(res, rname, model, **kw):
+ 
+ def addBindMount(res, rname, model, **kw):
+ 	params = (
++		('mountpoint', _('Mount point for the bind mount'), True, None),
+ 		('source', _('Source of the bind mount'), True, None),
+ 		('force_unmount', '', False, None),
+ 	)
+ 
+ 	errors = config_resource(params, res, rname, **kw)
+ 
+-	# Primary attribute is mountpoint, not name
+-	res.removeAttribute('name')
+-	res.addAttribute('mountpoint', rname)
+-
+ 	for a in ('force_unmount',):
+ 		if res.getAttribute(a) == 'on':
+ 			res.addAttribute(a, '1')
+-- 
+1.9.3
+

@@ -1,0 +1,126 @@
+From 92845f9e02c814f9faff1f9df2fdaee266121c48 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Thu, 11 Jul 2013 14:02:44 -0400
+Subject: [PATCH] luci: Update Oracle agent configuration
+
+Update the oracledb, orainstance, and oralistener configuration to match
+the current resource agents, which support Oracle 11g.
+
+Resolves: rhbz#983693
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/OracleDB.py       |  2 +-
+ luci/lib/ClusterConf/OracleInstance.py |  2 +-
+ luci/lib/ClusterConf/OracleListener.py |  2 +-
+ luci/templates/resource_list.html      | 18 +++++++++++-------
+ luci/validation/validate_resource.py   |  2 +-
+ 5 files changed, 15 insertions(+), 11 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/OracleDB.py b/luci/lib/ClusterConf/OracleDB.py
+index 290d0e5..4cfa133 100644
+--- a/luci/lib/ClusterConf/OracleDB.py
++++ b/luci/lib/ClusterConf/OracleDB.py
+@@ -9,7 +9,7 @@ from BaseResource import BaseResource
+ from gettext import gettext as _
+ 
+ TAG_NAME = 'oracledb'
+-RESOURCE_TYPE = _('Oracle 10g Failover Instance')
++RESOURCE_TYPE = _('Oracle 10g/11g Failover Instance')
+ 
+ class OracleDB(BaseResource):
+   def __init__(self):
+diff --git a/luci/lib/ClusterConf/OracleInstance.py b/luci/lib/ClusterConf/OracleInstance.py
+index 5272f3d..9e9f06b 100644
+--- a/luci/lib/ClusterConf/OracleInstance.py
++++ b/luci/lib/ClusterConf/OracleInstance.py
+@@ -9,7 +9,7 @@ from BaseResource import BaseResource
+ from gettext import gettext as _
+ 
+ TAG_NAME = 'orainstance'
+-RESOURCE_TYPE = _('Oracle 10g Failover Instance')
++RESOURCE_TYPE = _('Oracle 10g/11g Failover Instance')
+ 
+ class OracleInstance(BaseResource):
+   def __init__(self):
+diff --git a/luci/lib/ClusterConf/OracleListener.py b/luci/lib/ClusterConf/OracleListener.py
+index 46d7639..2077e04 100644
+--- a/luci/lib/ClusterConf/OracleListener.py
++++ b/luci/lib/ClusterConf/OracleListener.py
+@@ -9,7 +9,7 @@ from BaseResource import BaseResource
+ from gettext import gettext as _
+ 
+ TAG_NAME = 'oralistener'
+-RESOURCE_TYPE = _('Oracle 10g Listener Instance')
++RESOURCE_TYPE = _('Oracle 10g/11g Listener Instance')
+ 
+ class OracleListener(BaseResource):
+   def __init__(self):
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index e3097ae..6549bbf 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1424,11 +1424,15 @@
+           <option value=""
+             py:attrs="(not res or not res.getAttribute('type')) and {'selected':'selected'} or {}">Default</option>
+           <option value="base"
+-            py:attrs="res and res.getAttribute('type') == 'base' and {'selected':'selected'} or {}">Database Instance and Listener Only</option>
++            py:attrs="res and res.getAttribute('type') == 'base' and {'selected':'selected'} or {}">10g/11g Database Instance and Listener Only</option>
+           <option value="base-em"
+-            py:attrs="res and res.getAttribute('type') == 'base-em' and {'selected':'selected'} or {}">Database, Listener, Enterprise Manager, and iSQL*Plus</option>
++            py:attrs="res and res.getAttribute('type') in ('base-em', '10g') and {'selected':'selected'} or {}">10g Database, Listener, Enterprise Manager, and iSQL*Plus</option>
+           <option value="ias"
+-            py:attrs="res and res.getAttribute('type') == 'ias' and {'selected':'selected'} or {}">Internet Application Server (Infrastructure)</option>
++            py:attrs="res and res.getAttribute('type') in ('10g-ias', 'ias') and {'selected':'selected'} or {}">10g Internet Application Server (Infrastructure)</option>
++          <option value="base-11g"
++            py:attrs="res and res.getAttribute('type') == 'base-11g' and {'selected':'selected'} or {}">11g Database Instance and Listener Only</option>
++          <option value="base-em-11g"
++            py:attrs="res and res.getAttribute('type') in ('base-em-11g', '11g') and {'selected':'selected'} or {}">11g Database, Listener, and Enterprise Manager</option>
+         </select>
+       </td>
+     </tr>
+@@ -1453,7 +1457,7 @@
+     py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+   <input name="type" type="hidden" value="orainstance" />
+ 
+-  <h3>Oracle 10g Failover Instance</h3>
++  <h3>Oracle 10g/11g Failover Instance</h3>
+   <table class="formtable">
+     <tr>
+       <td>Instance Name (SID) of Oracle Instance</td>
+@@ -1504,7 +1508,7 @@
+     py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+   <input name="type" type="hidden" value="oralistener" />
+ 
+-  <h3>Oracle 10g Listener</h3>
++  <h3>Oracle 10g/11g Listener</h3>
+   <table class="formtable">
+     <tr>
+       <td>Listener Name</td>
+@@ -1828,8 +1832,8 @@ ${condor_resource(None,None,None,0)}
+     <option name="nfsexport_resource" value="nfsexport_resource">NFS v3 Export</option>
+     <option py:if="cluster_version not in (1, 2)" name="nfsserver_resource" value="nfsserver_resource">NFS Server</option>
+     <option name="oracledb_resource" value="oracledb_resource">Oracle 10g/11g Failover Instance</option>
+-    <option name="orainstance_resource" value="orainstance_resource">Oracle 10g Instance</option>
+-    <option name="oralistener_resource" value="oralistener_resource">Oracle 10g Listener</option>
++    <option name="orainstance_resource" value="orainstance_resource">Oracle 10g/11g Instance</option>
++    <option name="oralistener_resource" value="oralistener_resource">Oracle 10g/11g Listener</option>
+     <option name="openldap_resource" value="openldap_resource">Open LDAP</option>
+     <option name="postgres8_resource" value="postgres8_resource">PostgreSQL 8</option>
+     <option name="SAPDatabase_resource" value="SAPDatabase_resource">SAP Database</option>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 20ecdb9..c6cd8c8 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -451,7 +451,7 @@ def addOracleDB(res, rname, model, **kw):
+ 	)
+ 	errors = config_resource(params, res, rname, **kw)
+ 	dbtype = res.getAttribute('oracletype')
+-	if not dbtype.lower() in ('base', 'base-em', 'ias', '10g', '10g-ias'):
++	if not dbtype.lower() in ('base', 'base-11g', 'base-em-11g', 'base-em', 'ias', '10g', '11g', '10g-ias'):
+ 		errors.append(_('Invalid Oracle database type "%s"') % dbtype)
+ 	if dbtype:
+ 		res.removeAttribute('oracletype')
+-- 
+1.8.3.1
+

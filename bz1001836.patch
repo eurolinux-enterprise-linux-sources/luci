@@ -1,0 +1,12 @@
+diff -urN luci-0.26.0.base/luci/templates/fence_devices.html luci-0.26.0/luci/templates/fence_devices.html
+--- luci-0.26.0.base/luci/templates/fence_devices.html	2013-08-29 17:19:31.755556079 +0200
++++ luci-0.26.0/luci/templates/fence_devices.html	2013-08-29 17:20:32.394559374 +0200
+@@ -1778,7 +1778,7 @@
+   <table class="formtable">
+     <tr>
+       <td>Fence Type</td>
+-      <td>HP iLO / iLO2</td>
++      <td>HP iLO</td>
+     </tr>
+     <tr>
+       <td>Name</td>

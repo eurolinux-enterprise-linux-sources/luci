@@ -1,0 +1,32 @@
+From f822ec0b85838fed3662eab192be31bd5ed9c34d Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 8 Oct 2012 09:56:17 -0400
+Subject: [PATCH] luci: Allow global resources to be referenced multiple times
+
+Allow global resources to be referenced more than once inside
+a service group.
+
+Resolves: rhbz#860042
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/validation/validate_resource.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index da4ae91..7969e0b 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -766,7 +766,8 @@ def validate_clusvc_form(model, **kw):
+ 				else:
+ 					dummy_form['resourcename'] = dummy_form['address_nominal']
+ 				dummy_form['address'] = dummy_form['resourcename']
+-			if dummy_form.has_key('resourcename'):
++			if (dummy_form.has_key('resourcename')
++				and not dummy_form.has_key('global')):
+ 				if dummy_form['resourcename'] in existing_res_names:
+ 					return (False, { 'errors': [ _('A resource named "%s" already exists') % dummy_form['resourcename'] ]})
+ 				else:
+-- 
+1.7.11.7
+

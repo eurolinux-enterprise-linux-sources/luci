@@ -1,0 +1,148 @@
+From 12386f8d6aabc432412fafb85872b9d7dca8ba02 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 16:10:50 -0400
+Subject: [PATCH] luci: Allow configuration of more fence_xvm attributes
+
+Allow configuration of all useful fence_xvm attributes
+while in expert mode. Previously, only name could be
+configured.
+
+Resolves: rhbz#1004011
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/fence_devices.html | 82 +++++++++++++++++++++++++++++++++++++++
+ luci/validation/validate_fence.py | 17 +++++++-
+ 2 files changed, 98 insertions(+), 1 deletion(-)
+
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index fcc1747..dcf15c3 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -1181,6 +1181,88 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Timeout (optional)</td>
++      <td>
++        <input name="timeout" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('timeout')}"/>
++      </td>
++    </tr>
++    <tr py:if="expertMode">
++      <td>Path to Key File (optional)</td>
++      <td>
++        <input name="key_file" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('key_file')}"/>
++      </td>
++    </tr>
++    <tr py:if="expertMode">
++      <td>IP Port (optional)</td>
++      <td>
++        <input name="ipport" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
++      </td>
++    </tr>
++    <tr py:if="expertMode">
++      <td>Multicast Address (optional)</td>
++      <td>
++        <input name="multicast_address" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('multicast_address')}"/>
++      </td>
++    </tr>
++    <tr py:if="expertMode">
++      <td>Multicast Retransmit Time (1/10s) (optional)</td>
++      <td>
++        <input name="retrans" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retrans')}"/>
++      </td>
++    </tr>
++    <tr py:if="expertMode">
++      <td>IP Family</td>
++      <td>
++        <select name="ip_family" class="fencedevformselect">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('ip_family')) and {'selected':'selected'} or {}">Default</option>
++          <option value="ipv4"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('ip_family') and cur_fencedev.getAttribute('ip_family').lower() == 'ipv4' and {'selected':'selected'} or {}">IPv4</option>
++          <option value="ipv6"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('ip_family') and cur_fencedev.getAttribute('ip_family').lower() == 'ipv6' and {'selected':'selected'} or {}">IPv6</option>
++        </select>
++      </td>
++    </tr>
++    <tr py:if="expertMode">
++      <td>Authentication Type</td>
++      <td>
++        <select name="auth" class="fencedevformselect">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('auth')) and {'selected':'selected'} or {}">Default</option>
++          <option value="none"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'none' and {'selected':'selected'} or {}">None</option>
++          <option value="sha1"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'sha1' and {'selected':'selected'} or {}">SHA1</option>
++          <option value="sha256"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'sha256' and {'selected':'selected'} or {}">SHA256</option>
++          <option value="sha512"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('auth') == 'sha512' and {'selected':'selected'} or {}">SHA512</option>
++        </select>
++      </td>
++    </tr>
++    <tr py:if="expertMode">
++      <td>Packet Hash Type</td>
++      <td>
++        <select name="hash" class="fencedevformselect">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('hash')) and {'selected':'selected'} or {}">Default</option>
++          <option value="none"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('hash') == 'none' and {'selected':'selected'} or {}">None</option>
++          <option value="sha1"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('hash') == 'sha1' and {'selected':'selected'} or {}">SHA1</option>
++          <option value="sha256"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('hash') == 'sha256' and {'selected':'selected'} or {}">SHA256</option>
++          <option value="sha512"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('hash') == 'sha512' and {'selected':'selected'} or {}">SHA512</option>
++        </select>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index c9fe626..eff2547 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -560,6 +560,21 @@ def val_xcat_fd(fencedev, fence_name, **kw):
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+ 	return errors
+ 
++def val_xvm_fd(fencedev, fence_name, **kw):
++	params = (
++		('auth', False),
++		('hash', False),
++		('ip_family', False),
++		('ipport', False),
++		('key_file', False),
++		('multicast_address', False),
++		('timeout', False),
++		('retrans', False),
++	)
++
++	errors = config_fence_attr(params, fencedev, fence_name, **kw)
++	return errors
++
+ def val_zvm_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipl', True),
+@@ -892,7 +907,7 @@ FD_VALIDATE = {
+ 	'fence_vmware_soap':	val_vmware_soap_fd,
+ 	'fence_wti':			val_wti_fd,
+ 	'fence_xcat':			val_xcat_fd,
+-	'fence_xvm':			val_noop_fd,
++	'fence_xvm':			val_xvm_fd,
+ 	'fence_zvm':			val_zvm_fd,
+ }
+ 
+-- 
+1.9.3
+

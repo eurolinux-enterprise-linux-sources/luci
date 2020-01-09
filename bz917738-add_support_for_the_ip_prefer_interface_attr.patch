@@ -1,0 +1,56 @@
+From 33c0d6a2d324e82671aa81e43b554c31b327d0e2 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 30 Jun 2014 11:20:12 -0400
+Subject: [PATCH] luci: Add support for the IP "prefer_interface" attr
+
+Add support for editing the "prefer_interface" attribute of
+the IP resource while in expert mode.
+
+Resolves: rhbz#917738
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html    | 7 +++++++
+ luci/validation/validate_resource.py | 8 ++++++++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index a195f3c..983023e 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -118,6 +118,13 @@
+           py:attrs="res and {'value': res.getAttribute('sleeptime'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
++    <tr py:if="expertMode and (cluster_os != 'RHEL' or os_version &gt; 6.4)">
++      <td>Prefer Interface</td>
++      <td>
++        <input type="text" class="text" name="prefer_interface"
++          py:attrs="res and {'value':res.getAttribute('prefer_interface'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
+     ${res_footer(res)}
+   </table>
+ </div>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index c3187cd..70b29ee 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -127,6 +127,14 @@ def addIp(res, rname, model, **kw):
+ 		res.removeAttribute('monitor_link')
+ 	if not res.getBinaryAttribute('disable_rdisc'):
+ 		res.removeAttribute('disable_rdisc')
++
++	if kw.get('expert_mode'):
++		prefer_interface = kw.get('prefer_interface')
++		if prefer_interface and not prefer_interface.isspace():
++			res.addAttribute('prefer_interface', prefer_interface)
++		else:
++			res.removeAttribute('prefer_interface')
++
+ 	return errors
+ 
+ def addFs(res, rname, model, **kw):
+-- 
+1.9.3
+

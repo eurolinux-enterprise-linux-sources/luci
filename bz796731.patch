@@ -1,0 +1,102 @@
+diff -ur a/luci/lib/ClusterConf/ModelBuilder.py b/luci/lib/ClusterConf/ModelBuilder.py
+--- a/luci/lib/ClusterConf/ModelBuilder.py	2012-02-24 12:27:28.329945652 -0500
++++ b/luci/lib/ClusterConf/ModelBuilder.py	2012-02-24 12:31:49.363610027 -0500
+@@ -1197,8 +1197,8 @@
+         if found_one is True:
+           break
+ 
+-  def searchObjectTree(self, tagtype):
++  def searchObjectTree(self, tagtype, subclass=False):
+     objlist = list()
+-    self.object_tree.searchTree(objlist, tagtype)
++    self.object_tree.searchTree(objlist, tagtype, subclass)
+ 
+     return objlist
+diff -ur a/luci/lib/ClusterConf/TagObject.py b/luci/lib/ClusterConf/TagObject.py
+--- a/luci/lib/ClusterConf/TagObject.py	2012-01-23 11:20:32.000000000 -0500
++++ b/luci/lib/ClusterConf/TagObject.py	2012-02-24 12:31:49.363610027 -0500
+@@ -157,14 +157,23 @@
+   def isRefObject(self):
+     return False
+ 
+-  def searchTree(self, objlist, tagtype):
+-    if self.TAG_NAME == tagtype:
+-      objlist.append(self)
++  def searchTree(self, objlist, tagtype, subclass=False):
++    if subclass is not True:
++      if type(tagtype) in (str, unicode):
++        if self.TAG_NAME == tagtype:
++          objlist.append(self)
++      else:
++        if type(self) == tagtype:
++          objlist.append(self)
++    else:
++      if issubclass(type(self), tagtype):
++        objlist.append(self)
++
+     if len(self.children) > 0:
+       for child in self.children:
+         if child is None:
+           continue
+-        child.searchTree(objlist, tagtype)
++        child.searchTree(objlist, tagtype, subclass)
+ 
+   def replaceChild(self, oldchild, newchild):
+     """Looks up oldchild and replace it with newchild."""
+diff -ur a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+--- a/luci/validation/validate_resource.py	2012-02-24 12:27:19.254165839 -0500
++++ b/luci/validation/validate_resource.py	2012-02-24 12:31:49.364610003 -0500
+@@ -522,13 +522,11 @@
+ 		rname = kw['resourcename'].strip()
+ 		res.addAttribute('name', rname)
+ 
++	existing_res_names = map(lambda x: x.getName(), model.searchObjectTree(BaseResource, subclass=True))
++
+ 	if not resource_edit:
+-		try:
+-			dummy = getResourceForEdit(model, rname)
+-			if dummy:
+-				raise Exception, _('A resource named "%s" already exists.') % rname
+-		except:
+-			pass
++		if rname in existing_res_names:
++			raise Exception, _('A resource named "%s" already exists.') % rname
+ 
+ 	errors = resource_table[res_type][0](res, rname, model, **kw)
+ 	if resource_edit and oldname != res.getName():
+@@ -689,6 +687,7 @@
+ 	is_vm = False
+ 	form_hash = {}
+ 	form_hash[root_elem] = { 'form': None, 'kids': [] }
++	existing_res_names = []
+ 	for i in forms:
+ 		form_id = i.getAttribute('id')
+ 		form_parent = i.getAttribute('parent')
+@@ -739,6 +738,10 @@
+ 				else:
+ 					dummy_form['resourcename'] = dummy_form['address_nominal']
+ 				dummy_form['address'] = dummy_form['resourcename']
++			if dummy_form['resourcename'] in existing_res_names:
++				return (False, { 'errors': [ _('A resource named "%s" already exists') % dummy_form['resourcename'] ]})
++			else:
++				existing_res_names.append(dummy_form['resourcename'])
+ 		except:
+ 			log.exception('no ipaddr')
+ 			return (False, { 'errors': [ _('No IP address was given') ]})
+@@ -758,7 +761,7 @@
+ 						cur_res_name = 'resource "%s"' % cur_name
+ 		except Exception, e:
+ 			resObj = None
+-			errors.append(_('Error adding resource type %s: %s') % (res_type, str(e)))
++			errors.append(_('Error adding resource type "%s": %s') % (res_type, str(e)))
+ 			log.exception('Error validating %s resource "%r"' % (res_type, dummy_form))
+ 
+ 		if not resObj:
+@@ -865,6 +868,6 @@
+ 		res = create_resource(res_type, model, **kw)
+ 		model.getResourcesPtr().addChild(res)
+ 	except Exception, e:
+-		errors.append(_('Error adding resource type %s: %s') % (res_type, str(e)))
++		errors.append(_('Error adding resource type "%s": %s') % (res_type, str(e)))
+ 		return (False, {'errors': errors})
+ 	return (True, {})

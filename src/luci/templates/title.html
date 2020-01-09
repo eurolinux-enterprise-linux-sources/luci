@@ -1,0 +1,10 @@
+<html xmlns:py="http://genshi.edgewall.org/"
+  xmlns:xi="http://www.w3.org/2001/XInclude"
+  py:strip="">
+<py:def function="title(title_list=tmpl_context.title_list)">
+High Availability Management
+<py:if test="len(title_list) != 0"
+ py:replace="' | ' + ' &gt; '.join(title_list)">
+</py:if>
+</py:def>
+</html>

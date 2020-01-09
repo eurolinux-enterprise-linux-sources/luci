@@ -1,0 +1,179 @@
+From 37ef94719d30b248228bdf57f3eb5278327c800b Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 28 Jul 2014 08:52:48 -0400
+Subject: [PATCH] luci: Cope better with editing services containing VM
+ resources
+
+Cope better with editing services that contain inline VM definitions
+or references to global VM resources.
+
+Resolves: rhbz#1100817
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/Vm.py           |  1 +
+ luci/templates/resource_list.html    | 18 +++++++++-------
+ luci/validation/validate_resource.py | 41 ++++++++++++++++++------------------
+ 3 files changed, 31 insertions(+), 29 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/Vm.py b/luci/lib/ClusterConf/Vm.py
+index 97a86eb..25c3003 100644
+--- a/luci/lib/ClusterConf/Vm.py
++++ b/luci/lib/ClusterConf/Vm.py
+@@ -24,6 +24,7 @@ class Vm(Service, BaseResource):
+     self.refcount = 1
+     self.reflist = []
+     self.resource_type = RESOURCE_TYPE
++    self.deny_all_children = False
+ 
+   def getResourceAttributes(self):
+     attrs = self.getAttributes()
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 8624bac..996afec 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1794,9 +1794,10 @@
+   <input name="oldname" type="hidden"
+     py:attrs="res and {'value':res.getAttribute('name')} or {}" />
+   <input name="type" type="hidden" value="vm" />
++  <input py:if="res and parent_id == 'esvc_root'" type="hidden" name="resourcename" value="${res.getAttribute('name')}" />
+ 
+   <table class="formtable">
+-    <tr py:if="res">
++    <tr py:if="res and parent_id != 'esvc_root'">
+       <td>Name</td>
+       <td>
+         <input type="text" class="text" name="resourcename"
+@@ -1807,6 +1808,7 @@
+       <td>Migration Type</td>
+       <td>
+         <select name="migrate"
++          py:attrs="{'disabled':global_resource and 'disabled' or None}"
+           py:with="cur_migrate = res and res.getAttribute('migrate') or ''">
+           <option value="live"
+             py:attrs="cur_migrate == 'live' and {'selected':'selected'} or {}">Live</option>
+@@ -1819,49 +1821,49 @@
+       <td>Migration Mapping</td>
+       <td>
+         <input type="text" class="text" name="migration_mapping"
+-          py:attrs="res and {'value':res.getAttribute('migration_mapping')} or {}" />
++          py:attrs="res and {'value':res.getAttribute('migration_mapping'),'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Status Program</td>
+       <td>
+         <input type="text" class="text" name="status_program"
+-          py:attrs="res and {'value':res.getAttribute('status_program')} or {}" />
++          py:attrs="res and {'value':res.getAttribute('status_program'),'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Path to xmlfile Used to Create the VM</td>
+       <td>
+         <input type="text" class="text" name="xmlfile"
+-          py:attrs="res and {'value':res.getAttribute('xmlfile')} or {}" />
++          py:attrs="res and {'value':res.getAttribute('xmlfile'),'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+     <tr>
+       <td>VM Configuration File Path</td>
+       <td>
+         <input type="text" class="text" name="path"
+-          py:attrs="res and {'value':res.getAttribute('path')} or {}" />
++          py:attrs="res and {'value':res.getAttribute('path'),'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Path to the VM Snapshot Directory</td>
+       <td>
+         <input type="text" class="text" name="snapshot"
+-          py:attrs="res and {'value':res.getAttribute('snapshot')} or {}" />
++          py:attrs="res and {'value':res.getAttribute('snapshot'),'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Hypervisor URI</td>
+       <td>
+         <input type="text" class="text" name="hypervisor_uri"
+-          py:attrs="res and {'value':res.getAttribute('hypervisor_uri')} or {}" />
++          py:attrs="res and {'value':res.getAttribute('hypervisor_uri'),'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+     <tr>
+       <td>Migration URI</td>
+       <td>
+         <input type="text" class="text" name="migration_uri"
+-          py:attrs="res and {'value':res.getAttribute('migration_uri')} or {}" />
++          py:attrs="res and {'value':res.getAttribute('migration_uri'),'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
+     <tr py:if="cluster_os != 'RHEL' or os_version &gt; 6.2">
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 317fe9a..6058c76 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -631,9 +631,9 @@ def create_resource(res_type, model, **kw):
+ 
+ 	if res_type == 'ip':
+ 		rname = kw.get('address')
+-	elif res_type == 'vm' and not resource_edit:
+-		rname = ''
+-		res = BaseResource()
++	elif res_type == 'vm' and not resource_edit and not kw.get('svc_create'):
++			rname = ''
++			res = BaseResource()
+ 	else:
+ 		if not kw.has_key('resourcename') or not kw['resourcename'].strip():
+ 			raise Exception, _('All resources must have a unique name.')
+@@ -851,6 +851,8 @@ def validate_clusvc_form(model, **kw):
+ 				raise Exception, 'no resource type'
+ 			if res_type == 'vm':
+ 				is_vm = True
++				if action == 'edit':
++					dummy_form['svc_create'] = 1
+ 		except Exception, e:
+ 			log.exception('no resource type')
+ 			return (False, { 'errors': [ _('No resource type was specified') ]})
+@@ -979,24 +981,21 @@ def validate_clusvc_form(model, **kw):
+ 
+ 	buildSvcTree(new_service, form_hash[root_elem]['kids'])
+ 
+-	if is_vm is True:
+-		svc_children = new_service.getChildren()
+-		if len(svc_children) != 1:
+-			errors.append(_('VMs can have no children and cannot be children of resources'))
+-		else:
+-			# Because we're treating vm like a resource from the point of
+-			# view of the user, we need to use the service level attributes
+-			# from "new_service" and the resource level attributes from its
+-			# first child
+-			new_vm = Vm()
+-			new_vm.getAttributes().update(new_service.getAttributes())
+-			new_vm.delResourceAttributes()
+-
+-			form_vm = Vm()
+-			form_vm.getAttributes().update(svc_children[0].getAttributes())
+-
+-			new_vm.getAttributes().update(form_vm.getResourceAttributes())
+-			model.resourcemanager_ptr.addChild(new_vm)
++	svc_children = new_service.getChildren()
++	if is_vm is True and len(svc_children) == 1:
++		# Because we're treating vm like a resource from the point of
++		# view of the user, we need to use the service level attributes
++		# from "new_service" and the resource level attributes from its
++		# first child
++		new_vm = Vm()
++		new_vm.getAttributes().update(new_service.getAttributes())
++		new_vm.delResourceAttributes()
++
++		form_vm = Vm()
++		form_vm.getAttributes().update(svc_children[0].getAttributes())
++
++		new_vm.getAttributes().update(form_vm.getResourceAttributes())
++		model.resourcemanager_ptr.addChild(new_vm)
+ 	else:
+ 		model.resourcemanager_ptr.addChild(new_service)
+ 		try:
+-- 
+1.9.3
+

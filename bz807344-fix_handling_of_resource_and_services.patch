@@ -1,0 +1,276 @@
+From 40fee30423686b318111c2f91f2c17e9bedd4d2f Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Fri, 5 Oct 2012 09:33:21 -0400
+Subject: [PATCH] luci: Fix handling of resource and services
+
+Fix the handling of resources and services that contain characters
+that need to be escaped in their names.
+
+Resolves: rhbz#807344
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/cluster.py  | 32 ++++++++++++++++----------------
+ luci/templates/resource.html |  6 +++++-
+ luci/templates/service.html  | 18 +++++++++++-------
+ 3 files changed, 32 insertions(+), 24 deletions(-)
+
+diff --git a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+index 871ef84..d9011fc 100644
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2009-2011 Red Hat, Inc.
++# Copyright (C) 2009-2012 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -13,7 +13,7 @@
+ 
+ # third party imports
+ from repoze.what.predicates import not_anonymous, in_any_group, is_user, Any, NotAuthorizedError
+-from luci.lib.helpers import ugettext as _
++from luci.lib.helpers import quote_plus, unquote_plus, ugettext as _
+ 
+ # project specific imports
+ from luci.lib.base import BaseController
+@@ -28,7 +28,6 @@
+ from luci.lib.ClusterConf.Method import Method
+ from luci.lib.ClusterConf.Unfence import Unfence
+ from luci.validation.validate_fence import validate_fenceinstance
+-from urllib import unquote_plus
+ 
+ import logging
+ log = logging.getLogger(__name__)
+@@ -387,11 +386,11 @@
+         if 'MultiAction' in kw:
+             kw["name"] = ""
+             command = kw['MultiAction']
+-            cur_list = [x for x in kw if kw[x] == 'on' in kw[x]]
++            cur_list = [unquote_plus(x) for x in kw if kw[x] == 'on' in kw[x]]
+         else:
+             obj_name = kw.get('name')
+             if obj_name:
+-                cur_list = [ obj_name ]
++                cur_list = [ unquote_plus(obj_name) ]
+         if len(cur_list) < 1:
+             flash(_('No nodes were selected'),
+                 status='error')
+@@ -503,8 +503,8 @@ class IndividualClusterController(BaseController):
+         base_url = '/cluster/%s/resources' % self.name
+         resources_cmd = '/cluster/%s/resources_cmd' % self.name
+ 
+-        if (len(args) >= 1):
+-            resourcename = '/'.join(args)
++        if len(args) >= 1:
++            resourcename = '/'.join([unquote_plus(a) for a in args])
+         else:
+             resourcename = None
+         return dict(page='nodes', name=resourcename, base_url=base_url, resources_cmd=resources_cmd)
+@@ -529,11 +529,11 @@ class IndividualClusterController(BaseController):
+         if 'MultiAction' in kw:
+             kw["name"] = ""
+             command = kw['MultiAction']
+-            cur_list = [x for x in kw if kw[x] == 'on' in kw[x]]
++            cur_list = [unquote_plus(x) for x in kw if kw[x] == 'on' in kw[x]]
+         else:
+             obj_name = kw.get('name')
+             if obj_name:
+-                cur_list = [ obj_name ]
++                cur_list = [ unquote_plus(obj_name) ]
+ 
+         if len(cur_list) < 1 and command not in ('Create', 'Edit'):
+             flash(_('No resources were selected'),
+@@ -586,7 +586,7 @@ class IndividualClusterController(BaseController):
+                 if res_type == 'ip':
+                     res_name = kw.get('address')
+                 else:
+-                    res_name = kw.get('resourcename')
++                    res_name = quote_plus(kw.get('resourcename'))
+                 log.info('User "%s" %s global resource "%s" in cluster "%s"'
+                     % (self.username, cur_action, res_name, self.name))
+                 flash(_('%s global resource "%s"') % (cur_action, res_name))
+@@ -615,11 +615,11 @@ class IndividualClusterController(BaseController):
+         base_url = '/cluster/%s/services' % self.name
+         services_cmd = '/cluster/%s/services_cmd' % self.name
+ 
+-        if len(args) == 1:
++        if args:
++            if len(args) > 1:
++                servicename = '/'.join([unquote_plus(a) for a in args])
+             if request.response_ext:
+-                servicename = '%s%s' % (args[0], request.response_ext)
+-            else:
+-                servicename = args[0]
++                servicename = '%s%s' % (servicename, request.response_ext)
+         else:
+             servicename = None
+         return dict(page='nodes', name=servicename, base_url=base_url, services_cmd=services_cmd)
+@@ -646,11 +646,11 @@ class IndividualClusterController(BaseController):
+         if 'MultiAction' in kw:
+             kw["name"] = ""
+             command = kw['MultiAction']
+-            cur_list = [x for x in kw if kw[x] == 'on' in kw[x]]
++            cur_list = [unquote_plus(x) for x in kw if kw[x] == 'on' in kw[x]]
+         else:
+             obj_name = kw.get('name')
+             if obj_name:
+-                cur_list = [ obj_name ]
++                cur_list = [ unquote_plus(obj_name) ]
+ 
+         if len(cur_list) < 1 and command not in ('Create', 'Edit'):
+             flash(_('No services were selected'),
+@@ -740,7 +740,7 @@ class IndividualClusterController(BaseController):
+                 cur_action = _('Edited')
+             vret = validate_clusvc_form(self.model, **kw)
+             kw['name'] = ''
+-            svc_name = kw.get('svc_name')
++            svc_name = unquote_plus(kw.get('svc_name'))
+             if vret[0] is True:
+                 log.info('User "%s" %s cluster service "%s" in cluster "%s"'
+                     % (self.username, cur_action, svc_name, self.name))
+@@ -750,7 +750,7 @@ class IndividualClusterController(BaseController):
+                 msgs = vret[1].get('errors')
+                 if msgs and len(msgs) > 0:
+                     flash(', '.join(msgs), status="error")
+-            redirect('%s/%s' % (tmpl_context.cluster_url, svc_name))
++            redirect('%s/%s' % (tmpl_context.cluster_url, quote_plus(svc_name)))
+         else:
+             log.error('User "%s" submitted unknown command "%s" for service "%s" from cluster "%s"' % (self.username, command, ', '.join(cur_list), self.name))
+             flash(_('An unknown command "%s" was given for services "%s"')
+@@ -759,7 +759,7 @@ class IndividualClusterController(BaseController):
+         if len(cur_list) != 1:
+             redirect(tmpl_context.cluster_url)
+         else:
+-            redirect(tmpl_context.cluster_url + '/' + cur_list[0])
++            redirect(tmpl_context.cluster_url + '/' + quote_plus(cur_list[0]))
+ 
+     @expose("luci.templates.failover")
+     def failovers(self, *args):
+@@ -959,11 +958,11 @@
+         if 'MultiAction' in kw:
+             kw["name"] = ""
+             command = kw['MultiAction']
+-            cur_list = [x for x in kw if kw[x] == 'on' in kw[x]]
++            cur_list = [unquote_plus(x) for x in kw if kw[x] == 'on' in kw[x]]
+         else:
+             obj_name = kw.get('name')
+             if obj_name:
+-                cur_list = [ obj_name ]
++                cur_list = [ unquote_plus(obj_name) ]
+ 
+         if len(cur_list) < 1:
+             flash(_('No fence devices were selected'),
+diff --git a/luci/templates/resource.html b/luci/templates/resource.html
+index 8e9c952..47173cc 100644
+--- a/luci/templates/resource.html
++++ b/luci/templates/resource.html
+@@ -6,6 +6,10 @@
+ 
+ <xi:include href="master.html" />
+ 
++<?python
++  from luci.lib.helpers import quote_plus
++?>
++
+ <head>
+   <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+   <title>${title()}</title>
+@@ -48,7 +52,7 @@
+                 py:attrs="refcount != 1 and {'disabled':'disabled'} or {}"/>
+         </td>
+         <td class="main_id">
+-            <a href="${tg.url(base_url + '/' + entity_name + '.html')}"><span class="entity_ok">${entity_name}</span></a>
++            <a href="${tg.url(base_url + '/' + quote_plus(entity_name) + '.html')}"><span class="entity_ok">${entity_name}</span></a>
+         </td>
+         <td class="resource_tlist_type">
+             ${resource_data.getResourceType()}
+diff --git a/luci/templates/service.html b/luci/templates/service.html
+index eb4d8df..a5e18db 100644
+--- a/luci/templates/service.html
++++ b/luci/templates/service.html
+@@ -6,6 +6,10 @@
+ 
+ <xi:include href="master.html" />
+ 
++<?python
++  from luci.lib.helpers import quote_plus
++?>
++
+ <head>
+   <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+   <title>${title()}</title>
+@@ -61,7 +65,7 @@
+           <py:when test="'true'">
+           <td class="icon"></td>
+           <td class="main_id">
+-            <a href="${tg.url(base_url + '/' + entity_name)}">
++            <a href="${tg.url(base_url + '/' + quote_plus(entity_name))}">
+               <span class="entity_ok">${entity_name}</span>
+             </a>
+           </td>
+@@ -80,7 +84,7 @@
+             <img src="${tg.url('/images/exclamation.png')}" alt="Service has a problem." />
+           </td>
+           <td class="main_id">
+-            <a href="${tg.url(base_url + '/' + entity_name)}">
++            <a href="${tg.url(base_url + '/' + quote_plus(entity_name))}">
+               <span class="entity_fail">${entity_name}</span>
+             </a>
+           </td>
+@@ -98,7 +102,7 @@
+             <img src="${tg.url('/images/question.png')}" alt="Internal error; file a bug report." />
+           </td>
+           <td class="main_id">
+-            <a href="${tg.url(base_url + '/' + entity_name)}">
++            <a href="${tg.url(base_url + '/' + quote_plus(entity_name))}">
+               <span class="entity_ok">${entity_name}</span>
+             </a>
+           </td>
+@@ -165,10 +169,10 @@
+       <h3 py:content="name"/>
+       <form style="display: inline; padding-left: 24px; ">
+       <div id="details_header_buttons">
+-        <a class="confirm_link" href="${tg.url(services_cmd + '?command=Delete' + '&amp;name=' + name)}" id="dh_delete" title="delete"><span class="hide">delete</span></a>
+-        <a href="${tg.url(services_cmd + '?command=Disable' + '&amp;name=' + name)}" id="dh_stop" title="stop (disable)"><span class="hide">stop</span></a>
+-        <a href="${tg.url(services_cmd + '?command=Restart' + '&amp;name=' + name)}" id="dh_update" title="restart"><span class="hide">restart</span></a>
+-        <a href="#" onclick="move_service_group('${tg.url(services_cmd + '?command=Start' + '&amp;name=' + name)}')" id="dh_start" title="start"><span class="hide">start</span></a>
++        <a class="confirm_link" href="${tg.url(services_cmd + '?command=Delete' + '&amp;name=' + quote_plus(name))}" id="dh_delete" title="delete"><span class="hide">delete</span></a>
++        <a href="${tg.url(services_cmd + '?command=Disable' + '&amp;name=' + quote_plus(name))}" id="dh_stop" title="stop (disable)"><span class="hide">stop</span></a>
++        <a href="${tg.url(services_cmd + '?command=Restart' + '&amp;name=' + quote_plus(name))}" id="dh_update" title="restart"><span class="hide">restart</span></a>
++        <a href="#" onclick="move_service_group('${tg.url(services_cmd + '?command=Start' + '&amp;name=' + quote_plus(name))}')" id="dh_start" title="start"><span class="hide">start</span></a>
+       </div>
+       <span class="details_header_info_label">Status</span> <span class="details_header_info">${tmpl_context.current_service_status}</span>
+ 
+-- 
+1.7.11.4
+
+--- a/luci/lib/helpers.py	2012-11-22 18:35:58.511480133 +0100
++++ b/luci/lib/helpers.py	2012-11-22 18:44:25.813273538 +0100
+@@ -12,6 +12,9 @@
+            'relativeUrlSlashPrefix', 'relativeUrlList2Str']
+ 
+ from pylons.i18n import ugettext, lazy_ugettext
++from urllib import (quote_plus as quote_plus_impl,
++                   unquote_plus as unquote_plus_impl)
++
+ 
+ def singleton(cls):
+     """Trivial class decorator that replace the class with an instance of it."""
+@@ -48,3 +51,17 @@
+ 
+     """
+     return relativeUrlSlashPrefix(u'/'.join(url_parts))
++
++
++#-------------------------------------------------------------------------------
++# Functions related to HTML entities un/quoting.
++
++def quote_plus(s):
++    """urllib's quote_plus, but works with unicode as well."""
++    return quote_plus_impl(s.encode('UTF-8') if isinstance(s, unicode) else s)
++
++
++def unquote_plus(s):
++    """urllib's unquote_plus, but return unicode."""
++    ret = unquote_plus_impl(s)
++    return ret if isinstance(ret, unicode) else unicode(ret, 'UTF-8')

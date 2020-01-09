@@ -1,0 +1,196 @@
+From fa826852a89f59aecca38f9b5c8675094d26bf46 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 22 Jun 2014 15:47:11 -0400
+Subject: [PATCH] luci: Add support for fence_kdump
+
+Add support for fence_kdump
+
+Resolves: rhbz#bz918795
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/FenceDeviceAttr.py |  2 ++
+ luci/templates/fence_devices.html       | 64 +++++++++++++++++++++++++++++++++
+ luci/templates/fence_instances.html     | 11 ++++++
+ luci/validation/validate_fence.py       | 13 +++++++
+ 4 files changed, 90 insertions(+)
+
+diff --git a/luci/lib/ClusterConf/FenceDeviceAttr.py b/luci/lib/ClusterConf/FenceDeviceAttr.py
+index 90883dd..6de49b8 100644
+--- a/luci/lib/ClusterConf/FenceDeviceAttr.py
++++ b/luci/lib/ClusterConf/FenceDeviceAttr.py
+@@ -36,6 +36,7 @@ FENCE_OPTS = {
+ 	'fence_idrac':			'Dell iDRAC',
+ 	'fence_imm':			'IBM Integrated Management Module',
+ 	'fence_ipdu':			'IBM iPDU',
++	'fence_kdump':			'Fence kdump',
+ 	'fence_drac':			'Dell DRAC',
+ 	'fence_drac5':			'Dell DRAC 5',
+ 	'fence_rsa':			'IBM RSA II Device',
+@@ -102,6 +103,7 @@ FENCE_SHARED = {
+ 	'fence_ipmilan':		False,
+ 	'fence_idrac':			False,
+ 	'fence_imm':			False,
++	'fence_kdump':			False,
+ 	'fence_drac':			False,
+ 	'fence_drac5':			False,
+ 	'fence_rps10':			False,
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index d71ef92..fcc1747 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -1195,6 +1195,68 @@
+   <input type="hidden" name="fence_type" value="fence_xvm" />
+ </div>
+ 
++<div py:def="fence_kdump(cur_fencedev, ni)" id="fence_kdump" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>Fence kdump</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Node Name</td>
++      <td>
++        <input name="nodename" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('nodename')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Family</td>
++      <td>
++        <select name="family" class="fencedevformselect">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('family')) and {'selected':'selected'} or {}">Default</option>
++          <option value="ipv4"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('family') and cur_fencedev.getAttribute('family').lower() == 'ipv4' and {'selected':'selected'} or {}">IPv4</option>
++          <option value="ipv6"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('family') and cur_fencedev.getAttribute('family').lower() == 'ipv6' and {'selected':'selected'} or {}">IPv6</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Port (optional)</td>
++      <td>
++        <input name="ipport" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipport')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Operation Timeout (seconds) (optional)</td>
++      <td>
++        <input name="timeout" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('timeout')}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="sharable" value="1" />
++  <input type="hidden" name="num_instances" value="${ni}"/>
++  <input type="hidden" name="fence_type" value="fence_kdump" />
++</div>
++
+ <div py:def="fence_scsi(cur_fencedev, ni)" id="fence_scsi" class="fencedevform row"
+    py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+   <table class="formtable">
+@@ -4853,6 +4915,7 @@ ${fence_rsa(None,0)}
+ ${fence_rsb(None,0)}
+ ${fence_rps10(None,0)}
+ ${fence_ipmilan(None,0)}
++${fence_kdump(None,0)}
+ ${fence_idrac(None,0)}
+ ${fence_imm(None,0)}
+ ${fence_alom(None,0)}
+@@ -4952,6 +5015,7 @@ ${fence_unknown(None,0)}
+       </py:if>
+ 
+       <option name="fence_ipmilan" value="fence_ipmilan">IPMI Lan</option>
++      <option name="fence_kdump" value="fence_kdump">Fence kdump</option>
+       <option py:if="cluster_version == 2" name="fence_lpar" value="fence_lpar">LPAR Fencing</option>
+       <option py:if="cluster_version == 2" name="fence_mcdata" value="fence_mcdata">McData SAN Switch</option>
+ 
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index dd42b09..d8b9684 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -957,6 +957,16 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
++<div py:def="fence_kdump_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_kdump_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++
++  <div class="emptyfenceinst">No additional parameters</div>
++  <input type="hidden" name="fence_type" value="fence_kdump" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
+ <div py:def="fence_idrac_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_idrac_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+ 
+@@ -1227,6 +1237,7 @@ ${fence_ilo4_instance(None, None, None)}
+ ${fence_ilo_mp_instance(None, None, None)}
+ ${fence_rsa_instance(None, None, None)}
+ ${fence_ipmilan_instance(None, None, None)}
++${fence_kdump_instance(None, None, None)}
+ ${fence_imm_instance(None, None, None)}
+ ${fence_idrac_instance(None, None, None)}
+ ${fence_alom_instance(None, None, None)}
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index 55d1e8d..c9fe626 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -493,6 +493,17 @@ def val_ipmilan_fd(fencedev, fence_name, **kw):
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+ 	return errors
+ 
++def val_kdump_fd(fencedev, fence_name, **kw):
++	params = (
++		('nodename', True),
++		('family', False),
++		('ipport', False),
++		('timeout', False),
++	)
++
++	errors = config_fence_attr(params, fencedev, fence_name, **kw)
++	return errors
++
+ def val_alom_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+@@ -861,6 +872,7 @@ FD_VALIDATE = {
+ 	'fence_ipmilan':		val_ipmilan_fd,
+ 	'fence_idrac':			val_ipmilan_fd,
+ 	'fence_imm':			val_ipmilan_fd,
++	'fence_kdump':			val_kdump_fd,
+ 	'fence_ldom':			val_ldom_fd,
+ 	'fence_lpar':			val_lpar_fd,
+ 	'fence_manual':			val_noop_fd,
+@@ -1270,6 +1282,7 @@ FI_VALIDATE = {
+ 	'fence_ilo4':			val_noop_fi,
+ 	'fence_intelmodular':	val_intelmodular_fi,
+ 	'fence_ipmilan':		val_noop_fi,
++	'fence_kdump':			val_noop_fi,
+ 	'fence_idrac':			val_noop_fi,
+ 	'fence_imm':			val_noop_fi,
+ 	'fence_ldom':			val_ldom_fi,
+-- 
+1.9.3
+

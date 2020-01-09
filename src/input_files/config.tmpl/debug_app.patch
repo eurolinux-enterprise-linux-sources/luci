@@ -1,0 +1,22 @@
+--- config.tmpl.in	2010-12-21 11:15:00.704302797 +0100
++++ config.tmpl.in-dev	2010-12-22 11:40:16.629301845 +0100
+@@ -60,7 +60,8 @@
+ # shadowed application's values etc.)
+ # Note: Paste server will only try to look for ``error_email'' key here
+ 
+-debug = false
++#debug = false
++debug = true
+ # Uncomment and replace with the address which should receive any error reports
+ #email_to = you@yourdomain.com
+ #smtp_server = localhost
+@@ -142,7 +143,8 @@
+ 
+ # Important as debug mode will enable the interactive debugging tool, allowing
+ # anyone to execute malicious code after an exception is raised
+-set debug = false
++#set debug = false
++set debug = true
+ 
+ # ---------------------------------------------------------------------------
+ 

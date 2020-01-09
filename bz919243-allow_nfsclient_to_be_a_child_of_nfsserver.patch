@@ -1,0 +1,64 @@
+From 1416de5da9a11f3237bc2854b6c13a662f95afb0 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 10 Aug 2014 23:13:17 -0400
+Subject: [PATCH] luci: Allow nfsclient to be a child of nfsserver
+
+Allow nfsclient resources to be children of nfsserver resources
+in addition to nfsexport.
+
+Resolves: rhbz#919243
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/NFSClient.py | 8 ++++----
+ luci/lib/ClusterConf/NFSServer.py | 4 ++--
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/NFSClient.py b/luci/lib/ClusterConf/NFSClient.py
+index 1c8e333..1543047 100644
+--- a/luci/lib/ClusterConf/NFSClient.py
++++ b/luci/lib/ClusterConf/NFSClient.py
+@@ -21,17 +21,17 @@ class NFSClient(BaseResource):
+     self.deny_all_children = DENY_ALL_CHILDREN
+ 
+   def SanityCheck(self):
+-    # Must be a child of some nfsexport
++    # Must be a child of some nfsexport or nfsserver
+     found_export = False
+     parent = self
+     while True:
+         parent = parent.getParent()
+         if not parent:
+             break
+-
+-        if parent.getTagName() == 'nfsexport':
++        parent_type = parent.getTagName()
++        if parent_type in ('nfsexport', 'nfsserver'):
+             found_export = True
+             break
+ 
+     if not found_export:
+-        raise Exception, '%s resources must have a parent nfsexport resource' % self.getTagName()
++        raise Exception, '%s resources must have a parent nfsexport or nfsserver resource' % self.getTagName()
+diff --git a/luci/lib/ClusterConf/NFSServer.py b/luci/lib/ClusterConf/NFSServer.py
+index c04be73..00d3183 100644
+--- a/luci/lib/ClusterConf/NFSServer.py
++++ b/luci/lib/ClusterConf/NFSServer.py
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2010 Red Hat, Inc.
++# Copyright (C) 2010-2014 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -11,7 +11,7 @@ from gettext import gettext as _
+ TAG_NAME = 'nfsserver'
+ RESOURCE_TYPE = _('NFS Server')
+ 
+-DENY_ALL_CHILDREN = True
++DENY_ALL_CHILDREN = False
+ 
+ class NFSServer(BaseResource):
+   def __init__(self):
+-- 
+1.9.3
+

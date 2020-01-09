@@ -1,0 +1,61 @@
+From f2618fc83cdf2bff2056e9df8a4bbad44231cc08 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 28 Jul 2014 08:44:16 -0400
+Subject: [PATCH] luci: Add support for the postgres-8 startup_wait attr
+
+Add support for the newly added startup_wait attribute for the
+postgres-8 resource.
+
+Resolves: rhbz#1117398
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html    | 11 ++++++++++-
+ luci/validation/validate_resource.py |  3 ++-
+ 2 files changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 579d4d5..52d85ac 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -931,7 +931,9 @@
+ </div>
+ 
+ <div py:def="postgres8_resource(res, form_id, parent_id, isref)" name="POSTGRES-8" id="postgres8_resource" class="row rescfg"
+-  py:with="global_resource = res and isref != 0"
++  py:with="global_resource = res and isref != 0;
++      cluster_os = tmpl_context.cluster.get_OS();
++      os_version = tmpl_context.cluster.get_OSVersion()"
+   py:attrs="res and {'id': 'global_res_%s' % res.getName(), 'name': res.getName()}">
+   <input name="global" type="hidden" value="1" py:if="global_resource"/>
+   <input name="parent_id" type="hidden" value="${parent_id}"/>
+@@ -979,6 +981,13 @@
+           py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+     </tr>
++    <tr py:if="cluster_os != 'RHEL' or os_version &gt; 6.5">
++      <td>Startup Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="startup_wait" value="0"
++          py:attrs="res and {'value':res.getAttribute('startup_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
++      </td>
++    </tr>
+     ${res_footer(res)}
+   </table>
+ </div>
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 394b1e5..4693076 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -365,7 +365,8 @@ def addPostgres8(res, rname, model, **kw):
+ 		('config_file', _('Path to configuration file'), False, None),
+ 		('postmaster_user', '', False, None),
+ 		('postmaster_options', '', False, None),
+-		('shutdown_wait', '', False, None)
++		('shutdown_wait', '', False, None),
++		('startup_wait', '', False, None)
+ 	)
+ 	errors = config_resource(params, res, rname, **kw)
+ 	return errors
+-- 
+1.9.3
+

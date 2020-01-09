@@ -1,0 +1,9 @@
+@LOGFILE@ {
+    missingok
+    notifempty
+
+    create
+    postrotate
+        /sbin/service @SERVICENAME@ condrestart 2>/dev/null >/dev/null || :
+    endscript
+}

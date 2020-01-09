@@ -1,0 +1,69 @@
+From 616e70d2a760175bd27262766efb85e63ea980fd Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Thu, 15 Nov 2012 11:08:48 -0500
+Subject: [PATCH] luci: Fix handling of subtree options
+
+For subtrees, error out if __max_failures is set by __failure_expire_time
+is not, and vice versa. Also error out if __max_restarts is set but
+__restart_expire_time is not, and vice versa.
+
+Resolves: rhbz#877188
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/validation/validate_resource.py | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 674f420..25e02cf 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -824,6 +824,7 @@ def validate_clusvc_form(model, **kw):
+ 				except:
+ 					errors.append(_('Invalid value for max restarts for %s: %s') % (cur_res_name, max_restarts))
+ 			else:
++				max_restarts = None
+ 				resObj.delResMaxRestarts()
+ 				resObj.delResRestartExpireTime()
+ 
+@@ -834,8 +835,14 @@ def validate_clusvc_form(model, **kw):
+ 				except:
+ 					errors.append(_('Invalid value for restart expire time for %s: %s') % (cur_res_name, restart_expire_time))
+ 			else:
++				restart_expire_time = None
+ 				resObj.delResRestartExpireTime()
+ 
++			if max_restarts and not restart_expire_time:
++				errors.append(_('Restart expire time must be set if maximum restarts is set for resource \"%s\" subtree') % dummy_form['resourcename'])
++			if not max_restarts and restart_expire_time:
++				errors.append(_('Maximum restarts must be set if restart expire time is set for resource \"%s\" subtree') % dummy_form['resourcename'])
++
+ 			max_failures = dummy_form.get('__max_failures')
+ 			if max_failures and not max_failures.isspace():
+ 				try:
+@@ -843,6 +850,7 @@ def validate_clusvc_form(model, **kw):
+ 				except:
+ 					errors.append(_('Invalid value for max failures for %s: %s') % (cur_res_name, max_failures))
+ 			else:
++				max_failures = None
+ 				resObj.delMaxFailures()
+ 				resObj.delFailureExpireTime()
+ 
+@@ -853,8 +861,14 @@ def validate_clusvc_form(model, **kw):
+ 				except:
+ 					errors.append(_('Invalid value for failure expire time for %s: %s') % (cur_res_name, failure_expire_time))
+ 			else:
++				failure_expire_time = None
+ 				resObj.delFailureExpireTime()
+ 
++			if max_failures and not failure_expire_time:
++				errors.append(_('Failure expire time must be set if maximum failures is set for resource \"%s\" subtree') % dummy_form['resourcename'])
++			if not max_failures and failure_expire_time:
++				errors.append(_('Maximum failures must be set if failure expire time is set for resource \"%s\" subtree') % dummy_form['resourcename'])
++
+ 		form_hash[form_id]['obj'] = resObj
+ 
+ 	if len(errors) > 0:
+-- 
+1.7.11.7
+

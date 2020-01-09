@@ -1,0 +1,69 @@
+From 22a4c774ec3dbc5c0bf6b4adae69640adab5681e Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 12 Aug 2013 16:44:31 -0400
+Subject: [PATCH] Enable the ricci and modclusterd services when creating a
+ new cluster or adding a node to an existing cluster.
+
+Resolves: rhbz#886517
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ricci_queries.py | 22 ++++++++++++++++++++++
+ luci/public/js/busy.js    |  1 +
+ 2 files changed, 23 insertions(+)
+
+diff --git a/luci/lib/ricci_queries.py b/luci/lib/ricci_queries.py
+index 40820b5..1610667 100644
+--- a/luci/lib/ricci_queries.py
++++ b/luci/lib/ricci_queries.py
+@@ -60,6 +60,17 @@ def addClusterNodeBatch(model,
+ 	batch.append('</request>')
+ 	batch.append('</module>')
+ 
++	batch.append('<module name="service">')
++	batch.append('<request API_version="1.0">')
++	batch.append('<function_call name="enable">')
++	batch.append('<var mutable="false" name="services" type="list_xml">')
++	batch.append('<service name="ricci"/>')
++	batch.append('<service name="modclusterd"/>')
++	batch.append('</var>')
++	batch.append('</function_call>')
++	batch.append('</request>')
++	batch.append('</module>')
++
+ 	need_reboot = reboot_nodes
+ 	if need_reboot:
+ 		batch.append('<module name="reboot">')
+@@ -152,6 +163,17 @@ def createClusterBatch( cluster_name,
+ 	batch.append('</request>')
+ 	batch.append('</module>')
+ 
++	batch.append('<module name="service">')
++	batch.append('<request API_version="1.0">')
++	batch.append('<function_call name="enable">')
++	batch.append('<var mutable="false" name="services" type="list_xml">')
++	batch.append('<service name="ricci"/>')
++	batch.append('<service name="modclusterd"/>')
++	batch.append('</var>')
++	batch.append('</function_call>')
++	batch.append('</request>')
++	batch.append('</module>')
++
+ 	need_reboot = reboot_nodes
+ 	if need_reboot:
+ 		batch.append('<module name="reboot">')
+diff --git a/luci/public/js/busy.js b/luci/public/js/busy.js
+index 9f04f3a..e51ab22 100644
+--- a/luci/public/js/busy.js
++++ b/luci/public/js/busy.js
+@@ -39,6 +39,7 @@ function get_task_status(cluster_name) {
+                 '',
+                 'installing packages',
+                 'disabling cluster services',
++                'enabling ricci and modclusterd services',
+                 'rebooting node',
+                 'setting cluster configuration',
+                 'enabling cluster services',
+-- 
+1.8.3.1
+

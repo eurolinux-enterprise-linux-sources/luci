@@ -1,0 +1,31 @@
+From 66b16e63d81c0817576b632ae319435c579758a9 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 26 Aug 2014 22:15:29 -0400
+Subject: [PATCH] luci: Fix error in fence_lpar form
+
+Remove a second, hidden form field named "secure" in the fence_lpar
+instance form that caused the "Use SSH" checkbox to not function
+properly.
+
+Resolves: rhbz#1117398
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/fence_instances.html | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index 6e45257..12315c1 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -163,7 +163,6 @@
+ 
+   <input type="hidden" name="fence_type" value="fence_lpar" />
+   <input type="hidden" name="fence_instance" value="1" />
+-  <input type="hidden" name="secure" value="1" />
+   <input type="hidden" name="parent_fencedev"
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+-- 
+1.9.3
+

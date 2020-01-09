@@ -1,0 +1,18 @@
+diff --git a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+index c59c9e4..871ef84 100644
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -583,12 +583,11 @@ class IndividualClusterController(BaseController):
+             if vret[0] is True:
+                 # For IP resources there is no name, just an IP Address
+                 # and to make IP addresses work you need to add a .html
++                redir_fmt = '%s/%s.html'
+                 if res_type == 'ip':
+                     res_name = kw.get('address')
+-                    redir_fmt = '%s/%s.html'
+                 else:
+                     res_name = kw.get('resourcename')
+-                    redir_fmt = '%s/%s'
+                 log.info('User "%s" %s global resource "%s" in cluster "%s"'
+                     % (self.username, cur_action, res_name, self.name))
+                 flash(_('%s global resource "%s"') % (cur_action, res_name))

@@ -1,0 +1,104 @@
+From 1aa237eafc7b282c671e0f1037e45695a0d4a7e3 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 28 Jul 2014 08:47:46 -0400
+Subject: [PATCH] luci: Update the fence_kdump config forms
+
+Move the "nodename" attribute to the instance form and make it optional
+to facilitate sharing fence_kdump devices among multiple cluster nodes.
+
+Resolves: rhbz#918795
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/fence_devices.html   |  7 -------
+ luci/templates/fence_instances.html | 14 ++++++++++++--
+ luci/validation/validate_fence.py   | 10 ++++++++--
+ 3 files changed, 20 insertions(+), 11 deletions(-)
+
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index 38a82d2..0d34910 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -1347,13 +1347,6 @@
+       </td>
+     </tr>
+     <tr>
+-      <td>Node Name</td>
+-      <td>
+-        <input name="nodename" type="text" class="text"
+-          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('nodename')} or {}"/>
+-      </td>
+-    </tr>
+-    <tr>
+       <td>IP Family</td>
+       <td>
+         <select name="family" class="fencedevformselect">
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index 5ef4602..fca35cc 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -1044,7 +1044,17 @@
+ <div py:def="fence_kdump_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_kdump_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+ 
+-  <div class="emptyfenceinst">No additional parameters</div>
++  <table class="detailstable">
++    <tr>
++      <td>Node name</td>
++      <td>
++        <input py:if="cur_fence_inst" type="text" class="text" name="nodename"
++          value="${cur_fence_inst.getAttribute('nodename')}"/>
++        <input py:if="not cur_fence_inst and kw.get('nodename')" type="text" class="text" name="nodename" value="${kw.get('nodename')}"/>
++      </td>
++    </tr>
++  </table>
++
+   <input type="hidden" name="fence_type" value="fence_kdump" />
+   <input type="hidden" name="fence_instance" value="1" />
+   <input type="hidden" name="parent_fencedev"
+@@ -1328,7 +1338,7 @@ ${fence_ilo4_instance(None, None, None)}
+ ${fence_ilo_mp_instance(None, None, None)}
+ ${fence_rsa_instance(None, None, None)}
+ ${fence_ipmilan_instance(None, None, None)}
+-${fence_kdump_instance(None, None, None)}
++${fence_kdump_instance(None, None, None, nodename=nodename)}
+ ${fence_imm_instance(None, None, None)}
+ ${fence_idrac_instance(None, None, None)}
+ ${fence_alom_instance(None, None, None)}
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index 6e16ea7..91095a1 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -516,7 +516,6 @@ def val_ipmilan_fd(fencedev, fence_name, **kw):
+ 
+ def val_kdump_fd(fencedev, fence_name, **kw):
+ 	params = (
+-		('nodename', True),
+ 		('family', False),
+ 		('ipport', False),
+ 		('timeout', False),
+@@ -1272,6 +1271,13 @@ def val_intelmodular_fi(fenceinst, parent_name, **kw):
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+ 	return errors
+ 
++def val_kdump_fi(fenceinst, parent_name, **kw):
++	params = (
++		('nodename', False),
++	)
++	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
++	return errors
++
+ def val_scsi_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('nodename', False),
+@@ -1339,7 +1345,7 @@ FI_VALIDATE = {
+ 	'fence_ilo4':			val_noop_fi,
+ 	'fence_intelmodular':	val_intelmodular_fi,
+ 	'fence_ipmilan':		val_noop_fi,
+-	'fence_kdump':			val_noop_fi,
++	'fence_kdump':			val_kdump_fi,
+ 	'fence_idrac':			val_noop_fi,
+ 	'fence_imm':			val_noop_fi,
+ 	'fence_ldom':			val_ldom_fi,
+-- 
+1.9.3
+

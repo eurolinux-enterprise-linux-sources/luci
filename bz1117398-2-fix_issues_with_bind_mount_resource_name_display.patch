@@ -1,0 +1,32 @@
+From 18005447f3bee882363c509c1c014826983a01b4 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 26 Aug 2014 22:16:25 -0400
+Subject: [PATCH] luci: Fix issues with bind-mount resource name display
+
+Fix an error that caused the mountpoint attribute for bind-mount resources
+to be displayed instead of the name attribute in some forms.
+
+Resolves: rhbz#1117398
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/BindMount.py | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/BindMount.py b/luci/lib/ClusterConf/BindMount.py
+index afd40dc..4841af5 100644
+--- a/luci/lib/ClusterConf/BindMount.py
++++ b/luci/lib/ClusterConf/BindMount.py
+@@ -16,9 +16,3 @@ class BindMount(BaseResource):
+     BaseResource.__init__(self)
+     self.TAG_NAME = TAG_NAME
+     self.resource_type = RESOURCE_TYPE
+-
+-  def getName(self):
+-    try:
+-      return self.attr_hash['mountpoint']
+-    except KeyError, e:
+-      return ''
+-- 
+1.9.3
+

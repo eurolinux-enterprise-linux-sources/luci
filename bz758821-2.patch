@@ -1,0 +1,30 @@
+diff --git a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+index c822bcc..dd84092 100644
+--- a/luci/validation/validate_cluster_prop.py
++++ b/luci/validation/validate_cluster_prop.py
+@@ -632,12 +632,13 @@ def validate_rrp_config(model, **kw):
+     if not altmcast_ptr:
+         altmcast_ptr = model.addAltmcastPtr()
+ 
++    mcast_addr_same = False
+     altmcast_addr = kw.get('altmcast_addr')
+     if altmcast_addr and not altmcast_addr.isspace():
+         try:
+             altmcast_ptr.setAddr(altmcast_addr)
+             if model.getMcastAddr() == altmcast_addr:
+-                errors.append(_('The alternate multicast address %s is the same as the primary cluster multicast address') % altmcast_addr)
++                mcast_addr_same = True
+         except:
+             errors.append(_('Invalid alternate ring multicast address: %s') % altmcast_addr)
+     else:
+@@ -654,8 +655,8 @@ def validate_rrp_config(model, **kw):
+                 cp = Cman()
+             cman_port = int(cp.getPort())
+             altmcast_port = int(altmcast_port)
+-            if abs(cman_port - altmcast_port) < 2:
+-                errors.append(_('Alternate multicast ports (%d %d) and CMAN ports (%d %d) overlap') % (altmcast_port, altmcast_port - 1, cman_port, cman_port - 1))
++            if mcast_addr_same and abs(cman_port - altmcast_port) < 2:
++                errors.append(_('Alternate multicast ports (%d %d) and CMAN ports (%d %d) must not overlap when using the same multicast address') % (altmcast_port, altmcast_port - 1, cman_port, cman_port - 1))
+         except:
+             errors.append(_('Invalid alternate ring CMAN port: %s') % altmcast_port)
+     else:
