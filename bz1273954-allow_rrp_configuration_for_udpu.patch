@@ -1,0 +1,53 @@
+From 195bdbae1e5e86956d3ed963ebcf30565a3f75e5 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 16 Feb 2016 08:40:55 -0500
+Subject: [PATCH] luci: Allow RRP configuration for UDPU
+
+Allow configuration of altnames for RRP when the cluster is using
+UDPU unicast as its network transport.
+
+Resolves: rhbz#1273954
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/configure.html            | 4 ++--
+ luci/validation/validate_cluster_prop.py | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/luci/templates/configure.html b/luci/templates/configure.html
+index 13ec306..fda3687 100644
+--- a/luci/templates/configure.html
++++ b/luci/templates/configure.html
+@@ -195,7 +195,7 @@
+             <input type="hidden" name="page" value="RRP"/>
+             <h2>Redundant Ring Protocol Configuration</h2>
+             <div class="row">
+-                <div py:if="cluster_data and not cluster_data.get_cluster_multicast()">
++                <div py:if="cluster_data and not (cluster_data.get_cluster_multicast() or cluster_data.get_cluster_udpu())">
+                     <p><em>Note: RRP configuration is available only when the cluster is using multicast as its network transport.</em></p>
+                 </div>
+                 <table>
+@@ -237,7 +237,7 @@
+             </div>
+             <div class="row">
+               <input type="submit" class="button formsubmit blue" value="Apply"
+-                py:attrs="{'disabled': (cluster_data and not cluster_data.get_cluster_multicast()) and 'disabled' or None }"/>
++                py:attrs="{'disabled': (cluster_data and not (cluster_data.get_cluster_multicast() or cluster_data.get_cluster_udpu())) and 'disabled' or None }"/>
+             </div>
+            </form>
+         </div>
+diff --git a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+index 1b596e8..25baff9 100644
+--- a/luci/validation/validate_cluster_prop.py
++++ b/luci/validation/validate_cluster_prop.py
+@@ -750,7 +750,7 @@ def validate_rrp_config(model, **kw):
+             i.delAltname()
+ 
+     if len(altnames) > 0:
+-        if not altmcast_ptr.getAddr():
++        if not altmcast_ptr.getAddr() and not model.get_cluster_udpu():
+             errors.append(_('If alternate node names are given, the alternate cluster multicast address must be given'))
+         for i in set(model.getNodeNames()) - altnames:
+             errors.append(_('No alternate node name was given for node %s') % i)
+-- 
+2.4.3
+

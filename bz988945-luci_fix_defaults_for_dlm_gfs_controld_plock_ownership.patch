@@ -1,0 +1,44 @@
+From edea26714a0563f33d263c7cf81d2f5a37aed3bf Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 20 Jan 2016 10:35:29 -0500
+Subject: [PATCH] luci: Fix defaults for dlm/gfs_controld plock_ownership
+
+The plock_ownership attribute default value is 0, not 1, for
+dlm and gfs_controld
+
+Resolves: rhbz#988945
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/DLM.py         | 2 +-
+ luci/lib/ClusterConf/GFSControld.py | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/DLM.py b/luci/lib/ClusterConf/DLM.py
+index 033a029..0991621 100644
+--- a/luci/lib/ClusterConf/DLM.py
++++ b/luci/lib/ClusterConf/DLM.py
+@@ -19,7 +19,7 @@ class DLM(TagObject):
+     'enable_quorum':        '0',
+     'enable_plock':         '1',
+     'plock_debug':   '0',
+-    'plock_ownership':      '1',
++    'plock_ownership':      '0',
+     'plock_rate_limit':     '0',
+     'drop_resources_time':  '10000',
+     'drop_resources_count': '10',
+diff --git a/luci/lib/ClusterConf/GFSControld.py b/luci/lib/ClusterConf/GFSControld.py
+index 2a4472f..9ea0460 100644
+--- a/luci/lib/ClusterConf/GFSControld.py
++++ b/luci/lib/ClusterConf/GFSControld.py
+@@ -15,7 +15,7 @@ class GFSControld(TagObject):
+     'enable_plock':             '1',
+     'plock_debug':              '0',
+     'plock_rate_limit':         '0',
+-    'plock_ownership':          '1',
++    'plock_ownership':          '0',
+     'drop_resources_time':      '10000',
+     'drop_resources_count':     '10',
+     'drop_resources_age':       '10000',
+-- 
+2.4.3
+

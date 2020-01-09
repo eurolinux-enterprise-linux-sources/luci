@@ -1,0 +1,221 @@
+diff -ur a/input_files/config.tmpl/config.tmpl.in b/input_files/config.tmpl/config.tmpl.in
+--- a/input_files/config.tmpl/config.tmpl.in	2016-01-06 21:01:54.030128511 +0100
++++ b/input_files/config.tmpl/config.tmpl.in	2016-01-06 20:54:20.573373993 +0100
+@@ -142,6 +142,15 @@
+ who.log_level = warning
+ who.auth_tkt_timeout = %(def.auth_tkt_timeout)s
+ 
++# Set extra headers so as to achieve higher level of security (rhbz#1270958)
++# NOTE: single, whitespace-preceded semicolon considered a comment start
++# [x] RFC 7034; clickjacking avoidance (luci not expected to be framed)
++header.X-Frame-Options = DENY
++# [x] W3C TR/CSP2; ditto
++header.Content-Security-Policy = frame-ancestors 'none'
++# [x] RFC 6797 (max-age set to 7 days); strict HTTPS if not self-signed cert
++header.Strict-Transport-Security = max-age=604800
++
+ ricci.cert_pem = %(def.cert_pem)s
+ 
+ # Important as debug mode will enable the interactive debugging tool, allowing
+diff -ur a/input_files/sysconfig/sysconfig.in b/input_files/sysconfig/sysconfig.in
+--- a/input_files/sysconfig/sysconfig.in	2016-01-06 21:01:54.030128511 +0100
++++ b/input_files/sysconfig/sysconfig.in	2016-01-06 20:54:20.575373997 +0100
+@@ -83,6 +83,35 @@
+ # (requires repoze.who >= 1.0.14)
+ #who.auth_tkt_timeout = 600
+ 
++# Specify custom static HTTP headers (if not colliding with the system
++# ones) or suppress implicit ones preconfigured for higher security
++# (X-Frame-Options, Content-Security-Policy, Strict-Transport-Security)
++# by setting them to empty value "".
++#
++# Following demonstrates single, whitespace-preceded ';' starts a comment.
++#header.Foo-Header = UnlikeHeaderNameThisIsCaseSensitive  ; this is comment
++#
++# Following header option may need to be used if properly anchored
++# certificate is NOT specified via 'ssl_pem' and one wants to suppress
++# noisy complaints wrt. STS in debugging console of some web browsers...
++#header.Strict-Transport-Security = ""
++#
++# ... while following value may need to be temporarily used when downgrading
++# properly anchored certificate to a self-signed one so as to prevent lock
++# out of particular browser(s) that already observed/noted the associated
++# host requires Strict Transport Security (default when properly anchored
++# certificate is used and STS not overridden in this user configuration)
++# -- as an intermediate step, while this option is on, visit luci with
++# affected browsers, then downgrade to self-signed cert without worries.
++#header.Strict-Transport-Security = max-age=0
++#
++# Following header can also provide additional level of security in case
++# a static custom properly rooted certificate is used; RFC 7469 Appendix A.
++# (https://tools.ietf.org/html/rfc7469#appendix-A) details how to generate
++# FP and FP-BACKUP values below, just substitute 'ssl_pem' value above and
++# a (required) backup certificate path for 'certificate.pem' respectively.
++#header.Public-Key-Pins = max-age=604800; pin-sha256="FP"; pin-sha256="FP-BACKUP"
++
+ use=config:%(base_config)s
+ 
+ #END#`
+diff -ur a/luci/config/app_cfg.py b/luci/config/app_cfg.py
+--- a/luci/config/app_cfg.py	2012-01-23 17:20:32.000000000 +0100
++++ b/luci/config/app_cfg.py	2016-01-06 20:54:20.585374013 +0100
+@@ -11,12 +11,11 @@
+ 
+ """
+ 
+-from tg.configuration import AppConfig, config
++from tg.configuration import AppConfig
+ 
+ import luci
+ import sqlalchemy
+-from luci import model
+-from luci.lib import app_globals, helpers
++from luci.lib import app_globals  # needed for tg.config
+ from luci.lib.db_helpers import update_db_objects
+ 
+ class LuciAppConfig(AppConfig):
+@@ -24,16 +23,14 @@
+         self.pylons_extra = {}
+         super(LuciAppConfig, self).__init__()
+ 
+-    def after_init_config(self):
+-        from pylons import config as pylons_config
+-        for key, item in self.pylons_extra.iteritems():
+-            pylons_config[key] = item
+-        del self.pylons_extra
++    # leave around for now (+ after_init_config not in older versions of TG2)
++    #def setup_helpers_and_globals(self):
++    #    pass
+ 
+     def setup_sqlalchemy(self):
+-        from pylons import config as pylons_config
++        from tg import config
+         from sqlalchemy import engine_from_config
+-        engine = engine_from_config(pylons_config, 'sqlalchemy.')
++        engine = engine_from_config(config, 'sqlalchemy.')
+         config['pylons.app_globals'].sa_engine = engine
+         self.package.model.init_model(engine)
+         try:
+@@ -50,7 +47,7 @@
+ # xml by default, see https://bugzilla.redhat.com/show_bug.cgi?id=663103)
+ base_config.default_renderer = 'genshi'
+ base_config.renderers.append('genshi')
+-base_config.pylons_extra['templating.genshi.method'] = 'xhtml'
++base_config.pylons_extra['templating.genshi.method'] = 'xhtml' # environment.py
+ 
+ # Configure the base SQLAlchemy Setup
+ base_config.use_sqlalchemy = True
+diff -ur a/luci/config/environment.py b/luci/config/environment.py
+--- a/luci/config/environment.py	2016-01-06 21:01:54.032128514 +0100
++++ b/luci/config/environment.py	2016-01-06 20:54:20.586374015 +0100
+@@ -21,23 +21,42 @@
+                 f.write(msg.join(('\n', '\n')))
+             raise RuntimeError(msg)
+ 
+-        del_global = filter(
+-                         lambda o: o.startswith("tmp.")
+-                                   or o.startswith("def."),
+-                         global_conf.iterkeys()
+-        )
+-        for opt in del_global:
+-            global_conf.pop(opt)
+-
+-        del_app = filter(
+-                      lambda o: o.startswith("who."),
+-                      app_conf.iterkeys()
+-        )
+-        for opt in del_app:
+-            app_conf.pop(opt)
++        for k in (i for i in global_conf.keys() if i.startswith('tmp.')
++                                                or i.startswith('def.')):
++            global_conf.pop(k)
+ 
++        # Figure custom set of static HTTP headers (rhbz#1270958)
++        headers = dict((k.split('header.', 1)[1].title(), app_conf.pop(k))
++                        for k in app_conf.keys() if k.startswith('header.'))
++
++        # Trigger wrapped/proper load_environment
+         wrapped_f(global_conf, app_conf)
+ 
++        # Enforce that set of static HTTP headers
++        try:
++            from pylons.configuration import response_defaults as _response_defaults
++            response_options = _response_defaults.copy()
++        except ImportError:
++            response_options = dict(
++                content_type='text/html',
++                charset='utf-8',
++                errors='strict',
++                headers={'Cache-Control': 'no-cache',
++                         'Pragma': 'no-cache'},
++            )
++        response_options['headers'] = response_options.get('headers', {}).copy()
++        for k, v in headers.iteritems():
++            if not v:
++                response_options['headers'].pop(k, None)
++            elif k not in response_options['headers']:  # leave defaults as are
++                response_options['headers'][k] = v
++        base_config.pylons_extra['response_options'] = response_options
++
++        # Propagate the headers & more from pylons_extra to Pylons-backed cfg.
++        from tg import config
++        for key, item in base_config.pylons_extra.iteritems():
++            config['pylons.{0}'.format(key)] = item
++
+     # def load_environment
+ 
+     return load_environment
+diff -ur a/luci/config/middleware.py b/luci/config/middleware.py
+--- a/luci/config/middleware.py	2012-01-23 17:20:32.000000000 +0100
++++ b/luci/config/middleware.py	2016-01-06 20:54:20.586374015 +0100
+@@ -31,36 +31,23 @@
+     ``app_conf`` contains all the application-specific settings (those defined
+     under ``[app:main]``.
+ 
+-
+     """
+-    app = make_base_app(global_conf, full_stack=True, **app_conf)
+-
+-
+-    # Add repoze.who middleware
+-
+-    who_config_file = 'who.ini'
+-    who_log_file = 'stdout'
+-    who_log_level = 'warning'
++    # Figure out options specific for repoze.who middleware (~supported here)
++    who_opts_defaults = dict(('who.' + k, v) for k, v in {
++                                 'config_file': "who.ini",
++                                 'log_file': None,
++                                 'log_level': None,
++                             }.iteritems())
++    who_opts = dict(safe_config=False)
++    who_opts.update((k.split('who.', 1)[1], app_conf.pop(k))
++                    for k in app_conf.keys() if k in who_opts_defaults)
+     who_conf = global_conf.copy()
++    who_conf.update(app_conf)
+ 
+-    for who_opt in filter(lambda i: i.startswith("who."), app_conf.iterkeys()):
+-        if who_opt == "who.config_file":
+-            who_config_file = app_conf.get(who_opt)
+-        elif who_opt == "who.log_file":
+-            who_log_file = app_conf.get(who_opt)
+-        elif who_opt == "who.log_level":
+-            who_log_level = app_conf.get(who_opt)
+-        else:
+-            who_conf[who_opt] = app_conf.get(who_opt)
+-
+-    app = repoze_who_make_middleware_with_config(
+-              app,
+-              who_conf,
+-              who_config_file,
+-              who_log_file,
+-              who_log_level,
+-              safe_config = False
+-          )
++    # Make the core application itself
++    app = make_base_app(global_conf, full_stack=True, **app_conf)
+ 
++    # Add repoze.who middleware
++    app = repoze_who_make_middleware_with_config(app, who_conf, **who_opts)
+ 
+     return app

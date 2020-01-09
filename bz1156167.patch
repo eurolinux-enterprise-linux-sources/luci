@@ -1,0 +1,93 @@
+diff -ur a/input_files/sysconfig/sysconfig.in b/input_files/sysconfig/sysconfig.in
+--- a/input_files/sysconfig/sysconfig.in	2016-01-06 20:54:20.575373997 +0100
++++ b/input_files/sysconfig/sysconfig.in	2016-01-07 23:37:40.196045431 +0100
+@@ -54,21 +54,22 @@
+ # Change this to force @PKGNAME@ to use custom SSL certificate (given the path of
+ # PEM file containing both the certificate itself and respective private key),
+ # otherwise its self-signed certificate managed automatically by @SERVICENAME@
+-# service is used instead;
+-# currently, this certificate is used only for https connection with the web
++# service is used instead.
++# Currently, this certificate is used only for HTTPS connection with the web
+ # browser, connections with ricci instances still rely on self-managed cert
+ # Note: If this configuration item is active and no such file can be read,
+ #       starting @SERVICENAME@ service will fail
+ #ssl_pem = path_to/ssl_cert_pem_file
+ 
+ # Change this to pass custom cipher list to be used by underlying OpenSSL
+-# library in the SSL/TLS context.
+-# Currently, this option only affects https connection with the web browser.
++# library in the SSL/TLS context.  RC4 cipher is implicitly filtered out from
++# OpenSSL defaults, but can be, with caution, reenabled with "" or DEFAULT.
++# Currently, this option only affects HTTPS connection with the web browser.
+ #ssl_cipher_list = ALL!EXPORT!EXPORT40!EXPORT56!aNULL!LOW!RC4
+ 
+-# When specifying custom ssl_cipher_list above, SSLv2 commnunication is
+-# prevented by default;  to override it and allow SSLv2 again, uncomment
+-# the following option.
++# SSLv2 and SSLv3 versions of the protocol are prevented by default,
++# but can be, with caution, reenabled with this option below.
++# Currently, this option only affects HTTPS connection with the web browser.
+ #ssl_allow_insecure = true
+ 
+ use=config:%(base_config)s
+diff -ur a/luci/initwrappers.py b/luci/initwrappers.py
+--- a/luci/initwrappers.py	2016-01-06 20:54:20.578374002 +0100
++++ b/luci/initwrappers.py	2016-01-07 23:22:09.164673671 +0100
+@@ -1,4 +1,4 @@
+-# Copyright 2014 Red Hat, Inc.
++# Copyright 2016 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -112,25 +112,35 @@
+ 
+ 
+ # This is a way how to inject custom SSL context and in turn, how to have
+-# a control over allowed ciphers (rhbz#991575).
++# a control over allowed ciphers (rhbz#991575, rhbz#1156167).
+ def server_runner(wsgi_app, global_conf, **kwargs):
+-    try:
+-        from OpenSSL import SSL
+-    except ImportError:
+-        # let it fail later if need be
+-        pass
+-    else:
+-        ssl_cipher_list = kwargs.pop('ssl_cipher_list', '')
+-        ssl_allow_insecure = kwargs.pop('ssl_allow_insecure', False)
+-        if ssl_cipher_list:
+-            ssl_pem = kwargs.pop('ssl_pem')
++    ssl_cipher_list = kwargs.pop('ssl_cipher_list', '')
++    ssl_secure = kwargs.pop('ssl_allow_insecure', '').lower() in ('', 'false')
++
++    if ssl_cipher_list or ssl_secure:
++        try:
++            from OpenSSL import SSL
++        except ImportError:
++            # let it fail later if need be
++            pass
++        else:
+             ssl_context = SSL.Context(SSL.SSLv23_METHOD)
+-            if ssl_allow_insecure in ('', 'false', False):
+-                # XXX note that SSL.OP_NO_COMPRESSION is missing
+-                ssl_context.set_options(SSL.OP_NO_SSLv2)
++            ssl_pem = kwargs.pop('ssl_pem')
+             ssl_context.use_privatekey_file(ssl_pem)
+             ssl_context.use_certificate_chain_file(ssl_pem)
+-            ssl_context.set_cipher_list(ssl_cipher_list)
++
++            if ssl_secure:
++                ssl_context.set_options(SSL.OP_NO_SSLv2)
++                ssl_context.set_options(SSL.OP_NO_SSLv3)
++                try:
++                    # pyOpenSSL 0.14+, do not rely on magic numbers otherwise
++                    ssl_context.set_options(SSL.OP_NO_COMPRESSION)
++                except AttributeError:
++                    pass
++
++            if ssl_cipher_list:
++                ssl_context.set_cipher_list(ssl_cipher_list)
++
+             kwargs['ssl_context'] = ssl_context
+ 
+     return _server_runner(wsgi_app, global_conf, **kwargs)

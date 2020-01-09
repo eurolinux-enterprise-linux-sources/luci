@@ -1,0 +1,38 @@
+From 7a1b79cbf448aeb55e7f2ddb6095a053d0772677 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 20 Jan 2016 10:42:58 -0500
+Subject: [PATCH] luci: Fix allowed values for totem/@secauth
+
+totem/@secauth takes off/on, not 0/1
+
+Resolves: rhbz#1285840
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/Totem.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/luci/lib/ClusterConf/Totem.py b/luci/lib/ClusterConf/Totem.py
+index dafc933..04632ef 100644
+--- a/luci/lib/ClusterConf/Totem.py
++++ b/luci/lib/ClusterConf/Totem.py
+@@ -16,7 +16,7 @@ class Totem(TagObject):
+     'fail_recv_const':                      '2500',
+     'token_retransmits_before_loss_const':  '20',
+     'consensus':                            '4800',
+-    'secauth':                              '1',
++    'secauth':                              'on',
+     'max_messages':                         '17',
+     'netmtu':                               '1500',
+     'window_size':                          '50',
+@@ -85,7 +85,7 @@ class Totem(TagObject):
+     return self.getBinaryAttribute('secauth')
+ 
+   def setSecAuth(self, val):
+-    return self.addBinaryAttribute('secauth', val, ('0', '1'))
++    return self.addBinaryAttribute('secauth', val, ('off', 'on'))
+ 
+   def delSecAuth(self):
+     return self.removeAttribute('secauth')
+-- 
+2.4.3
+

@@ -1,0 +1,56 @@
+From f0a4b69aac5c0d580b964a45317029b8a988e90c Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 20 Jan 2016 10:17:12 -0500
+Subject: [PATCH] luci: Remove references to named_sdb
+
+The named resource agent has never used the named_sdb parameter, so
+remove it from luci.
+
+Resolves: rhbz#1208649
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html    | 7 -------
+ luci/validation/validate_resource.py | 4 ----
+ 2 files changed, 11 deletions(-)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index ae489e8..4478606 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1717,13 +1717,6 @@
+       </td>
+     </tr>
+     <tr>
+-      <td>Use Simplified Database Backend</td>
+-      <td>
+-        <input type="checkbox" class="checkbox" name="named_sdb"
+-          py:attrs="{'checked':(res and res.getBinaryAttribute('named_sdb')) and 'checked' or None, 'disabled':global_resource and 'disabled' or None}"/>
+-      </td>
+-    </tr>
+-    <tr>
+       <td>Other Command-Line Options</td>
+       <td>
+         <input type="text" class="text" name="named_options"
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 9611180..61a58d1 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -537,15 +537,11 @@ def addNamed(res, rname, model, **kw):
+ 	params = (
+ 		('config_file', _('named config file'), False, None),
+ 		('named_working_dir', _('named working directory'), False, None),
+-		('named_sdb', _('named simplified database backend'), False, None),
+ 		('named_options', _('Other command line options'), False, None),
+ 		('shutdown_wait', _('Shutdown Wait Time'), False, None)
+ 	)
+ 	errors = config_resource(params, res, rname, **kw)
+ 
+-	for a in ('named_sdb',):
+-		if res.getAttribute(a) == 'on':
+-			res.addAttribute(a, '1')
+ 	return errors
+ 
+ def addDRBD(res, rname, model, **kw):
+-- 
+2.4.3
+

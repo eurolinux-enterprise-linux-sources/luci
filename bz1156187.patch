@@ -1,0 +1,596 @@
+diff -urN a/input_files/config.tmpl/config.tmpl.in b/input_files/config.tmpl/config.tmpl.in
+--- a/input_files/config.tmpl/config.tmpl.in	2016-01-08 17:35:31.298564054 +0100
++++ b/input_files/config.tmpl/config.tmpl.in	2016-01-13 17:12:38.381404298 +0100
+@@ -67,7 +67,7 @@
+ #error_email_from = paste@localhost
+ 
+ # Values kept throughout the live of application
+-# Convenient alias and value that can be safely propageted to other files
++# Convenient alias and value that can be safely propagated to other files
+ base_config = %(__file__)s
+ 
+ # Temporary values (only for string interpolation within certain sections)
+@@ -76,14 +76,16 @@
+ # Defaults (also temporary)
+ def.port = @PORT@
+ def.host = 0.0.0.0
+-def.cert_pem = @CERTPEM@
+-# following is intentionally empty to use responsible implementation's defaults
+-def.cipher_list = 
++
+ def.cache_dir = @CACHEDIR@
+ def.sessions_dir = @SESSIONSDIR@
+ def.db_file = @DBFILE@
+ def.auth_tkt_timeout = 900
+ 
++ssl.pem = @CERTPEM@
++# following is specific to underlying OpenSSL library, see ciphers(1)
++ssl.cipher_list = DEFAULT!RC4
++ssl.allow_insecure = false
+ 
+ # ===========================================================================
+ # SERVER CONFIGURATIONS
+@@ -96,9 +98,9 @@
+ 
+ host = %(def.host)s
+ port = %(def.port)s
+-ssl_pem = %(def.cert_pem)s
+-ssl_cipher_list = %(def.cipher_list)s
+-ssl_allow_insecure = false
++ssl_pem = %(ssl.pem)s
++ssl_cipher_list = %(ssl.cipher_list)s
++ssl_allow_insecure = %(ssl.allow_insecure)s
+ 
+ # ---------------------------------------------------------------------------
+ 
+@@ -151,7 +153,9 @@
+ # [x] RFC 6797 (max-age set to 7 days); strict HTTPS if not self-signed cert
+ header.Strict-Transport-Security = max-age=604800
+ 
+-ricci.cert_pem = %(def.cert_pem)s
++ricci.cert_pem = %(ssl.pem)s
++ricci.cipher_list = %(ssl.cipher_list)s
++ricci.allow_insecure = %(ssl.allow_insecure)s
+ 
+ # Important as debug mode will enable the interactive debugging tool, allowing
+ # anyone to execute malicious code after an exception is raised
+diff -urN a/input_files/initscript/initscript.in b/input_files/initscript/initscript.in
+--- a/input_files/initscript/initscript.in	2016-01-08 17:35:31.298564054 +0100
++++ b/input_files/initscript/initscript.in	2016-01-13 17:07:17.025158296 +0100
+@@ -228,7 +228,9 @@
+     # TODO: When @PKGNAME@ is able to handle the change of certificate used for
+     #       connections to ricci conveniently via its GUI, there will be no need
+     #       to generate it if custom one provided (double "if" -> "if - elif")
+-    CUSTOM_CERT_PEM=$(echo "$INIT_CONFIG" | sed 's/\$/\n/g' | sed '/^[ \t]*ssl_pem[ \t]*=/!d; s/[^=]*=[ \t]*\([^$]\+\)$/\1/')
++    CUSTOM_CERT_PEM=$(echo "$INIT_CONFIG" | sed 's/\$/\n/g' \
++                      | sed -n '/^[ \t]*ssl[_.]pem[ \t]*=/!d; s/[^=]*=[ \t]*\([^$%]\+\)$/\1/p' \
++                      | tail -n1)
+     if [ -n "$CUSTOM_CERT_PEM" ]; then
+         if [ ! -r "$CUSTOM_CERT_PEM" ]; then
+             $ECHOFUNC "ERROR: Custom certificate \`$CUSTOM_CERT_PEM' (defined in \`$sysconfig'): cannot read" >&2
+diff -urN a/input_files/sysconfig/sysconfig.in b/input_files/sysconfig/sysconfig.in
+--- a/input_files/sysconfig/sysconfig.in	2016-01-08 17:35:31.299564056 +0100
++++ b/input_files/sysconfig/sysconfig.in	2016-01-12 14:37:05.014901217 +0100
+@@ -38,6 +38,36 @@
+ #
+ 
+ # ===========================================================================
++# GLOBAL SSL/TLS CONFIGURATION
++# These options are, by default, propagated to both server (HTTPS
++# connections initiated by the web browsers) and application (SSL/TLS
++# connections against ricci instances) sections below if the contained
++# items are uncommented and configured per the user's requirements.
++# Note that the propagation to particular section is suppressed if either:
++# - option originally, per respective comment, referring to "%(ssl.*)s"
++#   (mechanism allowing for this sort of propagation) is set to explicit
++#   value, in which case this new value will be effectively used in that
++#   context instead, or
++# - such an option is commented out, in which case the respective default
++#   as intended by luci authors will be used
++# ===========================================================================
++
++# Change this to force @PKGNAME@ to use custom SSL certificate (given the path of
++# PEM file containing both the certificate itself and respective private key),
++# otherwise its self-signed certificate managed automatically by @SERVICENAME@
++# service is used instead.
++#ssl.pem = path_to/ssl_cert_pem_file
++
++# Change this to pass custom cipher list to be used by underlying OpenSSL
++# library in the SSL/TLS context.  RC4 cipher is implicitly filtered out from
++# OpenSSL defaults, but can be, with caution, reenabled with "" or DEFAULT.
++#ssl.cipher_list = ALL!EXPORT!EXPORT40!EXPORT56!aNULL!LOW!RC4
++
++# SSLv2 and SSLv3 versions of the protocol are prevented by default,
++# but can be, with caution, reenabled with this option below.
++#ssl.allow_insecure = true
++
++# ===========================================================================
+ # SERVER CONFIGURATION
+ # ===========================================================================
+ [server:main]
+@@ -51,26 +81,19 @@
+ # cannot use privileged ports (i.e. <1024) because it runs as a non-root user
+ #port = 4443
+ 
+-# Change this to force @PKGNAME@ to use custom SSL certificate (given the path of
+-# PEM file containing both the certificate itself and respective private key),
+-# otherwise its self-signed certificate managed automatically by @SERVICENAME@
+-# service is used instead.
+-# Currently, this certificate is used only for HTTPS connection with the web
+-# browser, connections with ricci instances still rely on self-managed cert
++# Web browser/HTTPS specific equivalent of ssl.pem option above.
++# Keep uncommented and set to "%(ssl.pem)s" to prefer that one.
+ # Note: If this configuration item is active and no such file can be read,
+ #       starting @SERVICENAME@ service will fail
+-#ssl_pem = path_to/ssl_cert_pem_file
+-
+-# Change this to pass custom cipher list to be used by underlying OpenSSL
+-# library in the SSL/TLS context.  RC4 cipher is implicitly filtered out from
+-# OpenSSL defaults, but can be, with caution, reenabled with "" or DEFAULT.
+-# Currently, this option only affects HTTPS connection with the web browser.
+-#ssl_cipher_list = ALL!EXPORT!EXPORT40!EXPORT56!aNULL!LOW!RC4
++ssl_pem = %(ssl.pem)s
+ 
+-# SSLv2 and SSLv3 versions of the protocol are prevented by default,
+-# but can be, with caution, reenabled with this option below.
+-# Currently, this option only affects HTTPS connection with the web browser.
+-#ssl_allow_insecure = true
++# Web browser/HTTPS specific equivalent of ssl.cipher_list option above.
++# Keep uncommented and set to "%(ssl.cipher_list)s" to prefer that one.
++ssl_cipher_list = %(ssl.cipher_list)s
++
++# Web browser/HTTPS specific equivalent of ssl.allow_insecure option above.
++# Keep uncommented and set to "%(ssl.allow_insecure)s" to prefer that one.
++ssl_allow_insecure = %(ssl.allow_insecure)s
+ 
+ use=config:%(base_config)s
+ 
+@@ -84,6 +107,20 @@
+ # (requires repoze.who >= 1.0.14)
+ #who.auth_tkt_timeout = 600
+ 
++# ricci daemon/SSL specific equivalent of ssl.pem option above.
++# Keep uncommented and set to "%(ssl.pem)s" to prefer that one.
++# Note: If this configuration item is active and no such file can be read,
++#       connecting to ricci daemons will fail
++ricci.cert_pem = %(ssl.pem)s
++
++# ricci daemon/SSL specific equivalent of ssl.cipher_list option above.
++# Keep uncommented and set to "%(ssl.cipher_list)s" to prefer that one.
++ricci.cipher_list = %(ssl.cipher_list)s
++
++# ricci daemon/SSL specific equivalent of ssl.allow_insecure option above.
++# Keep uncommented and set to "%(ssl.allow_insecure)s" to prefer that one.
++ricci.allow_insecure = %(ssl.allow_insecure)s
++
+ # Specify custom static HTTP headers (if not colliding with the system
+ # ones) or suppress implicit ones preconfigured for higher security
+ # (X-Frame-Options, Content-Security-Policy, Strict-Transport-Security)
+diff -urN a/luci/lib/pyopenssl_wrapper.py b/luci/lib/pyopenssl_wrapper.py
+--- a/luci/lib/pyopenssl_wrapper.py	1970-01-01 01:00:00.000000000 +0100
++++ b/luci/lib/pyopenssl_wrapper.py	2016-01-13 14:42:14.000000000 +0100
+@@ -0,0 +1,255 @@
++# -*- coding: UTF-8 -*-
++# This file is adapted[*] from:
++#   https://github.com/shazow/urllib3/blob/1.14/urllib3/contrib/pyopenssl.py
++# and is, hence, covered by the license of urllib3 project, i.e., MIT license:
++#   http://www.opensource.org/licenses/mit-license.php
++# with the following wording:
++#
++#   Permission is hereby granted, free of charge, to any person
++#   obtaining a copy of this software and associated documentation files
++#   (the "Software"), to deal in the Software without restriction,
++#   including without limitation the rights to use, copy, modify, merge,
++#   publish, distribute, sublicense, and/or sell copies of the Software,
++#   and to permit persons to whom the Software is furnished to do so,
++#   subject to the following conditions:
++#
++#   The above copyright notice and this permission notice shall be included
++#   in all copies or substantial portions of the Software.
++#
++#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
++#   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
++#   THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++#   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
++#   DEALINGS IN THE SOFTWARE.
++#
++# Fetched list of authors/contributors, in an alphabetic order, is as follows:
++#   Andrey Petrov
++#   Brian Candler
++#   Bryan Helmig
++#   Cory Benfield
++#   Danilo Bargen
++#   Donald Stufft
++#   Evan Meagher
++#   fermayo
++#   Ian Cordasco
++#   Jason Robinson
++#   John Vandenberg
++#   Kevin Burke
++#   Nicolas Delaby
++#   Paul Aurich
++#   Paul Kehrer
++#   Sune Kirkeby
++#   steveoh (sgourley)
++#   Thomas Weißschuh
++#   Tye Wang
++#   Vitja Makarov
++#
++# [*] Final modification so as to reduce the deps and code to minimum for luci
++#     and passing some more/new values by Jan Pokorný <jpokorny@redhat.com>.
++#
++'''This needs the following packages installed:
++
++* pyOpenSSL (tested with 0.13)
++
++You can install it with the following command:
++
++    pip install pyopenssl
++
++Activating this module also has the positive side effect of disabling SSL/TLS
++compression in Python 2 (see `CRIME attack`_).
++
++.. _crime attack: https://en.wikipedia.org/wiki/CRIME_(security_exploit)
++
++'''
++import OpenSSL.SSL
++from socket import _fileobject, timeout, error as SocketError
++import ssl
++import select
++
++# Map from urllib3 to PyOpenSSL compatible parameter-values.
++_openssl_versions = {
++    ssl.PROTOCOL_SSLv23: OpenSSL.SSL.SSLv23_METHOD,
++    ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
++}
++
++if hasattr(ssl, 'PROTOCOL_TLSv1_1') and hasattr(OpenSSL.SSL, 'TLSv1_1_METHOD'):
++    _openssl_versions[ssl.PROTOCOL_TLSv1_1] = OpenSSL.SSL.TLSv1_1_METHOD
++
++if hasattr(ssl, 'PROTOCOL_TLSv1_2') and hasattr(OpenSSL.SSL, 'TLSv1_2_METHOD'):
++    _openssl_versions[ssl.PROTOCOL_TLSv1_2] = OpenSSL.SSL.TLSv1_2_METHOD
++
++try:
++    _openssl_versions.update({ssl.PROTOCOL_SSLv3: OpenSSL.SSL.SSLv3_METHOD})
++except AttributeError:
++    pass
++
++_openssl_verify = {
++    ssl.CERT_NONE: OpenSSL.SSL.VERIFY_NONE,
++    ssl.CERT_OPTIONAL: OpenSSL.SSL.VERIFY_PEER,
++    ssl.CERT_REQUIRED:
++        OpenSSL.SSL.VERIFY_PEER + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
++}
++
++# OpenSSL will only write 16K at a time
++SSL_WRITE_BLOCKSIZE = 16384
++
++
++class WrappedSocket(object):
++    '''API-compatibility wrapper for Python OpenSSL's Connection-class.
++
++    Note: _makefile_refs, _drop() and _reuse() are needed for the garbage
++    collector of pypy.
++    '''
++
++    def __init__(self, connection, socket, suppress_ragged_eofs=True):
++        self.connection = connection
++        self.socket = socket
++        self.suppress_ragged_eofs = suppress_ragged_eofs
++        self._makefile_refs = 0
++
++    def fileno(self):
++        return self.socket.fileno()
++
++    def makefile(self, mode, bufsize=-1):
++        self._makefile_refs += 1
++        return _fileobject(self, mode, bufsize, close=True)
++
++    def recv(self, *args, **kwargs):
++        try:
++            data = self.connection.recv(*args, **kwargs)
++        except OpenSSL.SSL.SysCallError as e:
++            if self.suppress_ragged_eofs and e.args == (-1, 'Unexpected EOF'):
++                return b''
++            else:
++                raise SocketError(e)
++        except OpenSSL.SSL.ZeroReturnError as e:
++            if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
++                return b''
++            else:
++                raise
++        except OpenSSL.SSL.WantReadError:
++            rd, wd, ed = select.select(
++                [self.socket], [], [], self.socket.gettimeout())
++            if not rd:
++                raise timeout('The read operation timed out')
++            else:
++                return self.recv(*args, **kwargs)
++        else:
++            return data
++
++    def settimeout(self, timeout):
++        return self.socket.settimeout(timeout)
++
++    def _send_until_done(self, data):
++        while True:
++            try:
++                return self.connection.send(data)
++            except OpenSSL.SSL.WantWriteError:
++                _, wlist, _ = select.select([], [self.socket], [],
++                                            self.socket.gettimeout())
++                if not wlist:
++                    raise timeout()
++                continue
++
++    def sendall(self, data):
++        total_sent = 0
++        while total_sent < len(data):
++            sent = self._send_until_done(data[total_sent:total_sent + SSL_WRITE_BLOCKSIZE])
++            total_sent += sent
++
++    def shutdown(self):
++        # FIXME rethrow compatible exceptions should we ever use this
++        self.connection.shutdown()
++
++    def close(self):
++        if self._makefile_refs < 1:
++            try:
++                return self.connection.close()
++            except OpenSSL.SSL.Error:
++                return
++        else:
++            self._makefile_refs -= 1
++
++    def getpeercert(self, binary_form=False):
++        x509 = self.connection.get_peer_certificate()
++
++        if not x509:
++            return x509
++
++        if binary_form:
++            return OpenSSL.crypto.dump_certificate(
++                OpenSSL.crypto.FILETYPE_ASN1,
++                x509)
++
++        return {
++            'subject': (
++                (('commonName', x509.get_subject().CN),),
++            ),
++        }
++
++    def _reuse(self):
++        self._makefile_refs += 1
++
++    def _drop(self):
++        if self._makefile_refs < 1:
++            self.close()
++        else:
++            self._makefile_refs -= 1
++
++
++def _verify_callback(cnx, x509, err_no, err_depth, return_code):
++    return err_no == 0
++
++
++def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=ssl.CERT_NONE,
++                    ca_certs=None, server_hostname=None,
++                    ssl_version=ssl.PROTOCOL_SSLv23, ca_cert_dir=None,
++                    suppress_ragged_eofs=True,
++                    ciphers=None, options=None):
++    ctx = OpenSSL.SSL.Context(_openssl_versions[ssl_version])
++    if certfile:
++        keyfile = keyfile or certfile  # Match behaviour of the normal python ssl library
++        ctx.use_certificate_file(certfile)
++    if keyfile:
++        ctx.use_privatekey_file(keyfile)
++    if cert_reqs != ssl.CERT_NONE:
++        ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
++    if ca_certs or ca_cert_dir:
++        try:
++            ctx.load_verify_locations(ca_certs, ca_cert_dir)
++        except OpenSSL.SSL.Error as e:
++            raise ssl.SSLError('bad ca_certs: %r' % ca_certs, e)
++    else:
++        ctx.set_default_verify_paths()
++
++    # Disable TLS compression to mitigate CRIME attack (issue #309)
++    OP_NO_COMPRESSION = 0x20000
++    ctx.set_options(OP_NO_COMPRESSION)
++
++    # Set list of supported ciphersuites.
++    if ciphers:
++        ctx.set_cipher_list(ciphers)
++
++    # Set other options if specified via the bit mask.
++    if options is not None:
++        ctx.set_options(options)
++
++    cnx = OpenSSL.SSL.Connection(ctx, sock)
++    if server_hostname is not None:
++        cnx.set_tlsext_host_name(server_hostname)
++    cnx.set_connect_state()
++    while True:
++        try:
++            cnx.do_handshake()
++        except OpenSSL.SSL.WantReadError:
++            rd, _, _ = select.select([sock], [], [], sock.gettimeout())
++            if not rd:
++                raise timeout('select timed out')
++            continue
++        except OpenSSL.SSL.Error as e:
++            raise ssl.SSLError('bad handshake: %r, %s, %d' % (e, ciphers, options))
++        break
++
++    return WrappedSocket(cnx, sock, suppress_ragged_eofs=suppress_ragged_eofs)
+diff -urN a/luci/lib/ricci_communicator.py b/luci/lib/ricci_communicator.py
+--- a/luci/lib/ricci_communicator.py	2016-01-08 17:35:31.301564060 +0100
++++ b/luci/lib/ricci_communicator.py	2016-01-13 15:08:26.000000000 +0100
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2006-2011 Red Hat, Inc.
++# Copyright 2016 Red Hat, Inc.
+ #
+ # This program is free software; you can redistribute
+ # it and/or modify it under the terms of version 2 of the
+@@ -6,13 +6,16 @@
+ # Free Software Foundation.
+ 
+ from xml.dom import minidom, Node
+-from ricci_defines import LUCI_LOG_DEBUG_NETWORK, DEFAULT_RICCI_PORT, RICCI_CONNECT_FAILURES_MAX
+ import socket
++from ssl import CERT_NONE, SSLError
+ import struct
+-import ssl
+ 
++from OpenSSL import SSL
+ from tg import config
++
+ from luci.lib.helpers import ugettext as _
++from luci.lib.pyopenssl_wrapper import ssl_wrap_socket
++from ricci_defines import LUCI_LOG_DEBUG_NETWORK, DEFAULT_RICCI_PORT, RICCI_CONNECT_FAILURES_MAX
+ 
+ import logging
+ log = logging.getLogger(__name__)
+@@ -51,55 +54,35 @@
+             errmsg = _('Missing ricci.cert_pem value in the configuration')
+             log.exception(errmsg)
+             raise RicciError, errmsg
+-
+-        try:
+-            s = None
+-            for res in socket.getaddrinfo(self.__hostname, self.__port,
+-                            socket.AF_UNSPEC, socket.SOCK_STREAM):
+-                af, socktype, proto, canonname, sa = res
+-                try:
+-                    s = socket.socket(af, socktype, proto)
+-                    break
+-                except socket.error, msg:
+-                    s = None
+-                    continue
+-
+-            if s is None:
+-                raise RicciError, 'socket() failed'
+-
++        self.__cipher_list = config.get('ricci.cipher_list', '')
++        sec = config.get('ricci.allow_insecure', '') in ('', 'false')
++        self.__ssl_options = SSL.OP_NO_SSLv2 | SSL.OP_NO_SSLv3 if sec else None
++
++        s = None
++        for res in socket.getaddrinfo(self.__hostname, self.__port,
++                        socket.AF_UNSPEC, socket.SOCK_STREAM):
++            af, socktype, proto, canonname, sa = res
+             try:
+-                s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+-                    struct.pack('ii', 1, 0))
+-            except:
+-                log.exception('setting SO_LINGER')
++                s = socket.socket(af, socktype, proto)
++                break
++            except socket.error, msg:
++                s = None
++                continue
+ 
+-            self.ss = ssl.wrap_socket(s,
+-                        certfile=self.__cert_pem,
+-                        cert_reqs=ssl.CERT_NONE)
+-        except Exception, e:
+-            try:
+-                if self.ss:
+-                    self.ss.close()
+-                    self.ss = None
+-                elif s:
+-                    s.close()
+-            except:
+-                pass
++        if s is None:
++            raise RicciError, 'socket() failed'
+ 
+-            errmsg = 'Unable to establish an SSL connection to %s:%d' \
+-                        % (self.__hostname, self.__port)
+-            if len(e.args) > 1:
+-                # Case for ssl.SSLError and socket.error that has 'args'
+-                # formed by (errno, string) pair.
+-                errmsg = '%s: %s' % (errmsg, e.args[1])
+-            log.exception(errmsg)
+-            raise RicciError, errmsg
++        try:
++            s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
++                struct.pack('ii', 1, 0))
++        except:
++            log.exception('setting SO_LINGER')
+ 
+         connection_failures = 0
+         while True:
+             try:
+-                self.ss.settimeout(self.__timeout_init)
+-                self.ss.connect((self.__hostname, self.__port))
++                s.settimeout(self.__timeout_init)
++                s.connect((self.__hostname, self.__port))
+             except Exception, e:
+                 connection_failures += 1
+                 if connection_failures >= RICCI_CONNECT_FAILURES_MAX:
+@@ -115,7 +98,28 @@
+                            RICCI_CONNECT_FAILURES_MAX - connection_failures))
+             else:
+                 break
+-                
++
++        try:
++            self.ss = ssl_wrap_socket(s,
++                                      certfile=self.__cert_pem,
++                                      cert_reqs=CERT_NONE,
++                                      ciphers=self.__cipher_list,
++                                      options=self.__ssl_options)
++        except Exception, e:
++            try:
++                if self.ss:
++                    self.ss.close()
++                    self.ss = None
++                elif s:
++                    s.close()
++            except:
++                pass
++
++            errmsg = 'Unable to establish an SSL connection to %s:%d: %s: %s' \
++                        % (self.__hostname, self.__port, type(e), str(e))
++            log.exception(errmsg)
++            raise RicciError, errmsg
++
+         # receive ricci header
+         try:
+             hello = self.__receive(self.__timeout_init)
+@@ -462,11 +466,10 @@
+     def __send(self, xml_doc, timeout):
+         try:
+             self.ss.settimeout(timeout)
+-            self.ss.write(xml_doc.toxml())
+-        except ssl.SSLError, e:
+-            # Only ssl.SSLError expected which is formed by (errno, string) pair.
++            self.ss.sendall(xml_doc.toxml())
++        except SSLError, e:
+             errstr = _('Error sending batch command to %s:%d: %s') \
+-                % (self.__hostname, self.__port, e.args[1])
++                % (self.__hostname, self.__port, e)
+ 
+             if LUCI_LOG_DEBUG_NETWORK is True:
+                 log.debug("%s | XML: %s" % (errstr, xml_doc.toxml()))
+@@ -491,15 +494,14 @@
+ 
+         while doc is None:
+             try:
+-                cur_chunk = self.ss.read()
++                cur_chunk = self.ss.recv(4096)
+                 if LUCI_LOG_DEBUG_NETWORK is True:
+                     log.debug('recv XML "%s" from %s:%d' \
+                         % (cur_chunk, self.__hostname, self.__port))
+                 if len(cur_chunk) == 0:
+                     break
+                 xml_in.append(cur_chunk)
+-            except ssl.SSLError, e:
+-                # Only ssl.SSLError expected which is formed by (errno, string) pair.
++            except SSLError, e:
+                 errstr = _('Error reading from %s:%d: %s') \
+                             % (self.__hostname, self.__port, e)
+                 log.exception(errstr)

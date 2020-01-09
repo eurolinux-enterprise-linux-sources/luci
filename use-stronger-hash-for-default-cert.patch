@@ -1,0 +1,24 @@
+diff -ur a/input_files/certconfig/certconfig.in b/input_files/certconfig/certconfig.in
+--- a/input_files/certconfig/certconfig.in	2016-01-13 18:18:29.717580152 +0100
++++ b/input_files/certconfig/certconfig.in	2016-01-13 18:19:31.416765244 +0100
+@@ -8,7 +8,7 @@
+ 
+ [req]
+ default_bits             = 2048
+-default_md               = sha1
++default_md               = sha256
+ utf8                     = yes
+ distinguished_name       = req_distinguished_name
+ x509_extensions          = req_x509_extensions
+diff -ur a/input_files/initscript/initscript.in b/input_files/initscript/initscript.in
+--- a/input_files/initscript/initscript.in	2016-01-13 18:18:29.718580155 +0100
++++ b/input_files/initscript/initscript.in	2016-01-13 18:19:10.156705768 +0100
+@@ -197,7 +197,7 @@
+     # Note: Explicit specification of file containing random data is needed
+     #       to suppress complaints (and we also control where this file is)
+     export RANDFILE=$(mktemp -q --tmpdir="$CERT_DIR" "cert_rnd.XXXXXX")
+-    out="$(/usr/bin/openssl req -new -x509 -nodes -sha1        \
++    out="$(/usr/bin/openssl req -new -x509 -nodes              \
+                                 -newkey rsa:"$CERT_KEY_BITS"   \
+                                 -config "$CERT_CONFIG"         \
+                                 -days "$CERT_KEY_LIFE_DAYS"    \

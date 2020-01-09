@@ -54,11 +54,12 @@
 
 Name:           luci
 Version:        0.26.0
-Release:        70%{?dist}
+Release:        76%{?dist}
 
 Summary:        Web-based high availability administration application
 URL:            https://fedorahosted.org/cluster/wiki/Luci
-License:        GPLv2
+# The entire source code is GPLv2 except luci/lib/pyopenssl_wrapper.py (MIT)
+License:        GPLv2 and MIT
 Group:          Applications/System
 
 Source0:        http://people.redhat.com/rmccabe/luci/luci-%{version}.tar.bz2
@@ -67,7 +68,8 @@ Source1:        sort-images-0.2.tar.gz
 # this denotes builds in which luci.ini file should be generated anew
 %global breakpoints_luci_ini \
                 0.23.0-1     \
-                0.26.0-53
+                0.26.0-53    \
+                0.26.0-72
 
 Patch0: bz671285.patch
 Patch1: bz786584.patch
@@ -200,6 +202,15 @@ Patch125: bz1112297-preserve_expert_mode_resource_attributes.patch
 Patch126: bz1136456-warn_when_config_can_t_be_set_or_activated.patch
 Patch127: bz1204910-update_fence_virt_fence_xvm_labels.patch
 Patch128: bz1210683-add_support_for_fence_emerson_and_fence_mpath.patch
+Patch129: bz1270958.patch
+Patch130: bz1156167.patch
+Patch131: bz1156187.patch
+Patch132: use-stronger-hash-for-default-cert.patch
+Patch133: bz1208649-luci_remove_references_to_named_sdb.patch
+Patch134: bz988945-luci_fix_defaults_for_dlm_gfs_controld_plock_ownership.patch
+Patch135: bz1285840-fix_allowed_values_for_totem_@secauth.patch
+Patch136: bz1255207-support_alternate_timeout_attributes_for_fence_devices.patch
+Patch137: bz1273954-allow_rrp_configuration_for_udpu.patch
 
 ExclusiveArch:  i686 x86_64
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -380,6 +391,15 @@ popd
 %patch126 -p1 -b .bz1136456.2
 %patch127 -p1 -b .bz1204910.1
 %patch128 -p1 -b .bz1210683.1
+%patch129 -p1 -b .bz1270958
+%patch130 -p1 -b .bz1156167
+%patch131 -p1 -b .bz1156187
+%patch132 -p1 -b .bz1156167.hash
+%patch133 -p1 -b .bz1208649.1
+%patch134 -p1 -b .bz988945.1
+%patch135 -p1 -b .bz1285840.1
+%patch136 -p1 -b .bz1255207.1
+%patch137 -p1 -b .bz1273954.1
 
 # Make sure no dependency is downloaded by modifying stock setup.cfg
 # (this apparently cannot by used by calling saveopts subcommand
@@ -563,6 +583,42 @@ fi
 
 
 %changelog
+* Tue Feb 16 2016 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-76
+- luci: Allow RRP configuration for UDPU
+  Resolves: rhbz#1273954
+
+* Tue Feb 16 2016 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-75
+- luci: Support alternate timeout attributes for fence devices
+  Resolves: rhbz#1255207
+
+* Wed Jan 20 2016 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-74
+- luci: Fix defaults for dlm/gfs_controld plock_ownership
+  Resolves: rhbz#988945
+- luci: Fix allowed values for totem/@secauth
+  Resolves: rhbz#1285840
+
+* Wed Jan 20 2016 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-73
+- luci: Remove references to named_sdb
+  Resolves: rhbz#1208649
+
+* Wed Jan 13 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-72
+- Make luci implicitly avoid SSLv2 and SSLv3 versions of the protocol,
+  and also by default, disable RC4 cipher (unless overridden by user)
+  at both the web browser/HTTPS (rhbz#1156167) and ricci daemon/SSL
+  (rhbz#1156187) sides of communication
+  Resolves: rhbz#1156167, rhbz#1156187
+- Update luci self-managed certificate signature digest from sha1 to sha256
+  Related: rhbz#1156167, rhbz#1156187
+- Force generating luci.ini anew on update otherwise intended security
+  hardenings will not take effect with luci already in use (and avoid
+  respective downgrade issues, both using a mechanism already in place)
+  Related: rhbz#1270958
+
+* Wed Jan 06 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-71
+- Prevent clickjacking (malicious use) of luci and enable enforcement
+  of some more web service security mechanisms
+  Resolves: rhbz#1270958
+
 * Tue May 19 2015 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-70
 - luci: Rebuild for changelog cleanup
 
