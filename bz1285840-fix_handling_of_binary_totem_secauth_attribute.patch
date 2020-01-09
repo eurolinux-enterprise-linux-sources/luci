@@ -1,0 +1,29 @@
+From c78426490210866450abf213c52115a6342ff1d7 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 23 Feb 2016 22:43:45 -0500
+Subject: [PATCH] luci: Fix handling of binary totem "secauth" attribute
+
+Remove the broken first part of the original patch for this fix.
+
+Resolves: rhbz#1285840
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/Totem.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/luci/lib/ClusterConf/Totem.py b/luci/lib/ClusterConf/Totem.py
+index 04632ef..c920021 100644
+--- a/luci/lib/ClusterConf/Totem.py
++++ b/luci/lib/ClusterConf/Totem.py
+@@ -16,7 +16,7 @@ class Totem(TagObject):
+     'fail_recv_const':                      '2500',
+     'token_retransmits_before_loss_const':  '20',
+     'consensus':                            '4800',
+-    'secauth':                              'on',
++    'secauth':                              '1',
+     'max_messages':                         '17',
+     'netmtu':                               '1500',
+     'window_size':                          '50',
+-- 
+2.4.3
+

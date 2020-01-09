@@ -54,7 +54,7 @@
 
 Name:           luci
 Version:        0.26.0
-Release:        76%{?dist}
+Release:        78%{?dist}
 
 Summary:        Web-based high availability administration application
 URL:            https://fedorahosted.org/cluster/wiki/Luci
@@ -211,6 +211,7 @@ Patch134: bz988945-luci_fix_defaults_for_dlm_gfs_controld_plock_ownership.patch
 Patch135: bz1285840-fix_allowed_values_for_totem_@secauth.patch
 Patch136: bz1255207-support_alternate_timeout_attributes_for_fence_devices.patch
 Patch137: bz1273954-allow_rrp_configuration_for_udpu.patch
+Patch138: bz1285840-fix_handling_of_binary_totem_secauth_attribute.patch
 
 ExclusiveArch:  i686 x86_64
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -400,6 +401,7 @@ popd
 %patch135 -p1 -b .bz1285840.1
 %patch136 -p1 -b .bz1255207.1
 %patch137 -p1 -b .bz1273954.1
+%patch138 -p1 -b .bz1285840.1
 
 # Make sure no dependency is downloaded by modifying stock setup.cfg
 # (this apparently cannot by used by calling saveopts subcommand
@@ -493,7 +495,7 @@ touch "%{buildroot}%{lucidbfile}"
 # Note: those "ghosted" files that should be definitely removed upon package
 #       removal should not be marked with "config" and viceversa
 %{lucistatedir}/
-%config(noreplace)           %{lucicertconfig}
+%config                      %{lucicertconfig}
 # Base configuration contains sensitive records and should be totally
 # restricted from unauthorized access (created ad-hoc during 1st run)
 %attr(0640,-,-)       %ghost %{lucibaseconfig}
@@ -583,6 +585,17 @@ fi
 
 
 %changelog
+* Tue Mar 22 2016 Jan Pokorny <jpokorny@redhat.com> - 0.26.0-78
+- Further fix for configuration logic wrt. SSL/TLS insecurities
+  avoidance
+- Enforce new configuration of luci self-managed certificate,
+  preserving the possibly modified content in a backup file
+  Related: rhbz#1156167, rhbz#1156187
+
+* Tue Feb 23 2016 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-77
+- luci: Fix handling of binary totem "secauth" attribute
+  Resolves: rhbz#1285840
+
 * Tue Feb 16 2016 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-76
 - luci: Allow RRP configuration for UDPU
   Resolves: rhbz#1273954

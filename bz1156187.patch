@@ -71,7 +71,7 @@ diff -urN a/input_files/initscript/initscript.in b/input_files/initscript/initsc
 diff -urN a/input_files/sysconfig/sysconfig.in b/input_files/sysconfig/sysconfig.in
 --- a/input_files/sysconfig/sysconfig.in	2016-01-08 17:35:31.299564056 +0100
 +++ b/input_files/sysconfig/sysconfig.in	2016-01-12 14:37:05.014901217 +0100
-@@ -38,6 +38,36 @@
+@@ -38,6 +38,37 @@
  #
  
  # ===========================================================================
@@ -88,6 +88,7 @@ diff -urN a/input_files/sysconfig/sysconfig.in b/input_files/sysconfig/sysconfig
 +# - such an option is commented out, in which case the respective default
 +#   as intended by luci authors will be used
 +# ===========================================================================
++[DEFAULT]
 +
 +# Change this to force @PKGNAME@ to use custom SSL certificate (given the path of
 +# PEM file containing both the certificate itself and respective private key),
@@ -145,7 +146,7 @@ diff -urN a/input_files/sysconfig/sysconfig.in b/input_files/sysconfig/sysconfig
  
  use=config:%(base_config)s
  
-@@ -84,6 +107,20 @@
+@@ -83,6 +108,20 @@
  # (requires repoze.who >= 1.0.14)
  #who.auth_tkt_timeout = 600
  
