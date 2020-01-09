@@ -1,0 +1,294 @@
+From 6d9749802c18ff9c7988e8b04d00ed3fc579b3b9 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 8 Mar 2015 22:26:27 -0400
+Subject: [PATCH] luci: Add expand and collapse buttons for services
+
+Add buttons to expand and collapse resource details inside
+service groups.
+
+Resolves: rhbz#919223
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/css/shared.css        |  4 ++
+ luci/public/js/service.js         |  8 ++++
+ luci/templates/resource_list.html | 80 +++++++++++++++++++--------------------
+ luci/templates/service.html       |  7 ++++
+ 4 files changed, 59 insertions(+), 40 deletions(-)
+
+diff --git a/luci/public/css/shared.css b/luci/public/css/shared.css
+index 14dc684..d461a1a 100644
+--- a/luci/public/css/shared.css
++++ b/luci/public/css/shared.css
+@@ -546,6 +546,10 @@ td.svc_content {
+     padding-bottom:0;
+ }
+ 
++div.expand_buttons {
++    padding-bottom: 1em;
++}
++
+ .rescntrl {
+     padding-left: 1em;
+     padding-bottom: 1em;
+diff --git a/luci/public/js/service.js b/luci/public/js/service.js
+index 4edc66a..185e1c5 100644
+--- a/luci/public/js/service.js
++++ b/luci/public/js/service.js
+@@ -231,3 +231,11 @@ function move_service_group(baseurl) {
+ 
+     location.href = baseurl + '&preferred_node=' + preferred_node + '&move_action=' + move_action;
+ }
++
++function expand_svc_children() {
++	$("#esvc_root table.formtable > tbody > tr > td").not(".nocollapse").show();
++}
++
++function hide_svc_children() {
++	$("#esvc_root table.formtable > tbody > tr > td").not(".nocollapse").hide();
++}
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 655d333..5c69dbe 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -142,8 +142,8 @@
+   <h3>Filesystem</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -273,8 +273,8 @@
+ 
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -373,8 +373,8 @@
+   <h3>NFS/CIFS Mount</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -467,8 +467,8 @@
+   <h3>Bind Mount</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -512,8 +512,8 @@
+   <h3>NFS v3 Export</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -545,8 +545,8 @@
+   <h3>NFS Server</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -590,8 +590,8 @@
+   <h3>NFS Client</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -641,8 +641,8 @@
+   <h3>Samba Server</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -692,8 +692,8 @@
+   <h3>Samba Server</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -722,8 +722,8 @@
+   <h3>Script</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -754,8 +754,8 @@
+   <h3>Apache</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -815,8 +815,8 @@
+   <h3>MySQL</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -874,8 +874,8 @@
+   <h3>HA LVM</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -918,8 +918,8 @@
+   <h3>Open LDAP</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -973,8 +973,8 @@
+   <h3>PostgreSQL 8</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -1034,8 +1034,8 @@
+   <h3>Tomcat 5</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -1095,8 +1095,8 @@
+   <h3>Tomcat 6</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -1673,8 +1673,8 @@
+   <h3>Named (Bind 9)</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -1732,8 +1732,8 @@
+   <h3>DRBD</h3>
+   <table class="formtable">
+     <tr>
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+@@ -1803,8 +1803,8 @@
+ 
+   <table class="formtable">
+     <tr py:if="res and parent_id != 'esvc_root'">
+-      <td>Name</td>
+-      <td>
++      <td class="nocollapse">Name</td>
++      <td class="nocollapse">
+         <input type="text" class="text" name="resourcename"
+           py:attrs="res and {'value':res.getAttribute('name'), 'disabled':global_resource and 'disabled' or None} or {}" />
+       </td>
+diff --git a/luci/templates/service.html b/luci/templates/service.html
+index dc695ab..b71a16e 100644
+--- a/luci/templates/service.html
++++ b/luci/templates/service.html
+@@ -213,6 +213,13 @@
+               ${service_properties_dialog(svc, cluster_data)}
+             </div>
+ 
++			<div class="expand_buttons">
++        	    <input type="button" class="button small silver" value="Expand Children"
++            	    onclick="expand_svc_children()"/>
++	            <input type="button" class="button small silver" value="Collapse Children"
++    	            onclick="hide_svc_children()"/>
++			</div>
++
+             <div id="esvc_root">
+                 <?python
+                 def gen_seq():
+-- 
+2.1.0
+

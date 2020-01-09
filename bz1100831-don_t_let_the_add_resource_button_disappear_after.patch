@@ -1,0 +1,35 @@
+From f983059ba3dee20cde76db50b50ecbe97d2575a1 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 4 Mar 2015 08:08:02 -0500
+Subject: [PATCH] luci: Don't let the add resource button disappear after
+ adding a VM
+
+Don't remove the "add resource" button after adding a VM to a
+service group. Previously, if you added a VM, then deleted it, you
+were not able to add more resources without refreshing the page.
+Also, it's technically legal to allow more resources, anyway, so
+luci will now allow it.
+
+Resolves: rhbz#1100831
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/js/service.js | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/luci/public/js/service.js b/luci/public/js/service.js
+index 9c07179..4edc66a 100644
+--- a/luci/public/js/service.js
++++ b/luci/public/js/service.js
+@@ -130,8 +130,6 @@ function insert_resource(res_id, container_id, form, parent_id) {
+             alert("VMs may have no children and may not be children of other resources.");
+             return;
+         }
+-        var sel_elem = $('.resource_selector', form);
+-        $(sel_elem).remove();
+     }
+     var is_global = res_id.match(/^global_res_/) != null;
+ 
+-- 
+2.1.0
+

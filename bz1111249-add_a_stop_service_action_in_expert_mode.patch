@@ -1,0 +1,173 @@
+From 1b4b30b77af7e974911ea74da309a2d72a1b25d6 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 8 Mar 2015 21:40:30 -0400
+Subject: [PATCH] luci: Add a "stop" service action in expert mode
+
+Add a stop (as opposed to disable) service action that is
+accessible when in expert mode.
+
+Resolves: rhbz#1111249
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/cluster.py           |  13 +++++++++++++
+ luci/lib/ricci_helpers.py             |  14 ++++++++++----
+ luci/lib/ricci_queries.py             |   7 +++++--
+ luci/public/css/shared.css            |  24 +++++++++++++++++++++++-
+ luci/public/images/stop-temp-blue.png | Bin 0 -> 489 bytes
+ luci/templates/service.html           |   4 +++-
+ 6 files changed, 54 insertions(+), 8 deletions(-)
+ create mode 100644 luci/public/images/stop-temp-blue.png
+
+diff --git a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+index 8bb6f52..0792b47 100644
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -735,6 +735,19 @@ class IndividualClusterController(BaseController):
+                 status='info')
+             for i in cur_list:
+                 rh.cluster_svc_disable(self.name, i)
++        elif command == 'Stop':
++            try:
++                permission_svc_cmd(self.name)
++            except NotAuthorizedError, e:
++                flash(e, status="warning")
++                redirect("/")
++
++            log.info('User "%s" stopped service "%s" in cluster "%s"'
++                % (self.username, ', '.join(cur_list), self.name))
++            flash(_("Stopping services %s") % ', '.join(cur_list),
++                status='info')
++            for i in cur_list:
++                rh.cluster_svc_disable(self.name, i, True)
+         elif command == 'Restart':
+             try:
+                 permission_svc_cmd(self.name)
+diff --git a/luci/lib/ricci_helpers.py b/luci/lib/ricci_helpers.py
+index ca3dd87..f74b5bb 100644
+--- a/luci/lib/ricci_helpers.py
++++ b/luci/lib/ricci_helpers.py
+@@ -496,7 +496,7 @@ def cluster_svc_restart(cluster_name, svc_name):
+         log.exception('Unable to retrieve the batch number from %s' % rc.hostname())
+     return True
+ 
+-def cluster_svc_disable(cluster_name, svc_name):
++def cluster_svc_disable(cluster_name, svc_name, temporary=False):
+     cluster_obj = get_cluster_db_obj(cluster_name)
+     if not cluster_obj:
+         return False
+@@ -507,13 +507,19 @@ def cluster_svc_disable(cluster_name, svc_name):
+     node_obj = get_node_by_host(rc.hostname())
+     if not node_obj:
+         return False
++
++    if temporary:
++        svc_action = _('Stopping')
++    else:
++        svc_action = _('Disabling')
++
+     try:
+-        (batch_num, batch_status) = rq.stopService(rc, svc_name)
++        (batch_num, batch_status) = rq.stopService(rc, svc_name, temporary)
+         task_obj = Task(batch_id=int(batch_num),
+                         task_type=luci_tasks.TASK_CLUSTER_SVC_DISABLE,
+                         batch_status=batch_status,
+-                        status_msg=_('Disabling cluster "%s" service "%s" from node "%s"') \
+-                            % (cluster_name, svc_name, rc.hostname()))
++                        status_msg=_('%s cluster "%s" service "%s" from node "%s"') \
++                            % (svc_action, cluster_name, svc_name, rc.hostname()))
+         cluster_obj.tasks.append(task_obj)
+         node_obj.tasks.append(task_obj)
+         DBSession.add(task_obj)
+diff --git a/luci/lib/ricci_queries.py b/luci/lib/ricci_queries.py
+index 33dbbad..0fa48c7 100644
+--- a/luci/lib/ricci_queries.py
++++ b/luci/lib/ricci_queries.py
+@@ -478,8 +478,11 @@ def restartService(rc, servicename):
+ 	ricci_xml = rc.batch_run(batch_str)
+ 	return batchAttemptResult(ricci_xml)
+ 
+-def stopService(rc, servicename):
+-	batch_str = '<module name="cluster"><request API_version="1.0"><function_call name="stop_service"><var mutable="false" name="servicename" type="string" value=\"%s\"/></function_call></request></module>' % servicename
++def stopService(rc, servicename, temporary=False):
++	if temporary:
++		batch_str = '<module name="cluster"><request API_version="1.0"><function_call name="stop_service"><var mutable="false" name="servicename" type="string" value=\"%s\"/><var mutable="false" name="temporary" type="boolean" value="true"/></function_call></request></module>' % servicename
++	else:
++		batch_str = '<module name="cluster"><request API_version="1.0"><function_call name="stop_service"><var mutable="false" name="servicename" type="string" value=\"%s\"/></function_call></request></module>' % servicename
+ 
+ 	ricci_xml = rc.batch_run(batch_str)
+ 	return batchAttemptResult(ricci_xml)
+diff --git a/luci/public/css/shared.css b/luci/public/css/shared.css
+index a652652..14dc684 100644
+--- a/luci/public/css/shared.css
++++ b/luci/public/css/shared.css
+@@ -261,6 +261,17 @@ td.icon, th.icon {
+   background-image: url('../images/stop-blue.png');
+ }
+ 
++/* stop */
++#tb_stop {
++  background: url('../images/stop-temp-blue.png') center left no-repeat;
++  padding-left: 17px;
++  font-size: inherit;
++}
++
++#tb_stop:hover {
++  background-image: url('../images/stop-temp-blue.png');
++}
++
+ /* enable/start */
+ #tb_start {
+   background: url('../images/start-blue.png') center left no-repeat;
+@@ -498,7 +509,7 @@ td.icon, th.icon {
+   background-image: url('../images/start-blue.png');
+ }
+ 
+-/* stop */
++/* stop (disable) */
+ #dh_stop {
+   width: 20px;
+   height: 20px;
+@@ -509,6 +520,17 @@ td.icon, th.icon {
+   background-image: url('../images/stop-blue.png');
+ }
+ 
++/* stop (stop) */
++#dh_stop_temp {
++  width: 20px;
++  height: 20px;
++  background: url('../images/stop-temp-blue.png') center left no-repeat;
++}
++
++#dh_stop_temp:hover {
++  background-image: url('../images/stop-temp-blue.png');
++}
++
+ .svc_res_table {
+     border-left: 1px solid #c4c4c4;
+     background-color: #f4f4f4;
+diff --git a/luci/templates/service.html b/luci/templates/service.html
+index 1df82af..dc695ab 100644
+--- a/luci/templates/service.html
++++ b/luci/templates/service.html
+@@ -32,6 +32,7 @@
+     <input type="submit" name="MultiAction" value="${_('Start')}" class="toolbar_button MultiAction" id="tb_start" disabled="disabled"/>
+     <input type="submit" name="MultiAction" value="${_('Restart')}" class="toolbar_button MultiAction" id="tb_restart" disabled="disabled"/>
+     <input type="submit" name="MultiAction" value="${_('Disable')}" class="toolbar_button MultiAction" id="tb_disable" disabled="disabled"/>
++    <input py:if="expertMode" type="submit" name="MultiAction" value="${_('Stop')}" class="toolbar_button MultiAction" id="tb_stop" disabled="disabled"/>
+     <input type="submit" name="MultiAction" value="${_('Delete')}" class="confirm_form toolbar_button MultiAction" id="tb_delete" disabled="disabled"/>
+   </div>
+ 
+@@ -171,7 +172,8 @@
+       <form style="display: inline; padding-left: 24px; ">
+       <div id="details_header_buttons">
+         <a class="confirm_link" href="${tg.url(services_cmd + '?command=Delete' + '&amp;name=' + quote_plus(name))}" id="dh_delete" title="delete"><span class="hide">delete</span></a>
+-        <a href="${tg.url(services_cmd + '?command=Disable' + '&amp;name=' + quote_plus(name))}" id="dh_stop" title="stop (disable)"><span class="hide">stop</span></a>
++        <a py:if="expertMode" href="${tg.url(services_cmd + '?command=Stop' + '&amp;name=' + quote_plus(name))}" id="dh_stop_temp" title="stop (stop)"><span class="hide">stop</span></a>
++        <a href="${tg.url(services_cmd + '?command=Disable' + '&amp;name=' + quote_plus(name))}" id="dh_stop" title="stop (disable)"><span class="hide">disable</span></a>
+         <a href="${tg.url(services_cmd + '?command=Restart' + '&amp;name=' + quote_plus(name))}" id="dh_update" title="restart"><span class="hide">restart</span></a>
+         <a href="#" onclick="move_service_group('${tg.url(services_cmd + '?command=Start' + '&amp;name=' + quote_plus(name))}')" id="dh_start" title="start"><span class="hide">start</span></a>
+       </div>
+-- 
+2.1.0
+

@@ -1,0 +1,36 @@
+From 4744523d3dd7aa04391b2f2e2d1e3ee3ebc6f1b1 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 4 Mar 2015 08:06:29 -0500
+Subject: [PATCH] luci: Add a cancel button to the services add resource
+ dialog
+
+Add a cancel button to the services add resource dialog, which
+was previously a dead end, if you accidentally clicked the add
+resource button.
+
+Resolves: rhbz#886526
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/js/service.js | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/luci/public/js/service.js b/luci/public/js/service.js
+index e7da75d..9c07179 100644
+--- a/luci/public/js/service.js
++++ b/luci/public/js/service.js
+@@ -102,6 +102,11 @@ $(function() {
+         open: function(event, ui) { 
+             $(this).parent().children().children('.ui-dialog-titlebar-close').hide();
+         },
++        buttons: {
++            "Cancel": function() {
++                $(this).dialog("close");
++            }
++        }
+     });
+ })
+ 
+-- 
+2.1.0
+

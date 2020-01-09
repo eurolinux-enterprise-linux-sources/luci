@@ -1,0 +1,613 @@
+From 0818efe9a1de4a09f0b956ae1ab69126af7e40ee Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 19 May 2015 01:03:53 -0400
+Subject: [PATCH] luci: Add support for fence_emerson and fence_mpath
+
+Add support for fence_emerson and fence_mpath
+
+Resolves: rhbz#1210683
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/Device.py          |   2 +
+ luci/lib/ClusterConf/FenceDeviceAttr.py |   4 +
+ luci/templates/fence_devices.html       | 281 ++++++++++++++++++++++++++++++++
+ luci/templates/fence_instances.html     |  62 +++++++
+ luci/validation/validate_fence.py       |  64 ++++++++
+ 5 files changed, 413 insertions(+)
+
+diff --git a/luci/lib/ClusterConf/Device.py b/luci/lib/ClusterConf/Device.py
+index 9ab9219..c41ca42 100644
+--- a/luci/lib/ClusterConf/Device.py
++++ b/luci/lib/ClusterConf/Device.py
+@@ -38,6 +38,8 @@ class Device(TagObject):
+       else:
+         if self.getAttribute('nodename') == unfence.getAttribute('nodename'):
+           return True
++    elif agent_type == 'fence_mpath':
++      return self.getAttribute('key') == unfence.getAttribute('key')
+     elif (agent_type == 'fence_sanbox2'
+           or agent_type == 'fence_brocade'
+           or agent_type == 'fence_mcdata'):
+diff --git a/luci/lib/ClusterConf/FenceDeviceAttr.py b/luci/lib/ClusterConf/FenceDeviceAttr.py
+index 6de49b8..0922dd4 100644
+--- a/luci/lib/ClusterConf/FenceDeviceAttr.py
++++ b/luci/lib/ClusterConf/FenceDeviceAttr.py
+@@ -23,11 +23,13 @@ FENCE_OPTS = {
+ 	'fence_hpblade':		'HP BladeSystem',
+ 	'fence_mcdata':			'McDATA SAN Switch',
+ 	'fence_eaton_snmp':		'Eaton Network Power Controller (SNMP Interface)',
++	'fence_emerson':		'Emerson Network Power Controller (SNMP Interface)',
+ 	'fence_egenera':		'Egenera BladeFrame',
+ 	'fence_bullpap':		'Bull PAP',
+ 	'fence_xvm':			'xvm Virtual Machine Fencing',
+ 	'fence_virt':			'fence_virt Virtual Machine Fencing',
+ 	'fence_scsi':			'SCSI Reservation Fencing',
++	'fence_mpath':			'Multipath Persistent Reservation Fencing',
+ 	'fence_ilo':			'HP iLO Device',
+ 	'fence_ilo2':			'HP iLO2 Device',
+ 	'fence_ilo3':			'HP iLO3 Device',
+@@ -78,6 +80,7 @@ FENCE_SHARED = {
+ 	'fence_xvm':			True,
+ 	'fence_virt':			True,
+ 	'fence_scsi':			True,
++	'fence_mpath':			True,
+ 	'fence_lpar':			True,
+ 	'fence_vmware':			True,
+ 	'fence_vmware_soap':	True,
+@@ -89,6 +92,7 @@ FENCE_SHARED = {
+ 	'fence_ibmblade':		True,
+ 	'fence_hpblade':		True,
+ 	'fence_eaton_snmp':		True,
++	'fence_emerson':		True,
+ 	'fence_ifmib':			True,
+ 	'fence_ipdu':			True,
+ 	'fence_intelmodular':	True,
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index ffbe295..7bc67f1 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -1451,6 +1451,104 @@
+   <input type="hidden" name="fence_type" value="fence_scsi" />
+ </div>
+ 
++<div py:def="fence_mpath(cur_fencedev, ni)" id="fence_mpath" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>Multipath Persistent Reservation Fencing</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Devices (Comma delimited list)</td>
++      <td>
++        <input name="devices" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('devices')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Use sudo when calling third-party software</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="sudo"
++          py:attrs="cur_fencedev and cur_fencedev.getAttribute('sudo') and {'checked': 'checked'}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Path to sudo binary (optional)</td>
++      <td>
++        <input type="text" class="text" name="sudo_path"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('sudo_path')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Path to mpathpersist binary (optional)</td>
++      <td>
++        <input type="text" class="text" name="mpathpersist_path"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('mpathpersist_path')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Path to a directory where the fence agent can store information (optional)</td>
++      <td>
++        <input type="text" class="text" name="store_path"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('store_path')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="sharable" value="1" />
++  <input type="hidden" name="num_instances" value="${ni}"/>
++  <input type="hidden" name="fence_type" value="fence_mpath" />
++</div>
++
+ <div py:def="fence_lpar(cur_fencedev, ni)" id="fence_lpar" class="fencedevform row"
+    py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+   <table class="formtable">
+@@ -4965,6 +5063,185 @@
+   <input type="hidden" name="fence_type" value="fence_eaton_snmp" />
+ </div>
+ 
++<div py:def="fence_emerson(cur_fencedev, ni)" id="fence_emerson" class="fencedevform row"
++   py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
++  <table class="formtable">
++    <tr>
++      <td>Fence Type</td>
++      <td>Emerson Network Power Switch (SNMP interface)</td>
++    </tr>
++    <tr>
++      <td>Name</td>
++      <td>
++        <input name="name" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getName()} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>IP Address or Hostname</td>
++      <td>
++        <input name="ipaddr" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('ipaddr')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>UDP/TCP Port (optional, defaults to 161)</td>
++      <td>
++        <input name="udpport" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('udpport')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login</td>
++      <td>
++        <input name="login" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Password</td>
++      <td>
++        <input name="passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        <span title="Full path to a script to generate fence password">Password Script (optional)</span>
++      </td>
++      <td>
++        <input type="text" class="text" name="passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Version</td>
++      <td>
++        <select name="snmp_version">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_version')) and {'selected':'selected'} or {}">Default</option>
++          <option value="1"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '1' and {'selected':'selected'} or {}">1</option>
++          <option value="2c"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '2c' and {'selected':'selected'} or {}">2c</option>
++          <option value="3"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_version') == '3' and {'selected':'selected'} or {}">3</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Community</td>
++      <td>
++        <input name="community" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('community')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Security Level</td>
++      <td>
++        <select name="snmp_sec_level">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_sec_level')) and {'selected':'selected'} or {}">Default</option>
++          <option value="noAuthNoPriv"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'noAuthNoPriv' and {'selected':'selected'} or {}">noAuthNoPriv</option>
++          <option value="authNoPriv"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authNoPriv' and {'selected':'selected'} or {}">authNoPriv</option>
++          <option value="authPriv"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_sec_level') == 'authPriv' and {'selected':'selected'} or {}">authPriv</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Authentication Protocol</td>
++      <td>
++        <select name="snmp_auth_prot">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_auth_prot')) and {'selected':'selected'} or {}">Default</option>
++          <option value="MD5"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'MD5' and {'selected':'selected'} or {}">MD5</option>
++          <option value="SHA"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_auth_prot') == 'SHA' and {'selected':'selected'} or {}">SHA</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Privacy Protocol</td>
++      <td>
++        <select name="snmp_priv_prot">
++          <option value=""
++            py:attrs="(not cur_fencedev or not cur_fencedev.getAttribute('snmp_priv_prot')) and {'selected':'selected'} or {}">Default</option>
++          <option value="DES"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'DES' and {'selected':'selected'} or {}">DES</option>
++          <option value="AES"
++            py:attrs="cur_fencedev and cur_fencedev.getAttribute('snmp_priv_prot') == 'AES' and {'selected':'selected'} or {}">AES</option>
++        </select>
++      </td>
++    </tr>
++    <tr>
++      <td>SNMP Privacy Protocol Password</td>
++      <td>
++        <input name="snmp_priv_passwd" type="password" class="text" autocomplete="off"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>
++        SNMP Privacy Protocol Script
++      </td>
++      <td>
++        <input type="text" class="text" name="snmp_priv_passwd_script"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('snmp_priv_passwd_script')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Wait (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_wait"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_wait')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Power Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="power_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('power_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Shell Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="shell_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('shell_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Login Timeout (seconds)</td>
++      <td>
++        <input type="text" class="text" name="login_timeout"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('login_timeout')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Times to Retry Power On Operation</td>
++      <td>
++        <input type="text" class="text" name="retry_on"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('retry_on')} or {}"/>
++      </td>
++    </tr>
++  </table>
++
++  <py:if test="cur_fencedev">
++    <input type="hidden"
++      name="orig_name" value="${cur_fencedev.getName()}"/>
++    <input type="hidden"
++      name="existing_device" value="1" />
++  </py:if>
++
++  <input type="hidden" name="sharable" value="1" />
++  <input type="hidden" name="num_instances" value="${ni}"/>
++  <input type="hidden" name="fence_type" value="fence_emerson" />
++</div>
++
+ <div py:def="fence_hpblade(cur_fencedev, ni)" id="fence_hpblade" class="fencedevform row"
+    py:attrs="cur_fencedev and {'id': 'fd_%s' % cur_fencedev.getName()}">
+   <table class="formtable">
+@@ -5097,6 +5374,7 @@ ${fence_virsh(None,0)}
+ ${fence_rhevm(None,0)}
+ ${fence_xvm(None,0)}
+ ${fence_scsi(None,0)}
++${fence_mpath(None,0)}
+ ${fence_lpar(None,0)}
+ ${fence_vmware(None,0)}
+ ${fence_vmware_soap(None,0)}
+@@ -5128,6 +5406,7 @@ ${fence_zvm(None,0)}
+ ${fence_ibmblade(None,0)}
+ ${fence_hpblade(None,0)}
+ ${fence_eaton_snmp(None,0)}
++${fence_emerson(None,0)}
+ ${fence_sanlock(None,0)}
+ ${fence_unknown(None,0)}
+ </div>
+@@ -5173,6 +5452,7 @@ ${fence_unknown(None,0)}
+       <option name="fence_idrac" value="fence_idrac">Dell iDRAC</option>
+       <option py:if="cluster_version == 3" name="fence_eaton_snmp" value="fence_eaton_snmp">Eaton Network Power Switch (SNMP interface)</option>
+       <option name="fence_egenera" value="fence_egenera">Egenera BladeFrame</option>
++      <option py:if="cluster_version == 3" name="fence_emerson" value="fence_emerson">Emerson Network Power Switch (SNMP interface)</option>
+ 
+       <option name="fence_eps" value="fence_eps">ePowerSwitch</option>
+       <py:choose test="cluster_version">
+@@ -5212,6 +5492,7 @@ ${fence_unknown(None,0)}
+       <option name="fence_kdump" value="fence_kdump">Fence kdump</option>
+       <option py:if="cluster_version == 2" name="fence_lpar" value="fence_lpar">LPAR Fencing</option>
+       <option py:if="cluster_version == 2" name="fence_mcdata" value="fence_mcdata">McData SAN Switch</option>
++      <option py:if="cluster_version == 3" name="fence_mpath" value="fence_mpath">Multipath Persistent Reservation Fencing</option>
+ 
+       <option py:if="cluster_version == 2" name="fence_sanbox2" value="fence_sanbox2">QLogic SANbox2</option>
+       <option py:if="cluster_version == 3" name="fence_sanbox2" value="fence_sanbox2">QLogic SANbox2 (Deprecated)</option>
+diff --git a/luci/templates/fence_instances.html b/luci/templates/fence_instances.html
+index 12315c1..61fc09f 100644
+--- a/luci/templates/fence_instances.html
++++ b/luci/templates/fence_instances.html
+@@ -1208,6 +1208,41 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
++<div py:def="fence_mpath_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_mpath_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++  ${unfence_alert(kw.get('unfencing', True))}
++  <table class="detailstable">
++    <tr>
++      <td>Unfencing</td>
++      <td>
++        <input type="checkbox" class="checkbox" name="unfencing_dummy"
++               disabled="disabled" checked="checked"/>
++        <label class="choice">Enable</label>
++        <input type="hidden" name="unfencing" value="checked" />
++        <input type="hidden" name="unfence_action" value="on" />
++      </td>
++    </tr>
++    <tr>
++      <td>Key for current action</td>
++      <td>
++        <input type="text" class="text" name="key"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('key')} or {}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
++  </table>
++  <input type="hidden" name="fence_type" value="fence_mpath" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
+ <div py:def="fence_eaton_snmp_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_eaton_snmp_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+   <table class="detailstable">
+@@ -1233,6 +1268,31 @@
+     py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
+ </div>
+ 
++<div py:def="fence_emerson_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_emerson_instance"
++  py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
++  <table class="detailstable">
++    <tr>
++      <td>Port (Outlet) Number</td>
++      <td>
++        <input name="port" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('port')}"/>
++      </td>
++    </tr>
++    <tr>
++      <td>Delay (optional)</td>
++      <td>
++        <input name="delay" type="text" class="text"
++          py:attrs="cur_fence_inst and {'value': cur_fence_inst.getAttribute('delay')}"/>
++      </td>
++    </tr>
++  </table>
++
++  <input type="hidden" name="fence_type" value="fence_emerson" />
++  <input type="hidden" name="fence_instance" value="1" />
++  <input type="hidden" name="parent_fencedev"
++    py:attrs="cur_fence_dev_id and {'value': cur_fence_dev_id} or {}" />
++</div>
++
+ <div py:def="fence_hpblade_instance(cur_fence_inst, cur_fence_dev_id, fi_id, **kw)" id="fence_hpblade_instance"
+   py:attrs="fi_id is not None and {'id': fi_id, 'class':'fenceinst'}">
+   <table class="detailstable">
+@@ -1302,6 +1362,7 @@
+ ${fence_apc_instance(None, None, None)}
+ ${fence_apc_snmp_instance(None, None, None)}
+ ${fence_eaton_snmp_instance(None, None, None)}
++${fence_emerson_instance(None, None, None)}
+ ${fence_egenera_instance(None, None, None)}
+ ${fence_hpblade_instance(None, None, None)}
+ ${fence_lpar_instance(None, None, None)}
+@@ -1347,6 +1408,7 @@ ${fence_rsb_instance(None, None, None)}
+ ${fence_xcat_instance(None, None, None)}
+ ${fence_zvm_instance(None, None, None)}
+ ${fence_scsi_instance(None, None, None, nodename=nodename)}
++${fence_mpath_instance(None, None, None)}
+ ${fence_sanlock_instance(None, None, None)}
+ ${fence_unknown_instance(None, None, None)}
+ </div>
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index 462d5bc..f9a3fce 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -352,6 +352,23 @@ def val_scsi_fd(fencedev, fence_name, **kw):
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+ 	return errors
+ 
++def val_mpath_fd(fencedev, fence_name, **kw):
++	params = (
++		('devices', True),
++		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
++		('mpathpersist_path', False),
++		('store_path', False),
++		('sudo', False),
++		('sudo_path', False),
++	)
++
++	errors = config_fence_attr(params, fencedev, fence_name, **kw)
++	return errors
++
+ def val_lpar_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+@@ -870,6 +887,30 @@ def val_eaton_snmp_fd(fencedev, fence_name, **kw):
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+ 	return errors
+ 
++def val_emerson_fd(fencedev, fence_name, **kw):
++	params = (
++		('ipaddr', True),
++		('udpport', False),
++		('login', True),
++		('passwd', False),
++		('passwd_script', False),
++		('community', False),
++		('snmp_version', False),
++		('snmp_sec_level', False),
++		('snmp_auth_prot', False),
++		('snmp_priv_prot', False),
++		('snmp_priv_passwd', False),
++		('snmp_priv_passwd_script', False),
++		('power_wait', False),
++		('power_timeout', False),
++		('shell_timeout', False),
++		('login_timeout', False),
++		('retry_on', False),
++	)
++
++	errors = config_fence_attr(params, fencedev, fence_name, **kw)
++	return errors
++
+ def val_rhevm_fd(fencedev, fence_name, **kw):
+ 	params = (
+ 		('ipaddr', True),
+@@ -902,6 +943,7 @@ FD_VALIDATE = {
+ 	'fence_drac':			val_drac_fd,
+ 	'fence_eaton_snmp':		val_eaton_snmp_fd,
+ 	'fence_egenera':		val_egenera_fd,
++	'fence_emerson':		val_emerson_fd,
+ 	'fence_eps':			val_eps_fd,
+ 	'fence_gnbd':			val_gnbd_fd,
+ 	'fence_hpblade':		val_hpblade_fd,
+@@ -930,6 +972,7 @@ FD_VALIDATE = {
+ 	'fence_sanbox2':		val_sanbox2_fd,
+ 	'fence_sanlock':		val_sanlock_fd,
+ 	'fence_scsi':			val_scsi_fd,
++	'fence_mpath':			val_mpath_fd,
+ 	'fence_virsh':			val_virsh_fd,
+ 	'fence_virt':			val_virt_fd,
+ 	'fence_vixel':			val_vixel_fd,
+@@ -1291,6 +1334,16 @@ def val_scsi_fi(fenceinst, parent_name, **kw):
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+ 	return errors
+ 
++def val_mpath_fi(fenceinst, parent_name, **kw):
++	params = (
++		('key', True),
++		('delay', False),
++		('unfencing', True),  # just a template sanity-check, not propagated
++	)
++
++	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
++	return errors
++
+ def val_rhevm_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('port', True),
+@@ -1309,6 +1362,15 @@ def val_eaton_snmp_fi(fenceinst, parent_name, **kw):
+ 	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
+ 	return errors
+ 
++def val_emerson_fi(fenceinst, parent_name, **kw):
++	params = (
++		('port', True),
++		('delay', False),
++	)
++
++	errors = config_fence_attr(params, fenceinst, parent_name, **kw)
++	return errors
++
+ def val_sanlock_fi(fenceinst, parent_name, **kw):
+ 	params = (
+ 		('host_id', True),
+@@ -1334,6 +1396,7 @@ FI_VALIDATE = {
+ 	'fence_drac5':			val_noop_fi,
+ 	'fence_drac':			val_noop_fi,
+ 	'fence_eaton_snmp':		val_eaton_snmp_fi,
++	'fence_emerson':		val_emerson_fi,
+ 	'fence_egenera':		val_egenera_fi,
+ 	'fence_eps':			val_eps_fi,
+ 	'fence_gnbd':			val_gnbd_fi,
+@@ -1363,6 +1426,7 @@ FI_VALIDATE = {
+ 	'fence_sanbox2':		val_sanbox2_fi,
+ 	'fence_sanlock':		val_sanlock_fi,
+ 	'fence_scsi':			val_scsi_fi,
++	'fence_mpath':			val_mpath_fi,
+ 	'fence_virsh':			val_virsh_fi,
+ 	'fence_virt':			val_virt_fi,
+ 	'fence_vixel':			val_vixel_fi,
+-- 
+2.1.0
+

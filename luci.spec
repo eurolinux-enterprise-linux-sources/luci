@@ -54,7 +54,7 @@
 
 Name:           luci
 Version:        0.26.0
-Release:        63%{?dist}
+Release:        70%{?dist}
 
 Summary:        Web-based high availability administration application
 URL:            https://fedorahosted.org/cluster/wiki/Luci
@@ -62,7 +62,7 @@ License:        GPLv2
 Group:          Applications/System
 
 Source0:        http://people.redhat.com/rmccabe/luci/luci-%{version}.tar.bz2
-Source1:        sort-images-0.1.tar.gz
+Source1:        sort-images-0.2.tar.gz
 
 # this denotes builds in which luci.ini file should be generated anew
 %global breakpoints_luci_ini \
@@ -185,6 +185,21 @@ Patch110: bz1100817-fix_editing_services_that_vm_references.patch
 Patch111: bz1117398-fix_error_in_fence_lpar_form.patch
 Patch112: bz1117398-2-fix_issues_with_bind_mount_resource_name_display.patch
 Patch113: bz1100817-luci_fix_editing_services_that_vm_references.patch
+Patch114: bz1136456-don_t_active_new_conf_if_any_of_the_nodes_didn_t.patch
+Patch115: bz886526-add_a_cancel_button_to_the_services_add_resource.patch
+Patch116: bz917761-add_support_for_miss_count_const.patch
+Patch117: bz917773-add_support_for_rrp_problem_count_threshold.patch
+Patch118: bz917781-indicate_that_shutdown_wait_is_ignored_for.patch
+Patch119: bz1010400-add_support_for_the_fence_apc_cmd_prompt_attr.patch
+Patch120: bz1100831-don_t_let_the_add_resource_button_disappear_after.patch
+Patch121: bz919223-add_expand_and_collapse_buttons_for_services.patch
+Patch122: bz1111249-add_a_stop_service_action_in_expert_mode.patch
+Patch123: bz1112297-don_t_lose_nfsserver_nfspath_when_not_in_expert.patch
+Patch124: bz919223-add_expand_collapse_buttons_for_each_inline.patch
+Patch125: bz1112297-preserve_expert_mode_resource_attributes.patch
+Patch126: bz1136456-warn_when_config_can_t_be_set_or_activated.patch
+Patch127: bz1204910-update_fence_virt_fence_xvm_labels.patch
+Patch128: bz1210683-add_support_for_fence_emerson_and_fence_mpath.patch
 
 ExclusiveArch:  i686 x86_64
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -230,6 +245,7 @@ pushd luci/public/images
 cp -f ../../../sort-images/asc.gif .
 cp -f ../../../sort-images/desc.gif .
 cp -f ../../../sort-images/bg.gif .
+cp -f ../../../sort-images/stop-temp-blue.png .
 popd
 
 %patch0 -p1 -b .bz671285
@@ -345,10 +361,25 @@ popd
 %patch107 -p1 -b .bz1117398.1
 %patch108 -p1 -b .bz1117398.2
 %patch109 -p1 -b .bz1117398.3
-%patch110 -p1 -b .bz1100817.1
+%patch110 -p1 -b .bz1100817.3
 %patch111 -p1 -b .bz1117398.1
 %patch112 -p1 -b .bz1117398.2
-%patch113 -p1 -b .bz1100817.1
+%patch113 -p1 -b .bz1100817.4
+%patch114 -p1 -b .bz1136456.1
+%patch117 -p1 -b .bz917773.1
+%patch116 -p1 -b .bz917761.1
+%patch118 -p1 -b .bz917781.1
+%patch119 -p1 -b .bz1010400.1
+%patch115 -p1 -b .bz886526.1
+%patch120 -p1 -b .bz1100831.1
+%patch121 -p1 -b .bz919223.1
+%patch122 -p1 -b .bz1111249.1
+%patch123 -p1 -b .bz1112297.1
+%patch124 -p1 -b .bz919223.2
+%patch125 -p1 -b .bz1112297.2
+%patch126 -p1 -b .bz1136456.2
+%patch127 -p1 -b .bz1204910.1
+%patch128 -p1 -b .bz1210683.1
 
 # Make sure no dependency is downloaded by modifying stock setup.cfg
 # (this apparently cannot by used by calling saveopts subcommand
@@ -532,6 +563,53 @@ fi
 
 
 %changelog
+* Tue May 19 2015 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-70
+- luci: Rebuild for changelog cleanup
+
+* Tue May 19 2015 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-69
+- luci: Add support for fence_emerson and fence_mpath
+  Resolves: rhbz#1210683
+
+* Tue May 05 2015 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-68
+- luci: Add expand/collapse buttons for each inline resource
+  Resolves: rhbz#919223
+- luci: Preserve expert mode resource attributes when editing service groups
+  Resolves: rhbz#1112297
+- luci: Warn when config can't be set or activated
+  Resolves: rhbz#1136456
+- luci: Update fence_virt / fence_xvm labels
+  Resolves: rhbz#1204910
+
+* Sun Mar 08 2015 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-67
+- Rebuild for new stop image
+  Resolves: rhbz#1111249
+
+* Sun Mar 08 2015 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-66
+- luci: Add expand and collapse buttons for services
+  Resolves: rhbz#919223
+- luci: Add a "stop" service action in expert mode
+  Resolves: rhbz#1111249
+- luci: Don't lose nfsserver "nfspath" when not in expert mode
+  Resolves: rhbz#1112297
+
+* Wed Mar 04 2015 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-65
+- luci: Add a cancel button to the services add resource dialog
+  Resolves: rhbz#886526
+- luci: Add support for miss_count_const
+  Resolves: rhbz#917761
+- luci: Add support for rrp_problem_count_threshold
+  Resolves: rhbz#917773
+- Luci: Indicate that shutdown_wait is ignored for postgres8 resources
+  Resolves: rhbz#917781
+- luci: Add support for the fence_apc cmd_prompt attr
+  Resolves: rhbz#1010400
+- luci: Don't let the add resource button disappear after adding a VM
+  Resolves: rhbz#1100831
+
+* Tue Mar 03 2015 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-64
+- luci: Don't active new conf if any of the nodes didn't receive it
+  Resolves: rhbz#1136456
+
 * Tue Sep 02 2014 Ryan McCabe <rmccabe@redhat.com> - 0.26.0-63
 - luci: Fix editing services that VM references
 

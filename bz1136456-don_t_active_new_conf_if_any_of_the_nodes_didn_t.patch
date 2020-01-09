@@ -1,0 +1,49 @@
+From 4b0254815909114215472f324b21cfba205dba93 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Mon, 24 Nov 2014 09:44:32 -0500
+Subject: [PATCH] luci: Don't active new conf if any of the nodes didn't
+ receive it
+
+Don't active a new configuration version if there was an error
+propagating that configuration to any of the nodes.
+
+Resolves: rhbz#1136456
+
+Patch from John Ruemker <jruemker@redhat.com>
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ricci_helpers.py | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/luci/lib/ricci_helpers.py b/luci/lib/ricci_helpers.py
+index 23be6d3..ca3dd87 100644
+--- a/luci/lib/ricci_helpers.py
++++ b/luci/lib/ricci_helpers.py
+@@ -141,6 +141,7 @@ def update_cluster_conf(cluster_model, node_list=[]):
+                 % cluster_name)
+             return False
+ 
++        sync_err = False
+         for i in ret.keys():
+             try:
+                 batch_status = ret[i].get('batch_result')
+@@ -158,10 +159,15 @@ def update_cluster_conf(cluster_model, node_list=[]):
+                     if ret[i].get('error'):
+                         log.error('Error retrieving batch number from %s: %s' %
+                             (i, ret[i].get('err_msg')))
++                        sync_err = True
+             except Exception, e:
+                 log.exception('Unable to retrieve the batch number from %s' % i)
++                sync_err = True
+                 continue
+ 
++        if not sync_err:
++            return False
++
+         # Activate the new config we just set
+         new_version = cluster_model.getClusterConfigVersion()
+         host_triples = prepare_host_triples(cluster_obj, node_list, rq.setClusterVersion, new_version)
+-- 
+2.1.0
+

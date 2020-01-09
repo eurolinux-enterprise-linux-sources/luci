@@ -1,0 +1,33 @@
+From 97c160fea5fae6e7fb3477529d1fbad145de25f4 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 4 Mar 2015 08:04:17 -0500
+Subject: [PATCH] Luci: Indicate that shutdown_wait is ignored for
+ postgres8 resources
+
+Indicate that the "shutdown_wait" attribute is ignored for
+postgres8 resources.
+
+Resolves: rhbz#917781
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index fc5b482..655d333 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -1003,7 +1003,8 @@
+       </td>
+     </tr>
+     <tr>
+-      <td>Shutdown Wait (seconds)</td>
++      <td py:if="cluster_os == 'RHEL' and os_version &gt; 6.1">Shutdown Wait (seconds) (ignored)</td>
++      <td py:if="cluster_os != 'RHEL' or os_version &lt; 6.2">Shutdown Wait (seconds)</td>
+       <td>
+         <input type="text" class="text" name="shutdown_wait"
+           py:attrs="res and {'value':res.getAttribute('shutdown_wait'), 'disabled':global_resource and 'disabled' or None} or {}" />
+-- 
+2.1.0
+

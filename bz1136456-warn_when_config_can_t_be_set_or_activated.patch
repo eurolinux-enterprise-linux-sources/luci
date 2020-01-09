@@ -1,0 +1,389 @@
+From 72df9021d81816f65d57e0dbdcaba2e4f199e7ac Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 5 May 2015 08:42:47 -0400
+Subject: [PATCH] luci: Warn when config can't be set or activated
+
+Instead of attempting to determine when it is safe to activate a
+new cluster configuration on a node, leave it to cman. Instead, warn
+the user if any errors occur while attempting to set or activate
+the configuration.
+
+Resolves: rhbz#1136456
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/controllers/cluster.py                     | 99 ++++++++++++++++++++-----
+ luci/lib/ricci_helpers.py                       | 53 +++++++------
+ luci/validation/validate_create_cluster_form.py |  6 +-
+ 3 files changed, 115 insertions(+), 43 deletions(-)
+
+diff --git a/luci/controllers/cluster.py b/luci/controllers/cluster.py
+index 0792b47..c8afce5 100644
+--- a/luci/controllers/cluster.py
++++ b/luci/controllers/cluster.py
+@@ -229,7 +229,10 @@ class IndividualClusterController(BaseController):
+             if found_method is True:
+                 log.info('User "%s" removed method "%s" from node "%s" in cluster "%s"'
+                     % (self.username, methodname, cur_nodename, self.name))
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+             else:
+                 log.error('User "%s" failed to remove method "%s" from node "%s" in cluster "%s"'
+                     % (self.username, methodname, cur_nodename, self.name))
+@@ -246,7 +249,10 @@ class IndividualClusterController(BaseController):
+             if found_instance is True:
+                 log.info('User "%s" removed fence instance "%s" from method "%s" from node "%s" in cluster "%s"'
+                     % (self.username, fenceinst, methodname, cur_nodename, self.name))
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+             else:
+                 log.error('User "%s" failed to remove fence instance "%s" from method "%s" from node "%s" in cluster "%s"'
+                     % (self.username, fenceinst, methodname, cur_nodename, self.name))
+@@ -259,7 +265,10 @@ class IndividualClusterController(BaseController):
+                 mposition = fence_elem.findMethod(methodname)
+                 if mposition is not None and mposition > 0:
+                     fence_elem.moveMethodUp(mposition)
+-                    rh.update_cluster_conf(self.model)
++                    msgs = rh.update_cluster_conf(self.model)
++                    if msgs and len(msgs) > 0:
++                      flash2.warning(', '.join(msgs))
++                      flash2.flush()
+                     log.info('User "%s" moved up fence method "%s" for node "%s" in cluster "%s"'
+                         % (self.username, methodname, cur_nodename, self.name))
+ 
+@@ -272,7 +281,10 @@ class IndividualClusterController(BaseController):
+                 mposition = fence_elem.findMethod(methodname)
+                 if mposition is not None and mposition < len(levels) - 1:
+                     fence_elem.moveMethodDown(mposition)
+-                    rh.update_cluster_conf(self.model)
++                    msgs = rh.update_cluster_conf(self.model)
++                    if msgs and len(msgs) > 0:
++                      flash2.warning(', '.join(msgs))
++                      flash2.flush()
+                     log.info('User "%s" moved down fence method "%s" for node "%s" in cluster "%s"'
+                         % (self.username, methodname, cur_nodename, self.name))
+ 
+@@ -313,7 +325,10 @@ class IndividualClusterController(BaseController):
+                 flash(_('Updating fence settings for node "%s"' % cur_nodename))
+                 log.info('User "%s" added a fence instance to fence method "%s" for node "%s" in cluster "%s"'
+                     % (self.username, methodname, cur_nodename, self.name))
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+             else:
+                 msgs = retobj
+                 if msgs and len(msgs) > 0:
+@@ -362,7 +377,10 @@ class IndividualClusterController(BaseController):
+                 node.getFenceNode().children[int(method_num)].children[int(fence_instance_id)] = retobj
+                 log.info('User "%s" edited "%s" fence instance of fence method "%s" for node "%s" in cluster "%s"'
+                     % (self.username, kw.get('fencedev'), method_num, cur_nodename, self.name))
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+ 
+         elif command == "AddFenceMethod":
+             node = self.model.retrieveNodeByName(cur_nodename)
+@@ -372,7 +390,10 @@ class IndividualClusterController(BaseController):
+             node.getFenceNode().addChild(method)
+             log.info('User "%s" added fence method "%s" to node "%s" in cluster "%s"'
+                 % (self.username, methodname, cur_nodename, self.name))
+-            rh.update_cluster_conf(self.model)
++            msgs = rh.update_cluster_conf(self.model)
++            if msgs and len(msgs) > 0:
++              flash2.warning(', '.join(msgs))
++              flash2.flush()
+ 
+         redirect('%s%s' % (tmpl_context.cluster_url, cur_nodename))
+ 
+@@ -481,8 +502,10 @@ class IndividualClusterController(BaseController):
+                 if msgs and len(msgs) > 0:
+                     flash2.warning(', '.join(msgs))
+                 flash2.info(_('Updating properties of node: %s') % cur_list[0])
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
+                 flash2.flush()
+-                rh.update_cluster_conf(self.model)
+             else:
+                 msgs = vret[1].get('errors')
+                 if msgs and len(msgs) > 0:
+@@ -573,7 +596,10 @@ class IndividualClusterController(BaseController):
+                 flash(_("Deleting resources %s") % ', '.join(cur_list),
+                     status='info')
+ 
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+                 redirect(tmpl_context.cluster_url)
+         elif command in ("Create", "Edit"):
+             if command == 'Create':
+@@ -604,7 +630,10 @@ class IndividualClusterController(BaseController):
+                 log.info('User "%s" %s global resource "%s" in cluster "%s"'
+                     % (self.username, cur_action, res_name, self.name))
+                 flash(_('%s global resource "%s"') % (cur_action, res_name))
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+                 redirect(redir_fmt
+                     % (tmpl_context.cluster_url, quote_plus(res_name)))
+             else:
+@@ -691,7 +720,10 @@ class IndividualClusterController(BaseController):
+             for i in cur_list:
+                 self.model.deleteService(i)
+ 
+-            rh.update_cluster_conf(self.model)
++            msgs = rh.update_cluster_conf(self.model)
++            if msgs and len(msgs) > 0:
++              flash2.warning(', '.join(msgs))
++              flash2.flush()
+             redirect(tmpl_context.cluster_url)
+         if command == 'Start':
+             try:
+@@ -779,7 +811,10 @@ class IndividualClusterController(BaseController):
+                 log.info('User "%s" %s cluster service "%s" in cluster "%s"'
+                     % (self.username, cur_action, svc_name, self.name))
+                 flash(_('%s cluster service "%s"') % (cur_action, svc_name))
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+             else:
+                 msgs = vret[1].get('errors')
+                 if msgs and len(msgs) > 0:
+@@ -861,7 +896,10 @@ class IndividualClusterController(BaseController):
+             flash(_('Deleting failover domains %s') % ', '.join(cur_list))
+             for i in cur_list:
+                 self.model.deleteFailoverDomain(i)
+-            rh.update_cluster_conf(self.model)
++            msgs = rh.update_cluster_conf(self.model)
++            if msgs and len(msgs) > 0:
++              flash2.warning(', '.join(msgs))
++              flash2.flush()
+ 
+             redirect(tmpl_context.cluster_url)
+ 
+@@ -878,7 +916,10 @@ class IndividualClusterController(BaseController):
+                 log.info('User "%s" updated the settings of failover domain "%s" in cluster "%s"'
+                     % (self.username, cur_list[0], self.name))
+                 flash(_('Updating settings for failover domain "%s"') % cur_list[0])
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+             else:
+                 msgs = vret[1].get('errors')
+                 if msgs and len(msgs) > 0:
+@@ -891,7 +932,10 @@ class IndividualClusterController(BaseController):
+                 log.info('User "%s" updated the properties of failover domain "%s" in cluster "%s"'
+                     % (self.username, cur_list[0], self.name))
+                 flash(_('Updating properties for failover domain "%s"') % cur_list[0])
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+             else:
+                 msgs = vret[1].get('errors')
+                 if msgs and len(msgs) > 0:
+@@ -904,7 +948,10 @@ class IndividualClusterController(BaseController):
+                 log.info('User "%s" created failover domain "%s" in cluster "%s"'
+                     % (self.username, kw.get('fdom_name'), self.name))
+                 flash(_('Creating failover domain "%s"') % kw.get('fdom_name'))
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+                 redirect('%s?name=%s'
+                     % (tmpl_context.cluster_url, quote_plus(kw.get('fdom_name').strip())))
+             else:
+@@ -982,7 +1029,10 @@ class IndividualClusterController(BaseController):
+         if command == 'Create':
+             fret = validateNewFenceDevice(self.model, **kw)
+             if fret[0] is True:
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+                 flash(_('Created fence device "%s"') % cur_list[0])
+                 log.info('User "%s" created fence device "%s" in cluster "%s"'
+                     % (self.username, ', '.join(cur_list), self.name))
+@@ -1006,11 +1056,17 @@ class IndividualClusterController(BaseController):
+                     continue
+                 updated |= self.model.deleteFenceDevice(cur_fencedev)
+             if updated:
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+         elif command == 'Update':
+             fret = validateFenceDevice(self.model, **kw)
+             if fret[0] is True:
+-                rh.update_cluster_conf(self.model)
++                msgs = rh.update_cluster_conf(self.model)
++                if msgs and len(msgs) > 0:
++                  flash2.warning(', '.join(msgs))
++                  flash2.flush()
+                 flash(_('Edited fence device "%s"') % cur_list[0])
+                 log.info('User "%s" updated fence device "%s" in cluster "%s"'
+                     % (self.username, ', '.join(cur_list), self.name))
+@@ -1066,7 +1122,10 @@ class IndividualClusterController(BaseController):
+             msgs = vret[1].get('flash')
+             if msgs and len(msgs) > 0:
+                 flash(', '.join(msgs), status="info")
+-            rh.update_cluster_conf(self.model)
++            msgs = rh.update_cluster_conf(self.model)
++            if msgs and len(msgs) > 0:
++              flash2.warning(', '.join(msgs))
++              flash2.flush()
+             if vret[1].get('start_qdisk'):
+                 log.info('Starting qdiskd for cluster "%s"' % self.name)
+                 rh.cluster_node_start(self.name, [])
+diff --git a/luci/lib/ricci_helpers.py b/luci/lib/ricci_helpers.py
+index f74b5bb..f90cff2 100644
+--- a/luci/lib/ricci_helpers.py
++++ b/luci/lib/ricci_helpers.py
+@@ -114,7 +114,7 @@ def update_cluster_conf(cluster_model, node_list=[]):
+     cluster_name = cluster_model.getClusterName()
+     cluster_obj = get_cluster_db_obj(cluster_name)
+     if not cluster_obj:
+-        return False
++        return [_('Unable to find DB object for cluster %s') % cluster_name]
+ 
+     conf_str = cluster_model.exportModelAsString()
+     if cluster_model.getClusterVersion() < 3:
+@@ -124,12 +124,14 @@ def update_cluster_conf(cluster_model, node_list=[]):
+             rc = get_agent_for_cluster(cluster_name)
+             ret = rq.setClusterConfSync(get_agent_for_cluster(cluster_name), conf_str)
+             if ret != True:
+-                log.info('Config update for %s failed at node %s' \
+-                    % (cluster_name, rc.hostname()))
+-                return False
++                err_str = _('Config update for %s failed at node %s') \
++                    % (cluster_name, rc.hostname())
++                log.info('%s' % err_str)
++                return [ err_str ]
+         except Exception, e:
+-            log.exception('Config update for %s failed' % cluster_name)
+-            return False
++            err_str = _('Config update for %s failed') % cluster_name
++            log.exception('%s' % err_str)
++            return [ err_str ]
+     else:
+         # For >= cluster3, RHEL6 set the conf on each node, then activate
+         # the new version.
+@@ -137,11 +139,12 @@ def update_cluster_conf(cluster_model, node_list=[]):
+         try:
+             ret = send_batch_parallel(host_triples, 10, True)
+         except Exception, e:
+-            log.exception('error updating cluster config for "%s"' \
++            err_str = _('error updating cluster config for "%s"' \
+                 % cluster_name)
+-            return False
++            log.exception('%s' % err_str)
++            return [ err_str ]
+ 
+-        sync_err = False
++        err_strs = []
+         for i in ret.keys():
+             try:
+                 batch_status = ret[i].get('batch_result')
+@@ -157,17 +160,16 @@ def update_cluster_conf(cluster_model, node_list=[]):
+                     DBSession.add(task_obj)
+                 else:
+                     if ret[i].get('error'):
+-                        log.error('Error retrieving batch number from %s: %s' %
++                        err_str = _('Error retrieving batch number from %s: %s' %
+                             (i, ret[i].get('err_msg')))
+-                        sync_err = True
++                        err_strs.append(err_str)
++                        log.error('%s' % err_str)
+             except Exception, e:
+-                log.exception('Unable to retrieve the batch number from %s' % i)
+-                sync_err = True
++                err_str = _('Unable to retrieve the batch number from %s' % i)
++                err_strs.append(err_str)
++                log.exception('%s' % err_str)
+                 continue
+ 
+-        if not sync_err:
+-            return False
+-
+         # Activate the new config we just set
+         new_version = cluster_model.getClusterConfigVersion()
+         host_triples = prepare_host_triples(cluster_obj, node_list, rq.setClusterVersion, new_version)
+@@ -175,8 +177,10 @@ def update_cluster_conf(cluster_model, node_list=[]):
+         try:
+             ret = send_batch_parallel(host_triples, 10, True)
+         except Exception, e:
+-            log.exception('Error activating new config for "%s"' % cluster_name)
+-            return False
++            err_str = _('Error sending activation command for new config for "%s"' % cluster_name)
++            err_strs.append(err_str)
++            log.exception('%s' % err_str)
++            return [ err_strs ]
+ 
+         for i in ret.keys():
+             try:
+@@ -193,13 +197,20 @@ def update_cluster_conf(cluster_model, node_list=[]):
+                     DBSession.add(task_obj)
+                 else:
+                     if ret[i].get('error'):
+-                        log.error('Error retrieving batch number from %s: %s' %
++                        err_str = _('Error retrieving batch number from %s: %s' %
+                             (i, ret[i].get('err_msg')))
++                        err_strs.append(err_str)
++                        log.error('%s' % err_str)
+             except Exception, e:
+-                log.exception('Unable to retrieve the batch number from %s' % i)
++                err_str = _('Unable to retrieve the batch number from %s while attempting to activate the new cluster configuration' % i)
++                err_strs.append(err_str)
++                log.exception('%s' % err_str)
+                 continue
+ 
+-    return True
++    if err_strs:
++       return err_strs
++
++    return None
+ 
+ def cluster_start(cluster_name):
+     cluster_obj = get_cluster_db_obj(cluster_name)
+diff --git a/luci/validation/validate_create_cluster_form.py b/luci/validation/validate_create_cluster_form.py
+index 76d0342..c7405e5 100644
+--- a/luci/validation/validate_create_cluster_form.py
++++ b/luci/validation/validate_create_cluster_form.py
+@@ -315,8 +315,10 @@ def validate_node_add_form(model, db_obj, **kw):
+     if len(errors) == 0:
+         model.getClusterPtr().incrementConfigVersion()
+         model.lockConfigVersion()
+-        if update_cluster_conf(model) is not True:
+-            errors.append(_('Unable to update the cluster configuration on existing nodes'))
++        msgs = update_cluster_conf(model)
++        if msgs and len(msgs) > 0:
++          errors = msgs
++          errors.append(_('Unable to update the cluster configuration on all existing nodes'))
+ 
+     if len(errors) > 0:
+         flash(_('The following errors occurred while creating cluster "%s": %s')
+-- 
+2.1.0
+

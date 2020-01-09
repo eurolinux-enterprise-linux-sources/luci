@@ -1,0 +1,44 @@
+From 8eed0e59de5c8f7242a34736a66bb8ffb594b221 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Sun, 8 Mar 2015 20:37:06 -0400
+Subject: [PATCH] luci: Don't lose nfsserver "nfspath" when not in expert
+ mode.
+
+If not in expert mode, do not delete the "nfspath" attribute if it
+is set on an nfsserver resource that a user edits.
+
+Resolves: rhbz#1112297
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/validation/validate_resource.py | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index 24ede08..ac37f28 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -305,7 +305,6 @@ def addNFSExport(res, rname, model, **kw):
+ 
+ def addNFSServer(res, rname, model, **kw):
+ 	params = (
+-		('nfspath', '', False, None),
+ 		('statdport', '', False, None),
+ 	)
+ 
+@@ -317,6 +316,13 @@ def addNFSServer(res, rname, model, **kw):
+ 			res.addAttribute('path', path_override)
+ 		else:
+ 			res.removeAttribute('path')
++
++		nfspath_override = kw.get('nfspath')
++		if nfspath_override and not nfspath_override.isspace():
++			res.addAttribute('nfspath', nfspath_override)
++		else:
++			res.removeAttribute('nfspath')
++
+ 	return errors
+ 
+ def addScript(res, rname, model, **kw):
+-- 
+2.1.0
+

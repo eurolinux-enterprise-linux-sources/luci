@@ -1,0 +1,60 @@
+From adf3f53a8119b7a90090954f840bac46736e169a Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 5 May 2015 08:44:18 -0400
+Subject: [PATCH] luci: Update fence_virt / fence_xvm labels
+
+fence_virt is no longer tech preview, so remove the label. Also
+add support for fence_virt's "timeout" attribute, which was missing.
+
+Resolves: rhbz#1204910
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/fence_devices.html | 11 +++++++++--
+ luci/validation/validate_fence.py |  1 +
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/luci/templates/fence_devices.html b/luci/templates/fence_devices.html
+index 3417e64..ffbe295 100644
+--- a/luci/templates/fence_devices.html
++++ b/luci/templates/fence_devices.html
+@@ -1215,6 +1215,13 @@
+           py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('channel_address')} or {}"/>
+       </td>
+     </tr>
++    <tr>
++      <td>Timeout (optional)</td>
++      <td>
++        <input name="timeout" type="text" class="text"
++          py:attrs="cur_fencedev and {'value': cur_fencedev.getAttribute('timeout')}"/>
++      </td>
++    </tr>
+   </table>
+ 
+   <py:if test="cur_fencedev">
+@@ -5170,8 +5177,8 @@ ${fence_unknown(None,0)}
+       <option name="fence_eps" value="fence_eps">ePowerSwitch</option>
+       <py:choose test="cluster_version">
+         <py:when test="3">
+-          <option name="fence_virt" value="fence_virt">Fence virt (Tech Preview)</option>
+-          <option name="fence_xvm" value="fence_xvm">Fence virt (Multicast Mode)</option>
++          <option name="fence_virt" value="fence_virt">Fence virt (Serial/VMChannel Mode)</option>
++          <option name="fence_xvm" value="fence_xvm">Fence virt (fence_xvm/Multicast Mode)</option>
+           <option name="fence_sanlock" value="fence_sanlock">Sanlock (Tech Preview)</option>
+         </py:when>
+       </py:choose>
+diff --git a/luci/validation/validate_fence.py b/luci/validation/validate_fence.py
+index 9f43848..462d5bc 100644
+--- a/luci/validation/validate_fence.py
++++ b/luci/validation/validate_fence.py
+@@ -301,6 +301,7 @@ def val_virt_fd(fencedev, fence_name, **kw):
+ 		('serial_device', True),
+ 		('serial_params', False),
+ 		('channel_address', False),
++		('timeout', False),
+ 	)
+ 
+ 	errors = config_fence_attr(params, fencedev, fence_name, **kw)
+-- 
+2.1.0
+

@@ -1,0 +1,72 @@
+From ed833452f305cb4c0992e40fb3e2b09d9a4d4a99 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Wed, 4 Mar 2015 08:03:07 -0500
+Subject: [PATCH] luci: Add support for miss_count_const
+
+Add support for setting/viewing miss_count_const in expert
+mode. It appears under the totem config tab.
+
+Resolves: rhbz#917761
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/lib/ClusterConf/Totem.py            | 9 +++++++++
+ luci/templates/configure.html            | 1 +
+ luci/validation/validate_cluster_prop.py | 9 +++++++++
+ 3 files changed, 19 insertions(+)
+
+diff --git a/luci/lib/ClusterConf/Totem.py b/luci/lib/ClusterConf/Totem.py
+index 6d9f2a7..dafc933 100644
+--- a/luci/lib/ClusterConf/Totem.py
++++ b/luci/lib/ClusterConf/Totem.py
+@@ -153,6 +153,15 @@ class Totem(TagObject):
+   def delRRPProblemCountThreshold(self):
+     return self.removeAttribute('rrp_problem_count_threshold')
+ 
++  def getMissCountConst(self):
++    return self.getAttribute('miss_count_const')
++
++  def setMissCountConst(self, val):
++    return self.addIntegerAttribute('miss_count_const', val, (0, None))
++
++  def delMissCountConst(self):
++    return self.removeAttribute('miss_count_const')
++
+   def removeDefaults(self):
+     if self.getJoinTimeout() == self.DEFAULTS.get('join'):
+         self.delJoinTimeout()
+diff --git a/luci/templates/configure.html b/luci/templates/configure.html
+index 6071fcd..13ec306 100644
+--- a/luci/templates/configure.html
++++ b/luci/templates/configure.html
+@@ -182,6 +182,7 @@
+                 <div class="row"><label class="wide">Window Size</label><input name="window_size" class="text" type="text" py:attrs="totem and { 'value': totem.getWindowSize() } or {}"/></div>
+                 <div class="row"><label class="wide">Sequence Number Unchanged Constant</label><input name="seqno_unchanged_const" class="text" type="text" py:attrs="totem and { 'value': totem.getSeqnoUnchangedConst() } or {}"/></div>
+                 <div class="row"><label class="wide">RRP Problem Count Threshold</label><input name="rrp_problem_count_threshold" class="text" type="text" py:attrs="totem and { 'value': totem.getRRPProblemCountThreshold() } or {}"/></div>
++                <div class="row"><label class="wide">Miss Count Constant</label><input name="miss_count_const" class="text" type="text" py:attrs="totem and { 'value': totem.getMissCountConst() } or {}"/></div>
+                 <div class="row"><label class="wide">Encrypt Totem Network Traffic</label><input name="secauth" type="checkbox" class="checkbox" py:attrs="(not totem or totem.getSecAuth()) and {'checked':'checked'} or {}"/></div>
+             </div>
+             <div class="row"><input type="submit" class="button formsubmit blue" value="Apply"/>
+diff --git a/luci/validation/validate_cluster_prop.py b/luci/validation/validate_cluster_prop.py
+index a5d0ec5..1b596e8 100644
+--- a/luci/validation/validate_cluster_prop.py
++++ b/luci/validation/validate_cluster_prop.py
+@@ -669,6 +669,15 @@ def validate_network_config(model, **kw):
+     else:
+         totem.delRRPProblemCountThreshold()
+ 
++    miss_count_const = kw.get('miss_count_const')
++    if miss_count_const and not miss_count_const.isspace():
++        try:
++            totem.setMissCountConst(miss_count_const)
++        except:
++            errors.append(_('Invalid value for miss count constant: %s') % miss_count_const)
++    else:
++        totem.delMissCountConst()
++
+     totem.setSecAuth(kw.get('secauth') is not None)
+     return (len(errors) < 1, {'errors': errors})
+ 
+-- 
+2.1.0
+

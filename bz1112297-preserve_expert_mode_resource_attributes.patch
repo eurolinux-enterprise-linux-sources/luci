@@ -1,0 +1,189 @@
+From cdd9f5954a1f0cdb8a81ee96b73692bb010b4773 Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 5 May 2015 08:41:29 -0400
+Subject: [PATCH] luci: Preserve expert mode resource attributes
+
+Preserve expert mode resource attributes when editing inline
+resources contained in service groups while not in expert mode.
+
+Resolves: rhbz#1112297
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/templates/resource_list.html    | 22 ++++++++++++++++++++++
+ luci/validation/validate_resource.py | 21 +++++++++++++--------
+ 2 files changed, 35 insertions(+), 8 deletions(-)
+
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 5c69dbe..965dae8 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -127,6 +127,9 @@
+     </tr>
+     ${res_footer(res)}
+   </table>
++  <py:if test="res and not expertMode and defined('svc')">
++    <input type="hidden" name="prefer_interface" value="${res.getAttribute('prefer_interface')}" />
++  </py:if>
+ </div>
+ 
+ <div py:def="fs_resource(res, form_id, parent_id, isref)" name="FS" id="fs_resource" class="row rescfg"
+@@ -249,6 +252,9 @@
+     </tr>
+     ${res_footer(res)}
+   </table>
++  <py:if test="res and not expertMode and defined('svc')">
++   <input py:if="res.getBinaryAttribute('use_findmnt') is True" type="hidden" name="use_findmnt" value="1" />
++  </py:if>
+ </div>
+ 
+ <div py:def="clusterfs_resource(res, form_id, parent_id, isref)" name="CLUSTERFS" id="clusterfs_resource" class="row rescfg"
+@@ -358,6 +364,9 @@
+     </tr>
+     ${res_footer(res)}
+   </table>
++  <py:if test="res and not expertMode and defined('svc')">
++   <input py:if="res.getBinaryAttribute('use_findmnt') is True" type="hidden" name="use_findmnt" value="1" />
++  </py:if>
+ </div>
+ 
+ <div py:def="netfs_resource(res, form_id, parent_id, isref)" name="NETFS" id="netfs_resource" class="row rescfg"
+@@ -452,6 +461,9 @@
+     </tr>
+     ${res_footer(res)}
+   </table>
++  <py:if test="res and not expertMode and defined('svc')">
++   <input py:if="res.getBinaryAttribute('use_findmnt') is True" type="hidden" name="use_findmnt" value="1" />
++  </py:if>
+ </div>
+ 
+ <div py:def="bindmount_resource(res, form_id, parent_id, isref)" name="BIND-MOUNT" id="bindmount_resource" class="row rescfg"
+@@ -527,6 +539,9 @@
+     </tr>
+     ${res_footer(res)}
+   </table>
++  <py:if test="res and not expertMode and defined('svc')">
++   <input type="hidden" name="path" value="${res.getAttribute('path')}" />
++  </py:if>
+ </div>
+ 
+ <div py:def="nfsserver_resource(res, form_id, parent_id, isref)" name="NFSSERVER" id="nfsserver_resource" class="row rescfg"
+@@ -574,6 +589,10 @@
+     </tr>
+     ${res_footer(res)}
+   </table>
++  <py:if test="res and not expertMode and defined('svc')">
++   <input type="hidden" name="path" value="${res.getAttribute('path')}" />
++   <input type="hidden" name="nfspath" value="${res.getAttribute('nfspath')}" />
++  </py:if>
+ </div>
+ 
+ <div py:def="nfsclient_resource(res, form_id, parent_id, isref)" name="NFSCLIENT" id="nfsclient_resource" class="row rescfg"
+@@ -626,6 +645,9 @@
+     </tr>
+     ${res_footer(res)}
+   </table>
++  <py:if test="res and not expertMode and defined('svc')">
++   <input type="hidden" name="path" value="${res.getAttribute('path')}" />
++  </py:if>
+ </div>
+ 
+ <div py:def="samba_resource(res, form_id, parent_id, isref)" name="SAMBA" id="samba_resource" class="row rescfg"
+diff --git a/luci/validation/validate_resource.py b/luci/validation/validate_resource.py
+index ac37f28..9611180 100644
+--- a/luci/validation/validate_resource.py
++++ b/luci/validation/validate_resource.py
+@@ -129,7 +129,7 @@ def addIp(res, rname, model, **kw):
+ 	if not res.getBinaryAttribute('disable_rdisc'):
+ 		res.removeAttribute('disable_rdisc')
+ 
+-	if kw.get('expert_mode'):
++	if kw.get('expert_mode') or kw.get('svc_edit'):
+ 		prefer_interface = kw.get('prefer_interface')
+ 		if prefer_interface and not prefer_interface.isspace():
+ 			res.addAttribute('prefer_interface', prefer_interface)
+@@ -152,7 +152,7 @@ def addFs(res, rname, model, **kw):
+ 		('options', '', False, None)
+ 	]
+ 
+-	if kw.get('expert_mode'):
++	if kw.get('expert_mode') or kw.get('svc_edit'):
+ 		params.append(('use_findmnt', '', False, None))
+ 		if not kw.get('use_findmnt'):
+ 			kw['use_findmnt'] = '0'
+@@ -188,7 +188,7 @@ def addClusterfs(res, rname, model, **kw):
+ 		('options', '', False, None)
+ 	]
+ 
+-	if kw.get('expert_mode'):
++	if kw.get('expert_mode') or kw.get('svc_edit'):
+ 		params.append(('use_findmnt', '', False, None))
+ 		if not kw.get('use_findmnt'):
+ 			kw['use_findmnt'] = '0'
+@@ -223,7 +223,7 @@ def addNetfs(res, rname, model, **kw):
+ 		('fstype', '', False, None)
+ 	]
+ 
+-	if kw.get('expert_mode'):
++	if kw.get('expert_mode') or kw.get('svc_edit'):
+ 		params.append(('use_findmnt', '', False, None))
+ 		if not kw.get('use_findmnt'):
+ 			kw['use_findmnt'] = '0'
+@@ -278,7 +278,7 @@ def addNFSClient(res, rname, model, **kw):
+ 	)
+ 
+ 	errors = config_resource(params, res, rname, **kw)
+-	if kw.get('expert_mode'):
++	if kw.get('expert_mode') or kw.get('svc_edit'):
+ 		# The inherited path can be overriden while in expert mode
+ 		path_override = kw.get('path')
+ 		if path_override and not path_override.isspace():
+@@ -294,7 +294,7 @@ def addNFSClient(res, rname, model, **kw):
+ def addNFSExport(res, rname, model, **kw):
+ 	# Only the name is used
+ 
+-	if kw.get('expert_mode'):
++	if kw.get('expert_mode') or kw.get('svc_edit'):
+ 		# The inherited path can be overriden while in expert mode
+ 		path_override = kw.get('path')
+ 		if path_override and not path_override.isspace():
+@@ -309,7 +309,7 @@ def addNFSServer(res, rname, model, **kw):
+ 	)
+ 
+ 	errors = config_resource(params, res, rname, **kw)
+-	if kw.get('expert_mode'):
++	if kw.get('expert_mode') or kw.get('svc_edit'):
+ 		# The inherited path can be overriden while in expert mode
+ 		path_override = kw.get('path')
+ 		if path_override and not path_override.isspace():
+@@ -657,6 +657,7 @@ def create_resource(res_type, model, **kw):
+ 
+ def validate_clusvc_form(model, **kw):
+ 	errors = list()
++	expert_mode = False
+ 
+ 	new_service = Service()
+ 	old_name = kw.get('old_name')
+@@ -750,6 +751,7 @@ def validate_clusvc_form(model, **kw):
+ 			new_service.delExclusive()
+ 
+ 	if kw.get('expert_mode'):
++		expert_mode = True
+ 		new_service.setNFSLock(kw.get('nfslock') is not None)
+ 		new_service.setNFSClientCache(kw.get('nfs_client_cache') is not None)
+ 
+@@ -829,7 +831,10 @@ def validate_clusvc_form(model, **kw):
+ 		if not form_parent in form_hash:
+ 			form_hash[form_parent] = {'form': None, 'kids': []}
+ 		form_hash[form_parent]['kids'].append(form_id)
+-		dummy_form = {}
++		dummy_form = {'svc_edit': 'true'}
++
++		if expert_mode:
++			dummy_form['expert_mode'] = True
+ 
+ 		for i in ielems:
+ 			try:
+-- 
+2.1.0
+

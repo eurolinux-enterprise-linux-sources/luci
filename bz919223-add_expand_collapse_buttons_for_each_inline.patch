@@ -1,0 +1,55 @@
+From a0ccdcf9fc6a681560877467c0021fa6426981db Mon Sep 17 00:00:00 2001
+From: Ryan McCabe <rmccabe@redhat.com>
+Date: Tue, 5 May 2015 08:45:13 -0400
+Subject: [PATCH] luci: Add expand/collapse buttons for each inline
+ resource
+
+Add expand and collapse buttons for all resources inside
+service groups.
+
+Resolves: rhbz#919223
+
+Signed-off-by: Ryan McCabe <rmccabe@redhat.com>
+---
+ luci/public/js/service.js         | 4 +++-
+ luci/templates/resource_list.html | 9 +++++++--
+ 2 files changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/luci/public/js/service.js b/luci/public/js/service.js
+index 185e1c5..dbd6f1e 100644
+--- a/luci/public/js/service.js
++++ b/luci/public/js/service.js
+@@ -140,7 +140,9 @@ function insert_resource(res_id, container_id, form, parent_id) {
+     var table_id_str = 'table_' + cur_id_str;
+     var res_anchor_name = 'anchor_' + cur_id_str;
+ 
+-    var svc_tables = $('<a name="' + res_anchor_name + '" id="' + res_anchor_name + '"/><table class="detailstable" id="' + table_id_str + '"><thead class="svc_padding"><tr class="svc_padding"><th class="svc_padding" width="5"/><th class="svc_padding" width="98%"/><th class="svc_padding" colspan="3"/></tr></thead><tbody><tr class="svc_res_table"><td></td><td align="right" class="svc_padding" colspan="4"><a href="#" onclick="$(\'#' + table_id_str + '\').remove();return false;">Remove</a></td></tr><tr><td class="svc_padding"></td><td colspan="4" class="svc_content" id="' + td_id_str + '"></td></tr></tbody></table>');
++    var expander_div = '<div><input type="button" value="Expand" class="button small silver expander" onclick="$(\'#' + table_id_str + ' table.formtable > tbody > tr > td\').not(\'.nocollapse\').show()"><input type="button" value="Collapse" class="button small silver expander" onclick="$(\'#' + table_id_str + ' table.formtable > tbody > tr > td\').not(\'.nocollapse\').hide()"></div>';
++
++    var svc_tables = $('<a name="' + res_anchor_name + '" id="' + res_anchor_name + '"/><table class="detailstable" id="' + table_id_str + '"><thead class="svc_padding"><tr class="svc_padding"><th class="svc_padding" width="5"/><th class="svc_padding" width="98%"/><th class="svc_padding" colspan="3"/></tr></thead><tbody><tr class="svc_res_table"><td align="left" colspan="2">' + expander_div + '</td><td align="right" colspan="2"><a href="#" onclick="$(\'#' + table_id_str + '\').remove();return false;">Remove</a></td></tr><tr><td class="svc_padding"></td><td colspan="4" class="svc_content" id="' + td_id_str + '"></td></tr></tbody></table>');
+     var containing_div = $('<div class="reslevel"></div>');
+     $(containing_div).attr('id', cur_id_str);
+ 
+diff --git a/luci/templates/resource_list.html b/luci/templates/resource_list.html
+index 965dae8..ae489e8 100644
+--- a/luci/templates/resource_list.html
++++ b/luci/templates/resource_list.html
+@@ -2164,8 +2164,13 @@ ${bindmount_resource(None,None,None,0)}
+     </thead>
+     <tbody>
+     <tr class="svc_res_table">
+-      <td></td>
+-      <td align="right" colspan="4">
++      <td align="left" colspan="2">
++       <div py:if="defined('svc')">
++         <input type="button" value="Expand" class="button small silver expander" py:attrs="{'onclick': '$(\'#%s table.formtable > tbody > tr > td\').not(\'.nocollapse\').show()' % cur_id_str}"/>
++         <input type="button" value="Collapse" class="button small silver expander" py:attrs="{'onclick': '$(\'#%s table.formtable > tbody > tr > td\').not(\'.nocollapse\').hide()' % cur_id_str}"/>
++        </div>
++      </td>
++      <td align="right" colspan="2">
+         <a href="#"
+           py:attrs="{'onclick': '$(\'#table_%s\').remove();return false;' % cur_id_str}">Remove</a>
+       </td>
+-- 
+2.1.0
+
